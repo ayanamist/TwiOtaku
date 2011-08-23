@@ -1,0 +1,5 @@
+xmpp:
+  type: python-worker
+  environment:
+    XMPP_USERNAME: username
+    XMPP_PASSWORD: password
