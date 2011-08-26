@@ -500,16 +500,7 @@ class Client():
     else:
       headers.update(req.to_header())
 
-    result = fetch(url=uri, method=method, body=body, headers=headers)
-    content = result.data
-    if result.headers.get('content-encoding', None) == 'gzip':
-      import zlib
-
-      try:
-        content = zlib.decompress(content, 16 + zlib.MAX_WBITS)
-      except zlib.error:
-        pass
-    return content
+    return fetch(url=uri, method=method, body=body, headers=headers).data
 
 
 class SignatureMethod(object):

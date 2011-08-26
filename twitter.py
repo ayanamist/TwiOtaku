@@ -353,16 +353,7 @@ class Api(object):
     else:
       url = self._build_url(url, extra_params=extra_params)
       encoded_post_data = self._encode_post_data(post_data)
-    result = fetch(method=http_method, url=url, body=encoded_post_data, headers=headers)
-    content = result.data
-    if result.headers.get('content-encoding', None) == 'gzip':
-      import zlib
-
-      try:
-        content = zlib.decompress(content, 16 + zlib.MAX_WBITS)
-      except zlib.error:
-        pass
-
+    content = fetch(method=http_method, url=url, body=encoded_post_data, headers=headers).data
     try:
       json_data = json.loads(content)
     except ValueError:
