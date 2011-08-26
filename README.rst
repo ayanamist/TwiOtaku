@@ -1,0 +1,1 @@
+TwiOtaku is a GTalk based Twitter client using Twitter User Streaming API.

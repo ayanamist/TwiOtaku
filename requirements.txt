@@ -1,3 +1,6 @@
+PyYAML
 ujson
-https://github.com/fritzy/SleekXMPP/zipball/1.0-Beta6.1
+urllib3
+APScheduler
+https://github.com/fritzy/SleekXMPP/zipball/1.0-RC1
 https://apsw.googlecode.com/files/apsw-3.7.7.1-r1.zip
