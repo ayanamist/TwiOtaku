@@ -7,6 +7,7 @@ except ImportError:
 import sleekxmpp
 
 import oauth
+import twitter
 import db
 import constant
 
@@ -29,6 +30,10 @@ SHORT_COMMANDS = {
   '?': 'help',
   'h': 'help'
 }
+
+class Dummy(object):
+  def __getattr__(self, _):
+    raise NotImplementedError('Please OAuth first!')
 
 class XMPPBot(sleekxmpp.ClientXMPP):
   def __init__(self, jid, password):
@@ -84,6 +89,11 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 class XMPPMessageHandler(object):
   def __init__(self, user):
     self.user = user
+    if user['access_key'] and user['access_secret']:
+      self.api = twitter.Api(consumer_key=constant.CONFIG['OAUTH_CONSUMER_KEY'], consumer_secret=constant.CONFIG['OAUTH_CONSUMER_SECRET'],
+                             access_token_key=user['access_key'], access_token_secret=user['access_secret'])
+    else:
+      self.api = Dummy()
 
   def parse_command(self, cmd):
     if cmd[0] == '-' or cmd[0] == ' ':
@@ -97,7 +107,11 @@ class XMPPMessageHandler(object):
         return 'Invalid command.'
       return func(*args[1:])
     else:
-      pass
+      if len(cmd) > constant.CHARACTER_LIMIT:
+        return 'Words count %s exceeed %s characters.' % (len(cmd), constant.CHARACTER_LIMIT)
+      if type(cmd) == unicode:
+        cmd = cmd.encode('UTF8')
+      self.api.post_update(cmd)
 
   def func_oauth(self):
     consumer = oauth.Consumer(constant.CONFIG['OAUTH_CONSUMER_KEY'], constant.CONFIG['OAUTH_CONSUMER_SECRET'])

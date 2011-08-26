@@ -25,28 +25,12 @@ class TwitterInternalServerError(TwitterError):
   pass
 
 
-class TwitterObject(dict):
-  def __init__(self, json):
-    dict.__init__(self, json)
+class Status(dict):
+  pass
 
 
-class Status(TwitterObject):
-  def __init__(self, json):
-    TwitterObject.__init__(self, json)
-    self.user = User(self.get('user', dict()))
-
-
-class User(TwitterObject):
-  def __init__(self, json):
-    TwitterObject.__init__(self, json)
-    self.status = Status(self.get('status', dict()))
-
-
-class DirectMessage(TwitterObject):
-  def __init__(self, json):
-    TwitterObject.__init__(self, json)
-    self.recipient = User(self.get('recipient', dict()))
-    self.sender = User(self.get('sender', dict()))
+class DirectMessage(dict):
+  pass
 
 
 class Api(object):
@@ -161,7 +145,7 @@ class Api(object):
 
   def get_user(self, user):
     url = '%s/users/show.json?screen_name=%s' % (self.base_url, user)
-    return User(self._fetch_url(url))
+    return self._fetch_url(url)
 
   def get_direct_messages(self, since_id=None, page=None, include_entities=1, max_id=None, count=None):
     url = '%s/direct_messages.json' % self.base_url
@@ -194,11 +178,11 @@ class Api(object):
 
   def create_friendship(self, user):
     url = '%s/friendships/create.json' % self.base_url
-    return User(self._fetch_url(url, parameters={'screen_name': user}, http_method='POST'))
+    return self._fetch_url(url, parameters={'screen_name': user}, http_method='POST')
 
   def destroy_friendship(self, user):
     url = '%s/friendships/destroy.json' % self.base_url
-    return User(self._fetch_url(url, parameters={'screen_name': user}, http_method='POST'))
+    return self._fetch_url(url, parameters={'screen_name': user}, http_method='POST')
 
   def exists_friendship(self, user_a, user_b):
     url = '%s/friendships/exists.json' % self.base_url
@@ -263,20 +247,20 @@ class Api(object):
 
   def create_block(self, user):
     url = '%s/blocks/create.json' % self.base_url
-    return User(self._fetch_url(url, parameters={'screen_name': user}, http_method='POST'))
+    return self._fetch_url(url, parameters={'screen_name': user}, http_method='POST')
 
   def report_spam(self, user):
     url = '%s/report_spam.json' % self.base_url
-    return User(self._fetch_url(url, parameters={'screen_name': user}, http_method='POST'))
+    return self._fetch_url(url, parameters={'screen_name': user}, http_method='POST')
 
   def destroy_block(self, user):
     url = '%s/blocks/destroy.json' % self.base_url
-    return User(self._fetch_url(url, parameters={'screen_name': user}, http_method='POST'))
+    return self._fetch_url(url, parameters={'screen_name': user}, http_method='POST')
 
 
   def verify_credentials(self):
     url = '%s/account/verify_credentials.json' % self.base_url
-    return User(self._fetch_url(url))
+    return self._fetch_url(url)
 
   def get_rate_limit_status(self):
     url = '%s/account/rate_limit_status.json' % self.base_url

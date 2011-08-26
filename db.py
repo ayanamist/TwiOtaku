@@ -23,7 +23,7 @@ def init():
                 """,
       users="""CREATE TABLE "users" (
             "id"  INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-            "enabled"  INTEGER NOT NULL DEFAULT 0,
+            "enabled"  INTEGER NOT NULL DEFAULT 1,
             "jid"  TEXT NOT NULL,
             "screen_name"  TEXT,
             "access_key"  TEXT,
