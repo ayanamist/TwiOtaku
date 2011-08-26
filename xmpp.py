@@ -9,7 +9,7 @@ import sleekxmpp
 import oauth
 import twitter
 import db
-import constant
+import runtime
 
 SHORT_COMMANDS = {
   '@': 'reply',
@@ -90,7 +90,7 @@ class XMPPMessageHandler(object):
   def __init__(self, user):
     self.user = user
     if user['access_key'] and user['access_secret']:
-      self.api = twitter.Api(consumer_key=constant.CONFIG['OAUTH_CONSUMER_KEY'], consumer_secret=constant.CONFIG['OAUTH_CONSUMER_SECRET'],
+      self.api = twitter.Api(consumer_key=runtime.CONFIG['OAUTH_CONSUMER_KEY'], consumer_secret=runtime.CONFIG['OAUTH_CONSUMER_SECRET'],
                              access_token_key=user['access_key'], access_token_secret=user['access_secret'])
     else:
       self.api = Dummy()
@@ -107,19 +107,19 @@ class XMPPMessageHandler(object):
         return 'Invalid command.'
       return func(*args[1:])
     else:
-      if len(cmd) > constant.CHARACTER_LIMIT:
-        return 'Words count %s exceeed %s characters.' % (len(cmd), constant.CHARACTER_LIMIT)
+      if len(cmd) > twitter.CHARACTER_LIMIT:
+        return 'Words count %s exceeed %s characters.' % (len(cmd), twitter.CHARACTER_LIMIT)
       if type(cmd) == unicode:
         cmd = cmd.encode('UTF8')
       self.api.post_update(cmd)
 
   def func_oauth(self):
-    consumer = oauth.Consumer(constant.CONFIG['OAUTH_CONSUMER_KEY'], constant.CONFIG['OAUTH_CONSUMER_SECRET'])
+    consumer = oauth.Consumer(runtime.CONFIG['OAUTH_CONSUMER_KEY'], runtime.CONFIG['OAUTH_CONSUMER_SECRET'])
     client = oauth.Client(consumer)
-    resp = client.request(constant.REQUEST_TOKEN_URL)
+    resp = client.request(twitter.REQUEST_TOKEN_URL)
     self._request_token = dict(parse_qsl(resp))
     oauth_token = self._request_token['oauth_token']
-    redirect_url = "%s?oauth_token=%s" % (constant.AUTHORIZATION_URL, oauth_token)
+    redirect_url = "%s?oauth_token=%s" % (twitter.AUTHORIZATION_URL, oauth_token)
     db.update_user(self.user['id'], access_key=oauth_token)
     return 'Please visit below url to get PIN code:\n%s\nthen you should use "-bind PIN" command to actually bind your Twitter.' % redirect_url
 
@@ -129,9 +129,9 @@ class XMPPMessageHandler(object):
     if self.user['access_key']:
       token = oauth.Token(self.user['access_key'])
       token.set_verifier(pin_code)
-      consumer = oauth.Consumer(constant.CONFIG['OAUTH_CONSUMER_KEY'], constant.CONFIG['OAUTH_CONSUMER_SECRET'])
+      consumer = oauth.Consumer(runtime.CONFIG['OAUTH_CONSUMER_KEY'], runtime.CONFIG['OAUTH_CONSUMER_SECRET'])
       client = oauth.Client(consumer, token)
-      resp = client.request(constant.ACCESS_TOKEN_URL, "POST")
+      resp = client.request(twitter.ACCESS_TOKEN_URL, "POST")
       access_token = dict(parse_qsl(resp))
       if 'oauth_token' in access_token:
         db.update_user(self.user['id'], access_key=access_token['oauth_token'], access_secret=access_token['oauth_token_secret'],

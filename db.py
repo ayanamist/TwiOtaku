@@ -1,6 +1,8 @@
+import os
+
 import apsw
 
-from constant import DB_PATH
+DB_PATH = os.path.dirname(__file__) + os.sep + 'twiotaku.db'
 
 _conn_db = None
 

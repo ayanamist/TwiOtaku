@@ -9,12 +9,14 @@ try:
 except ImportError:
   import json
 
-import constant
+import runtime
 import db
 from xmpp import XMPPBot
-from constant import ENVIRONMENT_JSON_PATH, YAML_PATH
 
 
+ENVIRONMENT_JSON_PATH = '/home/dotcloud/environment.json'
+
+YAML_PATH = os.path.dirname(__file__) + os.sep + 'dotcloud.yml'
 
 def sigterm_handler(signum, frame):
   bot.disconnect(wait=True)
@@ -31,7 +33,7 @@ if __name__ == '__main__':
 
   if os.path.exists(ENVIRONMENT_JSON_PATH):
     f = open(ENVIRONMENT_JSON_PATH, 'r')
-    constant.CONFIG = json.load(f)
+    runtime.CONFIG = json.load(f)
     f.close()
   elif os.path.exists(YAML_PATH):
     import yaml
@@ -42,7 +44,7 @@ if __name__ == '__main__':
       from yaml import Loader
 
     f = open(YAML_PATH, 'r')
-    constant.CONFIG = yaml.load(f.read(), Loader=Loader)['xmpp']['environment']
+    runtime.CONFIG = yaml.load(f.read(), Loader=Loader)['xmpp']['environment']
     f.close()
   else:
     logging.error('Can not find appropriate configuration file.')
@@ -50,7 +52,7 @@ if __name__ == '__main__':
 
   db.init()
 
-  bot = XMPPBot(constant.CONFIG['XMPP_USERNAME'], constant.CONFIG['XMPP_PASSWORD'])
+  bot = XMPPBot(runtime.CONFIG['XMPP_USERNAME'], runtime.CONFIG['XMPP_PASSWORD'])
   bot.register_plugin('xep_0030') # Service Discovery
   if bot.connect(('talk.google.com', 5222)):
     bot.process(threaded=False)

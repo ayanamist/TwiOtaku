@@ -10,8 +10,19 @@ except ImportError:
   import json
 
 import oauth
-from constant import BASE_URL
 from urlfetch import fetch
+
+CHARACTER_LIMIT = 140
+
+REQUEST_TOKEN_URL = 'https://api.twitter.com/oauth/request_token'
+
+ACCESS_TOKEN_URL = 'https://api.twitter.com/oauth/access_token'
+
+AUTHORIZATION_URL = 'https://api.twitter.com/oauth/authorize'
+
+SIGNIN_URL = 'https://api.twitter.com/oauth/authenticate'
+
+BASE_URL = 'https://api.twitter.com/1'
 
 class TwitterError(Exception):
   pass
