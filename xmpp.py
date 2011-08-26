@@ -1,4 +1,8 @@
 import logging
+try:
+  from urlparse import parse_qsl
+except ImportError:
+  from cgi import parse_qsl
 
 import sleekxmpp
 
@@ -99,14 +103,24 @@ class XMPPMessageHandler(object):
     consumer = oauth.Consumer(constant.CONFIG['OAUTH_CONSUMER_KEY'], constant.CONFIG['OAUTH_CONSUMER_SECRET'])
     client = oauth.Client(consumer)
     resp = client.request(constant.REQUEST_TOKEN_URL)
-    try:
-      from urlparse import parse_qsl
-    except ImportError:
-      from cgi import parse_qsl
     self._request_token = dict(parse_qsl(resp))
     oauth_token = self._request_token['oauth_token']
     redirect_url = "%s?oauth_token=%s" % (constant.AUTHORIZATION_URL, oauth_token)
     db.update_user(self.user['id'], access_key=oauth_token)
     return 'Please visit below url to get PIN code:\n%s\nthen you should use "-bind PIN" command to actually bind your Twitter.' % redirect_url
 
-  
+  def func_bind(self, pin_code):
+    if type(pin_code) is unicode:
+      pin_code = pin_code.encode('UTF8')
+    if self.user['access_key']:
+      token = oauth.Token(self.user['access_key'])
+      token.set_verifier(pin_code)
+      consumer = oauth.Consumer(constant.CONFIG['OAUTH_CONSUMER_KEY'], constant.CONFIG['OAUTH_CONSUMER_SECRET'])
+      client = oauth.Client(consumer, token)
+      resp = client.request(constant.ACCESS_TOKEN_URL, "POST")
+      access_token = dict(parse_qsl(resp))
+      if 'oauth_token' in access_token:
+        db.update_user(self.user['id'], access_key=access_token['oauth_token'], access_secret=access_token['oauth_token_secret'],
+                       screen_name=access_token['screen_name'])
+        return 'Successfully bind you with Twitter user @%s.' % access_token['screen_name']
+    return 'Invalid PIN code.'
