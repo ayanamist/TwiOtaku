@@ -1,4 +1,8 @@
+import random
 import logging
+import traceback
+import time
+from StringIO import StringIO
 try:
   from urlparse import parse_qsl
 except ImportError:
@@ -50,24 +54,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     self.get_roster()
 
   def on_message(self, msg):
-    bare_jid = msg['from']._jid.split('/')[0].lower()
-    user = db.get_user_from_jid(bare_jid)
-    if user:
-      h = XMPPMessageHandler(user, self._config)
-      try:
-        result = h.parse_command(msg['body'].rstrip())
-      except BaseException, e:
-        result = str(e)
-        import traceback
-        from StringIO import StringIO
-
-        err = StringIO()
-        traceback.print_exc(file=err)
-        xmpp_logger = logging.getLogger('xmpp')
-        xmpp_logger.error(err.getvalue())
-
-      if result:
-        msg.reply(result).send()
+    XMPPMessageHandler(self._config).process(msg)
 
   def on_changed_status(self, presence):
     bare_jid = presence['from']._jid.split('/')[0].lower()
@@ -87,20 +74,37 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
 
 class XMPPMessageHandler(object):
-  def __init__(self, user, config):
-    self._user = user
+  def __init__(self, config):
     self._config = config
-    if user['access_key'] and user['access_secret']:
-      self.api = twitter.Api(consumer_key=config['OAUTH_CONSUMER_KEY'], consumer_secret=config['OAUTH_CONSUMER_SECRET'],
-                             access_token_key=user['access_key'], access_token_secret=user['access_secret'])
+
+  def process(self, msg):
+    self._bare_jid = msg['from']._jid.split('/')[0].lower()
+    self._user = db.get_user_from_jid(self._bare_jid)
+    if self._user and self._user['access_key'] and self._user['access_secret']:
+      self.api = twitter.Api(consumer_key=self._config['OAUTH_CONSUMER_KEY'], consumer_secret=self._config['OAUTH_CONSUMER_SECRET'],
+                             access_token_key=self._user['access_key'], access_token_secret=self._user['access_secret'])
     else:
       self.api = Dummy()
+
+    try:
+      result = self.parse_command(msg['body'].rstrip())
+    except BaseException, e:
+      result = str(e)
+      err = StringIO()
+      traceback.print_exc(file=err)
+      xmpp_logger = logging.getLogger('xmpp')
+      xmpp_logger.error(err.getvalue())
+
+    if result:
+      msg.reply(result).send()
 
   def parse_command(self, cmd):
     if cmd[0] == '-' or cmd[0] == ' ':
       args = cmd[1:].split(' ')
       if args[0] in SHORT_COMMANDS:
         args[0] = SHORT_COMMANDS[args[0]]
+      if not self._user and args[0] != 'invite':
+        return
       func_name = 'func_' + args[0]
       if func_name in dir(self):
         func = getattr(self, func_name)
@@ -139,3 +143,25 @@ class XMPPMessageHandler(object):
                        screen_name=access_token['screen_name'], enabled=1)
         return 'Successfully bind you with Twitter user @%s.' % access_token['screen_name']
     return 'Invalid PIN code.'
+
+  def func_invite(self, invite_code=None):
+    def generate_invite_code():
+      valid_chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+      return ''.join(random.choice(valid_chars) for _ in range(8))
+
+    expire_days = 3
+
+    if invite_code and not self._user:
+      invite_code, create_time = db.get_invite_code(invite_code)
+      if invite_code and create_time and create_time + expire_days * 24 * 3600 > time.time():
+        db.delete_invite_code(invite_code)
+        db.add_user(self._bare_jid)
+        return 'Invite code is valid, your account %s has been added, enjoy using TwiOtaku.' % self._bare_jid
+      else:
+        return 'Invite code is invalid or expired.'
+
+    elif self._bare_jid in self._config['ADMIN_USERS']:
+      invite_code = generate_invite_code()
+      create_time = int(time.time())
+      db.add_invite_code(invite_code, create_time)
+      return 'You have generated a new invite code which is available for %d days:\n%s' % (expire_days, invite_code)

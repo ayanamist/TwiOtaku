@@ -5,6 +5,7 @@ import apsw
 DB_PATH = os.path.dirname(__file__) + os.sep + 'twiotaku.db'
 
 _conn_db = None
+_cache = dict()
 
 def init():
   global _conn_db
@@ -58,21 +59,23 @@ def init():
               CREATE UNIQUE INDEX "status_id"
               ON "statuses" ("id", "type");
               """,
-      invite="""CREATE TABLE "invites" (
-            "id"  INTEGER NOT NULL,
+      invites="""CREATE TABLE "invites" (
+            "id"  TEXT NOT NULL,
             "create_time"   INTEGER NOT NULL,
             PRIMARY KEY ("id") ON CONFLICT FAIL
             );
             CREATE UNIQUE INDEX "invite_id"
-            ON "invites" ("id", "type");
+            ON "invites" ("id");
             """,
     )
     for t in cursor.execute("SELECT name FROM sqlite_master WHERE type='table';"):
       t = t[0]
       if t in sql:
         del(sql[t])
+    cursor.execute('BEGIN TRANSACTION')
     for v in sql.itervalues():
       cursor.execute(v)
+    cursor.execute('COMMIT')
   return _conn_db
 
 def get_user_from_jid(jid):
@@ -104,3 +107,23 @@ def update_user(id=None, jid=None, **kwargs):
     sql = 'UPDATE users SET %s WHERE %s' % (','.join(cols), cond)
     cursor.execute(sql, values)
 
+def add_user(jid):
+  cursor = _conn_db.cursor()
+  sql = 'INSERT INTO users (jid) VALUES(?)'
+  cursor.execute(sql, (jid,))
+
+def get_invite_code(invide_code):
+  cursor = _conn_db.cursor()
+  for u in cursor.execute('SELECT id, create_time FROM invites WHERE id=?', (invide_code, )):
+    return u
+  return None, None
+
+def add_invite_code(invite_code, create_time):
+  cursor = _conn_db.cursor()
+  sql = 'INSERT INTO invites (id, create_time) VALUES(?,?)'
+  cursor.execute(sql, (invite_code, create_time))
+
+def delete_invite_code(invite_code):
+  cursor = _conn_db.cursor()
+  sql = 'DELETE FROM invites WHERE id=?'
+  cursor.execute(sql, (invite_code,))

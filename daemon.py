@@ -50,6 +50,8 @@ if __name__ == '__main__':
     logging.error('Can not find appropriate configuration file.')
     sys.exit(1)
 
+  config['ADMIN_USERS'] = [x.strip() for x in config['ADMIN_USERS'].split(',')]
+
   db.init()
 
   bot = XMPPBot(config)
