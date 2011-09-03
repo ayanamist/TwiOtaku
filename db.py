@@ -2,6 +2,12 @@ import os
 
 import apsw
 
+MODE_NONE = 0
+MODE_DM = 1
+MODE_MENTION = 2
+MODE_HOME = 4
+MODE_LIST = 8
+
 DB_PATH = os.path.dirname(__file__) + os.sep + 'twiotaku.db'
 
 _conn_db = None
@@ -26,7 +32,6 @@ def init():
                 """,
       users="""CREATE TABLE "users" (
             "id"  INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-            "enabled"  INTEGER NOT NULL DEFAULT 1,
             "jid"  TEXT NOT NULL,
             "screen_name"  TEXT,
             "access_key"  TEXT,
@@ -39,16 +44,13 @@ def init():
             "last_dm_id"  INTEGER NOT NULL DEFAULT 0,
             "last_list_id"  INTEGER NOT NULL DEFAULT 0,
             "timeline"  INTEGER NOT NULL DEFAULT 3,
-            "id_list_ptr"  INTEGER NOT NULL DEFAULT 0
+            "id_list_ptr"  INTEGER NOT NULL DEFAULT 0,
+            "blocked_ids"  TEXT
             );
-            CREATE INDEX "users_enabled"
-            ON "users" ("enabled");
             CREATE UNIQUE INDEX "users_id"
             ON "users" ("id");
             CREATE UNIQUE INDEX "users_jid"
             ON "users" ("jid");
-            CREATE UNIQUE INDEX "users_enabled_timeline"
-            ON "users" ("enabled", "timeline");
             """,
       statuses="""CREATE TABLE "statuses" (
               "id"  INTEGER NOT NULL,
@@ -78,8 +80,9 @@ def init():
     cursor.execute('COMMIT')
   return _conn_db
 
-def get_user_from_jid(jid):
-  cursor = _conn_db.cursor()
+def get_user_from_jid(jid, cursor=None):
+  if not cursor:
+    cursor = _conn_db.cursor()
   user = dict()
   for u in cursor.execute('SELECT * FROM users WHERE jid=?', (jid, )):
     d = cursor.getdescription()
@@ -88,11 +91,12 @@ def get_user_from_jid(jid):
     break
   return user
 
-def update_user(id=None, jid=None, **kwargs):
+def update_user(id=None, jid=None, cursor=None, **kwargs):
   if id is None and jid is None:
     raise TypeError('The method takes at least one argument.')
   if kwargs:
-    cursor = _conn_db.cursor()
+    if not cursor:
+      cursor = _conn_db.cursor()
     cols = list()
     values = list()
     for k, v in kwargs.iteritems():
@@ -107,23 +111,37 @@ def update_user(id=None, jid=None, **kwargs):
     sql = 'UPDATE users SET %s WHERE %s' % (','.join(cols), cond)
     cursor.execute(sql, values)
 
-def add_user(jid):
-  cursor = _conn_db.cursor()
+def add_user(jid, cursor=None):
+  if not cursor:
+    cursor = _conn_db.cursor()
   sql = 'INSERT INTO users (jid) VALUES(?)'
   cursor.execute(sql, (jid,))
 
-def get_invite_code(invide_code):
-  cursor = _conn_db.cursor()
+def get_invite_code(invide_code, cursor=None):
+  if not cursor:
+    cursor = _conn_db.cursor()
   for u in cursor.execute('SELECT id, create_time FROM invites WHERE id=?', (invide_code, )):
     return u
   return None, None
 
-def add_invite_code(invite_code, create_time):
-  cursor = _conn_db.cursor()
+def add_invite_code(invite_code, create_time, cursor=None):
+  if not cursor:
+    cursor = _conn_db.cursor()
   sql = 'INSERT INTO invites (id, create_time) VALUES(?,?)'
   cursor.execute(sql, (invite_code, create_time))
 
-def delete_invite_code(invite_code):
-  cursor = _conn_db.cursor()
+def delete_invite_code(invite_code, cursor=None):
+  if not cursor:
+    cursor = _conn_db.cursor()
   sql = 'DELETE FROM invites WHERE id=?'
   cursor.execute(sql, (invite_code,))
+
+def begin_transaction(cursor=None):
+  if not cursor:
+    cursor = _conn_db.cursor()
+  cursor.execute('BEGIN TRANSACTION')
+  return cursor
+
+def end_transaction(cursor):
+  cursor.execute('COMMIT')
+  return cursor

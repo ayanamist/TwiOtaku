@@ -4,20 +4,27 @@ import os
 import signal
 import logging
 
+from apscheduler.scheduler import Scheduler
+
 try:
   import ujson as json
 except ImportError:
   import json
 
 import db
+import cron
 from xmpp import XMPPBot
 
 
 ENVIRONMENT_JSON_PATH = '/home/dotcloud/environment.json'
-
 YAML_PATH = os.path.dirname(__file__) + os.sep + 'dotcloud.yml'
 
 def sigterm_handler(*_):
+  sched.shutdown()
+  for q in bot.tbd_queues.itervalues():
+    q.put((None, None, None))
+  for t in bot.tbd_threads.itervalues():
+    t.join()
   bot.disconnect(wait=True)
   sys.exit(0)
 
@@ -57,7 +64,14 @@ if __name__ == '__main__':
   bot = XMPPBot(config)
   bot.register_plugin('xep_0030') # Service Discovery
   if bot.connect(('talk.google.com', 5222)):
-    bot.process(threaded=False)
+    bot.process()
   else:
     xmpp_logger.error('Can not connect to server.')
     sys.exit(1)
+
+  sched = Scheduler()
+  sched.add_interval_job(cron.cron_start, minutes=1, args=(bot,))
+  sched.start()
+
+  while True:
+    pass

@@ -2,5 +2,5 @@ PyYAML
 ujson
 urllib3
 APScheduler
-https://github.com/fritzy/SleekXMPP/zipball/1.0-RC1
+https://github.com/fritzy/SleekXMPP/zipball/1.0-RC2
 https://apsw.googlecode.com/files/apsw-3.7.7.1-r1.zip

@@ -330,8 +330,11 @@ class Api(object):
     else:
       return urllib.urlencode(dict([(k, self._encode(v)) for k, v in post_data.items()]))
 
-  def _check_for_twitter_error(self, data):
+  def _check_for_twitter_error(self, data, status):
     if type(data) is dict and 'error' in data:
+      if type(status) is int:
+        if status == 403:
+          raise TwitterAuthenticationError(data['error'])
       raise TwitterError(data['error'])
 
   def _fetch_url(self, url, post_data=None, parameters=None, http_method='GET'):
@@ -356,10 +359,13 @@ class Api(object):
     else:
       url = self._build_url(url, extra_params=extra_params)
       encoded_post_data = self._encode_post_data(post_data)
-    content = fetch(method=http_method, url=url, body=encoded_post_data, headers=headers).data
+    response = fetch(method=http_method, url=url, body=encoded_post_data, headers=headers)
+    content = response.data
+    if response.status == 500:
+      raise TwitterInternalServerError('Internal Server Error')
     try:
       json_data = json.loads(content)
     except ValueError:
       raise TwitterInternalServerError('Internal Server Error')
-    self._check_for_twitter_error(json_data)
+    self._check_for_twitter_error(json_data, response.status)
     return json_data
