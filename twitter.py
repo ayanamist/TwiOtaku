@@ -268,6 +268,9 @@ class Api(object):
     url = '%s/blocks/destroy.json' % self.base_url
     return self._fetch_url(url, parameters={'screen_name': user}, http_method='POST')
 
+  def get_blocking_ids(self):
+    url = '%s/blocks/blocking/ids.json' % self.base_url
+    return self._fetch_url(url)
 
   def verify_credentials(self):
     url = '%s/account/verify_credentials.json' % self.base_url

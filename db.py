@@ -18,9 +18,9 @@ def init():
                 "long_id"  INTEGER NOT NULL,
                 "type"  INTEGER NOT NULL DEFAULT 0
                 );
-                CREATE INDEX "uid_longid_type"
+                CREATE INDEX "id_lists_uid_longid_type"
                 ON "id_lists" ("uid", "long_id", "type");
-                CREATE INDEX "uid_shortid_type"
+                CREATE INDEX "is_lists_uid_shortid_type"
                 ON "id_lists" ("uid", "short_id", "type");
                 """,
       users="""CREATE TABLE "users" (
@@ -30,20 +30,23 @@ def init():
             "screen_name"  TEXT,
             "access_key"  TEXT,
             "access_secret"  TEXT,
-            "last_cron"  INTEGER NOT NULL DEFAULT 0,
+            "list_user"  TEXT,
+            "list_id"  INTEGER,
+            "list_name"  TEXT,
             "last_home_id"  INTEGER NOT NULL DEFAULT 0,
             "last_mention_id"  INTEGER NOT NULL DEFAULT 0,
             "last_dm_id"  INTEGER NOT NULL DEFAULT 0,
+            "last_list_id"  INTEGER NOT NULL DEFAULT 0,
             "timeline"  INTEGER NOT NULL DEFAULT 3,
             "id_list_ptr"  INTEGER NOT NULL DEFAULT 0
             );
-            CREATE INDEX "enabled"
+            CREATE INDEX "users_enabled"
             ON "users" ("enabled");
-            CREATE UNIQUE INDEX "id"
+            CREATE UNIQUE INDEX "users_id"
             ON "users" ("id");
-            CREATE UNIQUE INDEX "jid"
+            CREATE UNIQUE INDEX "users_jid"
             ON "users" ("jid");
-            CREATE UNIQUE INDEX "enabled_timeline"
+            CREATE UNIQUE INDEX "users_enabled_timeline"
             ON "users" ("enabled", "timeline");
             """,
       statuses="""CREATE TABLE "statuses" (
@@ -55,7 +58,15 @@ def init():
               CREATE UNIQUE INDEX "status_id"
               ON "statuses" ("id", "type");
               """,
-      )
+      invite="""CREATE TABLE "invites" (
+            "id"  INTEGER NOT NULL,
+            "create_time"   INTEGER NOT NULL,
+            PRIMARY KEY ("id") ON CONFLICT FAIL
+            );
+            CREATE UNIQUE INDEX "invite_id"
+            ON "invites" ("id", "type");
+            """,
+    )
     for t in cursor.execute("SELECT name FROM sqlite_master WHERE type='table';"):
       t = t[0]
       if t in sql:

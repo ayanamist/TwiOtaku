@@ -9,7 +9,6 @@ import sleekxmpp
 import oauth
 import twitter
 import db
-import runtime
 
 SHORT_COMMANDS = {
   '@': 'reply',
@@ -36,8 +35,9 @@ class Dummy(object):
     raise NotImplementedError('Please OAuth first!')
 
 class XMPPBot(sleekxmpp.ClientXMPP):
-  def __init__(self, jid, password):
-    sleekxmpp.ClientXMPP.__init__(self, jid, password)
+  def __init__(self, config):
+    self._config = config
+    sleekxmpp.ClientXMPP.__init__(self, config['XMPP_USERNAME'], config['XMPP_PASSWORD'])
     self.auto_authorize = True
     self.auto_subscribe = True
     self.add_event_handler('session_start', self.on_start)
@@ -45,7 +45,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     self.add_event_handler('changed_status', self.on_changed_status)
     self.online_clients = dict()
 
-  def on_start(self, event):
+  def on_start(self, _):
     self.send_presence()
     self.get_roster()
 
@@ -53,7 +53,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     bare_jid = msg['from']._jid.split('/')[0].lower()
     user = db.get_user_from_jid(bare_jid)
     if user:
-      h = XMPPMessageHandler(user)
+      h = XMPPMessageHandler(user, self._config)
       try:
         result = h.parse_command(msg['body'].rstrip())
       except BaseException, e:
@@ -87,10 +87,11 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
 
 class XMPPMessageHandler(object):
-  def __init__(self, user):
-    self.user = user
+  def __init__(self, user, config):
+    self._user = user
+    self._config = config
     if user['access_key'] and user['access_secret']:
-      self.api = twitter.Api(consumer_key=runtime.CONFIG['OAUTH_CONSUMER_KEY'], consumer_secret=runtime.CONFIG['OAUTH_CONSUMER_SECRET'],
+      self.api = twitter.Api(consumer_key=config['OAUTH_CONSUMER_KEY'], consumer_secret=config['OAUTH_CONSUMER_SECRET'],
                              access_token_key=user['access_key'], access_token_secret=user['access_secret'])
     else:
       self.api = Dummy()
@@ -114,27 +115,27 @@ class XMPPMessageHandler(object):
       self.api.post_update(cmd)
 
   def func_oauth(self):
-    consumer = oauth.Consumer(runtime.CONFIG['OAUTH_CONSUMER_KEY'], runtime.CONFIG['OAUTH_CONSUMER_SECRET'])
+    consumer = oauth.Consumer(self._config['OAUTH_CONSUMER_KEY'], self._config['OAUTH_CONSUMER_SECRET'])
     client = oauth.Client(consumer)
     resp = client.request(twitter.REQUEST_TOKEN_URL)
     self._request_token = dict(parse_qsl(resp))
     oauth_token = self._request_token['oauth_token']
     redirect_url = "%s?oauth_token=%s" % (twitter.AUTHORIZATION_URL, oauth_token)
-    db.update_user(self.user['id'], access_key=oauth_token)
+    db.update_user(self._user['id'], access_key=oauth_token)
     return 'Please visit below url to get PIN code:\n%s\nthen you should use "-bind PIN" command to actually bind your Twitter.' % redirect_url
 
   def func_bind(self, pin_code):
     if type(pin_code) is unicode:
       pin_code = pin_code.encode('UTF8')
-    if self.user['access_key']:
-      token = oauth.Token(self.user['access_key'])
+    if self._user['access_key']:
+      token = oauth.Token(self._user['access_key'])
       token.set_verifier(pin_code)
-      consumer = oauth.Consumer(runtime.CONFIG['OAUTH_CONSUMER_KEY'], runtime.CONFIG['OAUTH_CONSUMER_SECRET'])
+      consumer = oauth.Consumer(self._config['OAUTH_CONSUMER_KEY'], self._config['OAUTH_CONSUMER_SECRET'])
       client = oauth.Client(consumer, token)
       resp = client.request(twitter.ACCESS_TOKEN_URL, "POST")
       access_token = dict(parse_qsl(resp))
       if 'oauth_token' in access_token:
-        db.update_user(self.user['id'], access_key=access_token['oauth_token'], access_secret=access_token['oauth_token_secret'],
-                       screen_name=access_token['screen_name'])
+        db.update_user(self._user['id'], access_key=access_token['oauth_token'], access_secret=access_token['oauth_token_secret'],
+                       screen_name=access_token['screen_name'], enabled=1)
         return 'Successfully bind you with Twitter user @%s.' % access_token['screen_name']
     return 'Invalid PIN code.'
