@@ -5,6 +5,7 @@ import time
 from StringIO import StringIO
 from Queue import Queue
 from threading import Thread
+
 try:
   from urlparse import parse_qsl
 except ImportError:
@@ -16,6 +17,7 @@ import oauth
 import twitter
 import db
 from worker import worker
+from config import XMPP_USERNAME, XMPP_PASSWORD, OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, ADMIN_USERS
 
 SHORT_COMMANDS = {
   '@': 'reply',
@@ -38,13 +40,13 @@ SHORT_COMMANDS = {
 }
 
 class XMPPBot(sleekxmpp.ClientXMPP):
-  def __init__(self, config):
-    self._config = config
+  def __init__(self):
+    self.logger = logging.getLogger('xmpp')
     self.tbd_queues = dict()
     self.tbd_threads = dict()
     self.online_clients = dict()
     self.online_users = set()
-    sleekxmpp.ClientXMPP.__init__(self, config['XMPP_USERNAME'], config['XMPP_PASSWORD'])
+    sleekxmpp.ClientXMPP.__init__(self, XMPP_USERNAME, XMPP_PASSWORD)
     self.auto_authorize = True
     self.auto_subscribe = True
     self.add_event_handler('session_start', self.on_start)
@@ -56,7 +58,13 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     self.get_roster()
 
   def on_message(self, msg):
-    XMPPMessageHandler(self).process(msg)
+    if msg['type'] == 'chat':
+      XMPPMessageHandler(self).process(msg)
+    elif msg['type'] == 'error':
+      if msg['error']['type'] == 'cancel': # If we send lots of stanzas at the same time, some of them will be returned as type "error", we must resend them.
+        msg.reply(msg['body']).send()
+      else:
+        self.logger.info('%s -> %s: %s' % (msg['from'], msg['to'], str(msg['error'])))
 
   def on_changed_status(self, presence):
     bare_jid = presence['from']._jid.split('/')[0].lower()
@@ -85,14 +93,13 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
 class XMPPMessageHandler(object):
   def __init__(self, xmpp):
-    self._config = xmpp._config
     self._xmpp = xmpp
 
   def process(self, msg):
     self._bare_jid = msg['from']._jid.split('/')[0].lower()
     self._user = db.get_user_from_jid(self._bare_jid)
-    self.api = twitter.Api(consumer_key=self._config['OAUTH_CONSUMER_KEY'], consumer_secret=self._config['OAUTH_CONSUMER_SECRET'],
-                           access_token_key=self._user['access_key'], access_token_secret=self._user['access_secret'])
+    self.api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
+                           access_token_key=self._user.get('access_key'), access_token_secret=self._user.get('access_secret'))
 
     try:
       result = self.parse_command(msg['body'].rstrip())
@@ -127,7 +134,7 @@ class XMPPMessageHandler(object):
       self.api.post_update(cmd)
 
   def func_oauth(self):
-    consumer = oauth.Consumer(self._config['OAUTH_CONSUMER_KEY'], self._config['OAUTH_CONSUMER_SECRET'])
+    consumer = oauth.Consumer(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET)
     client = oauth.Client(consumer)
     resp = client.request(twitter.REQUEST_TOKEN_URL)
     self._request_token = dict(parse_qsl(resp))
@@ -142,7 +149,7 @@ class XMPPMessageHandler(object):
     if self._user['access_key']:
       token = oauth.Token(self._user['access_key'])
       token.set_verifier(pin_code)
-      consumer = oauth.Consumer(self._config['OAUTH_CONSUMER_KEY'], self._config['OAUTH_CONSUMER_SECRET'])
+      consumer = oauth.Consumer(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET)
       client = oauth.Client(consumer, token)
       resp = client.request(twitter.ACCESS_TOKEN_URL, "POST")
       access_token = dict(parse_qsl(resp))
@@ -166,12 +173,13 @@ class XMPPMessageHandler(object):
       if invite_code and create_time and create_time + expire_days * 24 * 3600 > time.time():
         db.delete_invite_code(invite_code)
         db.add_user(self._bare_jid)
-        return 'Invite code is valid, your account %s has been added, enjoy using TwiOtaku.' % self._bare_jid
+        return 'Your account %s has been added, enjoy using TwiOtaku.' % self._bare_jid
       else:
         return 'Invite code is invalid or expired.'
 
-    elif self._bare_jid in self._config['ADMIN_USERS']:
+    elif self._bare_jid in ADMIN_USERS:
       invite_code = generate_invite_code()
       create_time = int(time.time())
       db.add_invite_code(invite_code, create_time)
       return 'You have generated a new invite code which is available for %d days:\n%s' % (expire_days, invite_code)
+

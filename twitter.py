@@ -1,8 +1,6 @@
 #!/usr/bin/python
-import datetime
 import urllib
 import urlparse
-from email.utils import parsedate
 
 try:
   import ujson as json
@@ -33,6 +31,10 @@ class TwitterAuthenticationError(TwitterError):
 
 
 class TwitterInternalServerError(TwitterError):
+  pass
+
+
+class TwitterNotFoundError(TwitterError):
   pass
 
 
@@ -280,17 +282,6 @@ class Api(object):
     url = '%s/account/rate_limit_status.json' % self.base_url
     return self._fetch_url(url)
 
-  def maximum_hit_frequency(self):
-    rate_status = self.get_rate_limit_status()
-    reset_time = rate_status.get('reset_time', None)
-    limit = rate_status.get('remaining_hits', None)
-    if reset_time and limit:
-      reset = datetime.datetime(*parsedate(reset_time)[:7])
-      delta = reset + datetime.timedelta(hours=1) - datetime.datetime.utcnow()
-      max_frequency = int(delta.seconds / limit)
-      return max_frequency
-    return 0
-
   def _build_url(self, url, path_elements=None, extra_params=None):
     (scheme, netloc, path, params, query, fragment) = urlparse.urlparse(url)
     if path_elements:
@@ -332,9 +323,12 @@ class Api(object):
 
   def _check_for_twitter_error(self, data, status):
     if type(data) is dict and 'error' in data:
-      if type(status) is int:
-        if status == 403:
-          raise TwitterAuthenticationError(data['error'])
+      if status == 403:
+        raise TwitterAuthenticationError(data['error'])
+      if status == 404:
+        raise TwitterNotFoundError(data['error'])
+      if status == 500:
+        raise TwitterInternalServerError(data['error'])
       raise TwitterError(data['error'])
 
   def _fetch_url(self, url, post_data=None, parameters=None, http_method='GET'):
@@ -361,8 +355,6 @@ class Api(object):
       encoded_post_data = self._encode_post_data(post_data)
     response = fetch(method=http_method, url=url, body=encoded_post_data, headers=headers)
     content = response.data
-    if response.status == 500:
-      raise TwitterInternalServerError('Internal Server Error')
     try:
       json_data = json.loads(content)
     except ValueError:
