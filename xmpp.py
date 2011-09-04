@@ -16,6 +16,7 @@ import sleekxmpp
 import oauth
 import twitter
 import db
+from util import Util
 from worker import worker
 from config import XMPP_USERNAME, XMPP_PASSWORD, OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, ADMIN_USERS
 
@@ -96,9 +97,11 @@ class XMPPMessageHandler(object):
     self._xmpp = xmpp
 
   def process(self, msg):
-    self._bare_jid = msg['from']._jid.split('/')[0].lower()
+    self._jid = str(msg['from'])
+    self._bare_jid = self._jid.split('/')[0].lower()
     self._user = db.get_user_from_jid(self._bare_jid)
-    self.api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
+    self._util = Util(self._user)
+    self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
                            access_token_key=self._user.get('access_key'), access_token_secret=self._user.get('access_secret'))
 
     try:
@@ -131,7 +134,7 @@ class XMPPMessageHandler(object):
         return 'Words count %s exceeed %s characters.' % (len(cmd), twitter.CHARACTER_LIMIT)
       if type(cmd) == unicode:
         cmd = cmd.encode('UTF8')
-      self.api.post_update(cmd)
+      self._api.post_update(cmd)
 
   def func_oauth(self):
     consumer = oauth.Consumer(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET)
@@ -183,3 +186,47 @@ class XMPPMessageHandler(object):
       db.add_invite_code(invite_code, create_time)
       return 'You have generated a new invite code which is available for %d days:\n%s' % (expire_days, invite_code)
 
+  def func_reply(self, short_id_or_page=None, *content):
+    if short_id_or_page is None or (short_id_or_page[0].lower() == 'p' and short_id_or_page[1:].isdigit()):
+      page = short_id_or_page[1:] if short_id_or_page else '1'
+      statuses = self._api.get_mentions(page=int(page))
+      queue = self._xmpp.tbd_queues.get(self._bare_jid)
+      queue.put((statuses, self._jid, 'Mentions: Page %s' % page))
+    else:
+      long_id, long_id_type = self._util.restore_short_id(short_id_or_page)
+      if long_id_type == db.TYPE_STATUS:
+        status = self._api.get_status(long_id)
+        screen_name = status['user']['screen_name']
+      else:
+        direct_message = self._api.get_direct_message(long_id)
+        screen_name = direct_message['sender']['screen_name']
+      message = u'@%s %s' % (screen_name, ' '.join(content))
+      self._api.post_update(message.encode('UTF8'), long_id)
+      return 'Successfully reply to %s' % screen_name
+
+
+  def func_msg(self, short_id_or_long_id):
+    long_id, long_id_type = self._util.restore_short_id(short_id_or_long_id)
+    data = list()
+    if long_id_type == db.TYPE_STATUS:
+      for i in range(4):
+        try:
+          status = self._api.get_status(long_id)
+        except twitter.TwitterNotFoundError, e:
+          if not i:
+            raise e
+          else:
+            break
+        else:
+          data.append(status)
+          while 'retweeted_status' in status:
+            data.append(status['retweeted_status'])
+            status = status['retweeted_status']
+          if 'in_reply_to_status_id' in status:
+            long_id = status['in_reply_to_status_id']
+          else:
+            break
+    else:
+      data = [self._api.get_direct_message(long_id)]
+    queue = self._xmpp.tbd_queues.get(self._bare_jid)
+    queue.put((data, self._jid, 'Conversation:', False))

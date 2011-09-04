@@ -38,6 +38,10 @@ class TwitterNotFoundError(TwitterError):
   pass
 
 
+class TwitterForbiddenError(TwitterError):
+  pass
+
+
 class Status(dict):
   pass
 
@@ -174,6 +178,12 @@ class Api(object):
     if count:
       parameters['count'] = count
     return [DirectMessage(x) for x in self._fetch_url(url, parameters=parameters)]
+
+  def get_direct_message(self, id):
+    data = self.get_direct_messages(max_id=id, count=1)
+    if not data:
+      raise TwitterNotFoundError('Not found.')
+    return data[0]
 
   def post_direct_message(self, user, text, include_entities=1):
     url = '%s/direct_messages/new.json' % self.base_url
@@ -323,8 +333,10 @@ class Api(object):
 
   def _check_for_twitter_error(self, data, status):
     if type(data) is dict and 'error' in data:
-      if status == 403:
+      if status == 401:
         raise TwitterAuthenticationError(data['error'])
+      if status == 403:
+        raise TwitterForbiddenError(data['error'])
       if status == 404:
         raise TwitterNotFoundError(data['error'])
       if status == 500:

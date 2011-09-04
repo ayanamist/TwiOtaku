@@ -56,7 +56,7 @@ class Util(object):
       raise TypeError('Not a valid Status or Direct Message.')
     return text
 
-  def parse_data(self, data, reverse=False):
+  def parse_data(self, data, reverse=True):
     if data:
       msgs = list()
       if reverse:
