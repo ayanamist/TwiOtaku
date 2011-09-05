@@ -46,7 +46,7 @@ def cron_job(queue, user):
       if data and isinstance(data, list) and isinstance(data[0], twitter.DirectMessage):
         user['last_dm_id'] = data[0]['id_str']
         db.update_user(jid=jid, last_dm_id=user['last_dm_id'])
-        queue.put(Job(jid, data=data, allow_duplicate=False))
+        queue.put(Job(jid, data=data, allow_duplicate=False, always=False))
   except BaseException:
     err = StringIO()
     traceback.print_exc(file=err)
@@ -58,7 +58,7 @@ def cron_job(queue, user):
       if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
         user['last_mention_id'] = data[0]['id_str']
         db.update_user(jid=jid, last_mention_id=user['last_mention_id'])
-        queue.put(Job(jid, data=data, allow_duplicate=False))
+        queue.put(Job(jid, data=data, allow_duplicate=False, always=False))
   except BaseException:
     err = StringIO()
     traceback.print_exc(file=err)
@@ -77,7 +77,7 @@ def cron_job(queue, user):
           if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
             user['last_list_id'] = data[0]['id_str']
             db.update_user(jid=jid, last_list_id=user['last_list_id'])
-            queue.put(Job(jid, data=data, allow_duplicate=False))
+            queue.put(Job(jid, data=data, allow_duplicate=False, always=False))
   except BaseException:
     err = StringIO()
     traceback.print_exc(file=err)
@@ -89,7 +89,7 @@ def cron_job(queue, user):
       if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
         user['last_home_id'] = data[0]['id_str']
         db.update_user(jid=jid, last_home_id=user['last_home_id'])
-        queue.put(Job(jid, data=data, allow_duplicate=False))
+        queue.put(Job(jid, data=data, allow_duplicate=False, always=False))
   except BaseException:
     err = StringIO()
     traceback.print_exc(file=err)
