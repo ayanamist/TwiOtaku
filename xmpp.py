@@ -18,7 +18,7 @@ import twitter
 import db
 from util import Util
 from worker import worker, Job
-from config import XMPP_USERNAME, XMPP_PASSWORD, OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, ADMIN_USERS
+from config import XMPP_USERNAME, XMPP_PASSWORD, OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, MAX_CONVERSATION_NUM, ADMIN_USERS
 
 SHORT_COMMANDS = {
   '@': 'reply',
@@ -208,23 +208,31 @@ class XMPPMessageHandler(object):
     long_id, long_id_type = self._util.restore_short_id(short_id_or_long_id)
     data = list()
     if long_id_type == db.TYPE_STATUS:
-      for i in range(4):
-        try:
-          status = self._api.get_status(long_id)
-        except twitter.TwitterNotFoundError, e:
-          if not i:
-            raise e
-          else:
+      origin_status = self._api.get_status(long_id)
+      related_result = self._api.get_related_results(long_id)
+      if related_result:
+        last_conversation_role = 'Ancestor'
+        related_result = related_result[0]['results']
+        for result in related_result:
+          if result['kind'] == 'Tweet':
+            if result['annotations']['ConversationRole'] != last_conversation_role:
+              data.append(origin_status)
+              last_conversation_role = result['annotations']['ConversationRole']
+            data.append(result['value'])
+      else:
+        data.append(origin_status)
+      while len(data) <= MAX_CONVERSATION_NUM:
+        status = data[0]
+        if 'in_reply_to_status_id' in status:
+          long_id = status['in_reply_to_status_id_str']
+          try:
+            status = self._api.get_status(long_id)
+          except twitter.TwitterNotFoundError:
             break
+        if 'retweeted_status' in status:
+          data.insert(0, status['retweeted_status'])
         else:
-          data.append(status)
-          while 'retweeted_status' in status:
-            data.append(status['retweeted_status'])
-            status = status['retweeted_status']
-          if 'in_reply_to_status_id' in status:
-            long_id = status['in_reply_to_status_id']
-          else:
-            break
+          data.insert(0, status)
     else:
       data = [self._api.get_direct_message(long_id)]
     queue = self._xmpp.worker_queues.get(self._bare_jid)

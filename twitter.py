@@ -131,6 +131,17 @@ class Api(object):
       parameters['include_entities'] = 1
     return [Status(x) for x in self._fetch_url(url, parameters=parameters)]
 
+  def get_related_results(self, id, include_entities=1):
+    url = '%s/related_results/show/%s.json' % (self.base_url, id)
+    parameters = dict()
+    if include_entities:
+      parameters['include_entities'] = 1
+    results = self._fetch_url(url, parameters=parameters)
+    if results:
+      for i, result in enumerate(results[0]['results']):
+        results[0]['results'][i]['value'] = Status(result['value'])
+    return results
+
   def get_status(self, id, include_entities=1):
     url = '%s/statuses/show/%s.json' % (self.base_url, id)
     parameters = dict()
