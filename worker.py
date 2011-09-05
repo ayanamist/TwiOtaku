@@ -5,35 +5,39 @@ from StringIO import StringIO
 import db
 from util import Util
 
+class Job(object):
+  def __init__(self, data, jid, title=None, reverse=True, allow_duplicate=True):
+    self.data = data
+    self.jid = jid
+    self.title = title
+    self.reverse = reverse
+    self.allow_duplicate = allow_duplicate
+
+  def __str__(self):
+    return 'data=%s\njid=%s,title=%s,reverse=%s,allow_duplicate=%s' % (str(self.data), str(self.jid), str(self.title), str(self.reverse), str(self.allow_duplicate))
+
+
 def worker(xmpp, q):
   while True:
     item = q.get()
-    reverse = False
     if item is None:
-      break
-    data = jid = title = None
-    length = len(item)
+      q.task_done()
+      return
     try:
-      if length == 2:
-        data, jid = item
-      elif length == 3:
-        data, jid, title = item
-      elif length == 4:
-        data, jid, title, reverse = item
-      else:
-        raise ValueError('Unexpected job item with length %d: %s' % (length, unicode(item)))
-      bare_jid = jid.split('/')[0].lower()
+      if not isinstance(item, Job):
+        raise TypeError(str(item))
+      bare_jid = item.jid.split('/')[0].lower()
       user = db.get_user_from_jid(bare_jid)
       util = Util(user)
-      util.allow_duplicate = False
-      result = util.parse_data(data, reverse=reverse)
+      util.allow_duplicate = item.allow_duplicate
+      result = util.parse_data(item.data, reverse=item.reverse)
       if result:
-        if title:
-          msg = '%s\n%s' % (title, '\n'.join(result))
-          xmpp.send_message(jid, msg)
+        if item.title:
+          msg = '%s\n%s' % (item.title, '\n'.join(result))
+          xmpp.send_message(item.jid, msg)
         else:
           for m in result:
-            xmpp.send_message(jid, m)
+            xmpp.send_message(item.jid, m)
     except BaseException:
       err = StringIO()
       traceback.print_exc(file=err)

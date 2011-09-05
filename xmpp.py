@@ -17,7 +17,7 @@ import oauth
 import twitter
 import db
 from util import Util
-from worker import worker
+from worker import worker, Job
 from config import XMPP_USERNAME, XMPP_PASSWORD, OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, ADMIN_USERS
 
 SHORT_COMMANDS = {
@@ -43,10 +43,10 @@ SHORT_COMMANDS = {
 class XMPPBot(sleekxmpp.ClientXMPP):
   def __init__(self):
     self.logger = logging.getLogger('xmpp')
-    self.tbd_queues = dict()
-    self.tbd_threads = dict()
-    self.online_clients = dict()
-    self.online_users = set()
+    self.worker_queues = dict()
+    self.worker_threads = dict()
+    self.online_clients = dict() # this save online buddies no matter it's our users or not.
+    self.online_users = set() # this save online users who are ours.
     sleekxmpp.ClientXMPP.__init__(self, XMPP_USERNAME, XMPP_PASSWORD)
     self.auto_authorize = True
     self.auto_subscribe = True
@@ -85,9 +85,9 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
   def add_online_user(self, bare_jid):
     self.online_users.add(bare_jid)
-    if bare_jid not in self.tbd_queues:
-      q = self.tbd_queues[bare_jid] = Queue()
-      w = self.tbd_threads[bare_jid] = Thread(target=worker, args=(self, q))
+    if bare_jid not in self.worker_queues:
+      q = self.worker_queues[bare_jid] = Queue()
+      w = self.worker_threads[bare_jid] = Thread(target=worker, args=(self, q))
       w.setDaemon(True)
       w.start()
 
@@ -102,7 +102,7 @@ class XMPPMessageHandler(object):
     self._user = db.get_user_from_jid(self._bare_jid)
     self._util = Util(self._user)
     self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
-                           access_token_key=self._user.get('access_key'), access_token_secret=self._user.get('access_secret'))
+                            access_token_key=self._user.get('access_key'), access_token_secret=self._user.get('access_secret'))
 
     try:
       result = self.parse_command(msg['body'].rstrip())
@@ -190,8 +190,8 @@ class XMPPMessageHandler(object):
     if short_id_or_page is None or (short_id_or_page[0].lower() == 'p' and short_id_or_page[1:].isdigit()):
       page = short_id_or_page[1:] if short_id_or_page else '1'
       statuses = self._api.get_mentions(page=int(page))
-      queue = self._xmpp.tbd_queues.get(self._bare_jid)
-      queue.put((statuses, self._jid, 'Mentions: Page %s' % page))
+      queue = self._xmpp.worker_queues.get(self._bare_jid)
+      queue.put(Job(statuses, self._jid, title='Mentions: Page %s' % page))
     else:
       long_id, long_id_type = self._util.restore_short_id(short_id_or_page)
       if long_id_type == db.TYPE_STATUS:
@@ -228,5 +228,5 @@ class XMPPMessageHandler(object):
             break
     else:
       data = [self._api.get_direct_message(long_id)]
-    queue = self._xmpp.tbd_queues.get(self._bare_jid)
-    queue.put((data, self._jid, 'Conversation:', False))
+    queue = self._xmpp.worker_queues.get(self._bare_jid)
+    queue.put(Job(data, self._jid, title='Conversation:', reverse=False))

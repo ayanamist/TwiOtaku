@@ -17,9 +17,9 @@ from xmpp import XMPPBot
 
 def sigterm_handler(*_):
   sched.shutdown()
-  for q in bot.tbd_queues.itervalues():
+  for q in bot.worker_queues.itervalues():
     q.put(None)
-  for t in bot.tbd_threads.itervalues():
+  for t in bot.worker_threads.itervalues():
     t.join()
   bot.disconnect(wait=True)
   db.end_transaction()
