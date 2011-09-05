@@ -211,7 +211,7 @@ class XMPPMessageHandler(object):
       origin_status = self._api.get_status(long_id)
       related_result = self._api.get_related_results(long_id)
       if related_result:
-        last_conversation_role = 'Ancestor'
+        last_conversation_role = 'Ancestor' # possible value: Ancestor, Descendant, Fork
         related_result = related_result[0]['results']
         for result in related_result:
           if result['kind'] == 'Tweet':
@@ -223,12 +223,14 @@ class XMPPMessageHandler(object):
         data.append(origin_status)
       while len(data) <= MAX_CONVERSATION_NUM:
         status = data[0]
-        if 'in_reply_to_status_id' in status:
+        if status['in_reply_to_status_id_str']:
           long_id = status['in_reply_to_status_id_str']
           try:
             status = self._api.get_status(long_id)
           except twitter.TwitterNotFoundError:
             break
+        else:
+          break
         if 'retweeted_status' in status:
           data.insert(0, status['retweeted_status'])
         else:

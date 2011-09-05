@@ -33,7 +33,8 @@ class Util(object):
     t = mktime(parsedate(single['created_at']))
     msg_dict['content'] = Util.parse_text(single['text'])
     if isinstance(single, twitter.Status):
-      t += single['user']['utc_offset']
+      if single['user']['utc_offset']:
+        t += single['user']['utc_offset']
       msg_dict['time'] = strftime('%Y-%m-%d %H:%M:%S', localtime(t))
       msg_dict['username'] = single['user']['screen_name']
       source = re.match(r'<a .*>(.*)</a>', single['source'])
@@ -120,4 +121,4 @@ class Util(object):
     if short_id < MAX_ID_LIST_NUM:
       return db.get_long_id_from_short_id(self._user['id'], short_id)
     else:
-      return short_id, None
+      return short_id, db.TYPE_STATUS
