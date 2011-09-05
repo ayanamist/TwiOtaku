@@ -239,6 +239,7 @@ class Request(dict):
   version = VERSION
 
   def __init__(self, method=HTTP_METHOD, url=None, parameters=None):
+    dict.__init__(self)
     self.method = method
     self.url = url
     if parameters is not None:

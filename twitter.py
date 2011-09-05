@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import urllib
+import urllib2
 import urlparse
 
 try:
@@ -8,6 +9,7 @@ except ImportError:
   import json
 
 import oauth
+from config import USER_AGENT
 from urlfetch import fetch
 
 CHARACTER_LIMIT = 140
@@ -355,7 +357,7 @@ class Api(object):
       raise TwitterError(data['error'])
 
   def _fetch_url(self, url, post_data=None, parameters=None, http_method='GET'):
-    headers = {'Accept-Encoding': 'gzip'}
+    headers = {'Accept-Encoding': 'gzip', 'User-Agent': USER_AGENT}
     extra_params = dict()
     if parameters is not None:
       extra_params.update(parameters)
@@ -384,3 +386,21 @@ class Api(object):
       raise TwitterInternalServerError('Internal Server Error')
     self._check_for_twitter_error(json_data, response.status)
     return json_data
+
+  def user_stream(self, reply_all=False):
+    url = 'https://userstream.twitter.com/2/user.json'
+    headers = {'Accept-Encoding': 'gzip', 'User-Agent': USER_AGENT}
+    parameters = dict(delimited='length')
+    if reply_all:
+      parameters['replies'] = 'all'
+    if self._oauth_consumer is not None:
+      req = oauth.Request.from_consumer_and_token(self._oauth_consumer, token=self._oauth_token,
+                                                  http_method='GET', http_url=url,
+                                                  parameters=parameters)
+      req.sign_request(self._signature_method_hmac_sha1, self._oauth_consumer, self._oauth_token)
+      url = req.to_url()
+    else:
+      url = self._build_url(url, extra_params=parameters)
+
+    req = urllib2.Request(url, headers=headers)
+    return urllib2.urlopen(req)
