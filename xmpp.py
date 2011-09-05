@@ -202,7 +202,6 @@ class XMPPMessageHandler(object):
         screen_name = direct_message['sender']['screen_name']
       message = u'@%s %s' % (screen_name, ' '.join(content))
       self._api.post_update(message.encode('UTF8'), long_id)
-      return 'Successfully reply to %s' % screen_name
 
 
   def func_msg(self, short_id_or_long_id):

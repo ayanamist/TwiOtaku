@@ -6,15 +6,17 @@ import db
 from util import Util
 
 class Job(object):
-  def __init__(self, data, jid, title=None, reverse=True, allow_duplicate=True):
+  def __init__(self, data, jid, title=None, reverse=True, allow_duplicate=True, include_reply=False):
     self.data = data
     self.jid = jid
     self.title = title
     self.reverse = reverse
     self.allow_duplicate = allow_duplicate
+    self.include_reply = include_reply
 
   def __str__(self):
-    return 'data=%s\njid=%s,title=%s,reverse=%s,allow_duplicate=%s' % (str(self.data), str(self.jid), str(self.title), str(self.reverse), str(self.allow_duplicate))
+    return 'data=%s\njid=%s,title=%s,reverse=%s,allow_duplicate=%s,include_reply=%s' % \
+           (str(self.data), str(self.jid), str(self.title), str(self.reverse), str(self.allow_duplicate), str(self.include_reply))
 
 
 def worker(xmpp, q):
@@ -33,7 +35,7 @@ def worker(xmpp, q):
       result = util.parse_data(item.data, reverse=item.reverse)
       if result:
         if item.title:
-          msg = '%s\n%s' % (item.title, '\n'.join(result))
+          msg = '%s\n%s' % (item.title, '\n\n'.join(result))
           xmpp.send_message(item.jid, msg)
         else:
           for m in result:

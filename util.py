@@ -107,8 +107,9 @@ class Util(object):
         raise TypeError('Only accept alpha argument.')
       return reduce(lambda x, y: x * 26 + y, [ord(x) - 64 for x in alpha]) - 1
 
-    short_id_regex = r'^(?:#)?([a-zA-Z]+|\d+)$'
-    m = re.match(short_id_regex, str(short_id))
+    short_id_regex = r'^(?:#)?([A-Z]+|\d+)$'
+    short_id = str(short_id).upper()
+    m = re.match(short_id_regex, short_id)
     if m is None:
       raise ValueError
     g = m.group(1)

@@ -39,7 +39,7 @@ def cron_job(xmpp, user):
     user['screen_name'] = screen_name
     db.update_user(jid=jid, screen_name=screen_name)
 
-  queue = xmpp.worker_queues['jid']
+  queue = xmpp.worker_queues[jid]
   logger = logging.getLogger('cron')
 
   try:
