@@ -56,6 +56,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
   def on_start(self, _):
     self.send_presence()
     self.get_roster()
+    # TODO: must move code that starts cron and user streaming here to avoid messsages are delivered when not connected.
 
   def on_message(self, msg):
     if msg['type'] == 'chat':

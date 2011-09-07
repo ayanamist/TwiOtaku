@@ -7,6 +7,7 @@ from threading import Thread
 
 from apscheduler.scheduler import Scheduler
 
+# TODO: we must use a Daemon class to wrap all, now codes are messy.
 try:
   import ujson as json
 except ImportError:
@@ -15,7 +16,6 @@ except ImportError:
 import db
 from cron import cron_start
 from stream import stream
-from config import USER_AGENT
 from xmpp import XMPPBot
 from worker import worker
 
@@ -31,10 +31,6 @@ def sigterm_handler(*_):
   sys.exit(0)
 
 if __name__ == '__main__':
-  if not USER_AGENT:
-    print 'Please specify your user-agent in config.py!'
-    exit(1)
-
   signal.signal(signal.SIGTERM, sigterm_handler)
 
   logging.basicConfig(level=logging.DEBUG, format='%(asctime)-15s %(name)-8s %(levelname)-8s %(message)s', datefmt='%m-%d %H:%M', stream=sys.stdout)
@@ -69,12 +65,16 @@ if __name__ == '__main__':
 
   # start streaming threads
   for user in db.get_all_users():
-    t = Thread(target=stream, args=(worker_queues[user['jid']], user))
-    stream_threads.append(t)
-    t.setDaemon(True)
-    t.start()
+    if user['access_key'] and user['access_secret']:
+      t = Thread(target=stream, args=(worker_queues[user['jid']], user))
+      stream_threads.append(t)
+      t.setDaemon(True)
+      t.start()
 
   # start cron
+  cron_initial = Thread(target=cron_start, args=(dict(),))
+  cron_initial.setDaemon(True)
+  cron_initial.start()
   sched = Scheduler(daemonic=False)
   sched.add_interval_job(cron_start, minutes=1, args=(worker_queues,))
   sched.start()

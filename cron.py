@@ -9,6 +9,7 @@ import twitter
 from worker import Job
 from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
 
+# TODO: cron interval must be dynamic according to user's timeline option
 def cron_start(queues):
   cron_queue = Queue()
   for _ in range(5):
@@ -17,7 +18,7 @@ def cron_start(queues):
     t.start()
   for user in db.get_all_users():
     if user['access_key'] and user['access_secret']:
-      cron_queue.put((queues[user['jid']], user))
+      cron_queue.put((queues.get(user['jid'], Queue()), user)) # we can abandon data if we don't, just throw a useless queue
   cron_queue.join()
 
 

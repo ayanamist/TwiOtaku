@@ -2,6 +2,7 @@
 import urllib
 import urllib2
 import urlparse
+import logging
 
 try:
   import ujson as json
@@ -9,7 +10,6 @@ except ImportError:
   import json
 
 import oauth
-from config import USER_AGENT
 from urlfetch import fetch
 
 CHARACTER_LIMIT = 140
@@ -41,6 +41,10 @@ class TwitterNotFoundError(TwitterError):
 
 
 class TwitterForbiddenError(TwitterError):
+  pass
+
+
+class TwitterUserStreamingTooOftenError(TwitterError):
   pass
 
 
@@ -357,7 +361,7 @@ class Api(object):
       raise TwitterError(data['error'])
 
   def _fetch_url(self, url, post_data=None, parameters=None, http_method='GET'):
-    headers = {'Accept-Encoding': 'gzip', 'User-Agent': USER_AGENT}
+    headers = {'Accept-Encoding': 'gzip'}
     extra_params = dict()
     if parameters is not None:
       extra_params.update(parameters)
@@ -389,7 +393,6 @@ class Api(object):
 
   def user_stream(self, reply_all=False):
     url = 'https://userstream.twitter.com/2/user.json'
-    headers = {'Accept-Encoding': 'gzip', 'User-Agent': USER_AGENT}
     parameters = dict(delimited='length')
     if reply_all:
       parameters['replies'] = 'all'
@@ -402,5 +405,8 @@ class Api(object):
     else:
       url = self._build_url(url, extra_params=parameters)
 
-    req = urllib2.Request(url, headers=headers)
-    return urllib2.urlopen(req)
+    logger = logging.getLogger('userstream')
+    logger.debug('User Streaming URL: %s' % url)
+    opener = urllib2.build_opener()
+    # It seems there are no individual connect timeout, argument timeout here is of both connect and data.
+    return opener.open(url, timeout=180)

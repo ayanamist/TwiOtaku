@@ -7,6 +7,7 @@ MODE_DM = 1
 MODE_MENTION = 2
 MODE_HOME = 4
 MODE_LIST = 8
+MODE_EVENT = 16
 
 TYPE_STATUS = 0
 TYPE_DM = 1
@@ -56,7 +57,7 @@ def init():
             ON "users" ("jid");
             """,
       statuses="""CREATE TABLE "statuses" (
-              "id"  INTEGER NOT NULL,
+              "id"  TEXT NOT NULL,
               "json"  BLOB NOT NULL,
               "type"  INTEGER NOT NULL DEFAULT 0,
               PRIMARY KEY ("id") ON CONFLICT REPLACE

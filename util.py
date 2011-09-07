@@ -24,6 +24,7 @@ class Util(object):
     return unescape(text).replace('\r\n', '\n').replace('\r', '\n')
 
   def parse_single(self, single):
+    # TODO: we must parse entities
     if single is None:
       return None
     msg_dict = dict()
@@ -60,11 +61,19 @@ class Util(object):
   def parse_data(self, data, reverse=True):
     if data:
       msgs = list()
-      if reverse:
-        data.reverse()
-      for single in data:
+      if isinstance(data, list):
+        if reverse:
+          data.reverse()
+        for single in data:
+          try:
+            text = self.parse_single(single)
+            if text:
+              msgs.append(text)
+          except (TypeError, DuplicateError):
+            pass
+      else:
         try:
-          text = self.parse_single(single)
+          text = self.parse_single(data)
           if text:
             msgs.append(text)
         except (TypeError, DuplicateError):
