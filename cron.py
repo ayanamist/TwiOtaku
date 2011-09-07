@@ -1,5 +1,6 @@
 import traceback
 import logging
+import time
 from StringIO import StringIO
 from threading import Thread
 from Queue import Queue, Empty
@@ -9,7 +10,6 @@ import twitter
 from worker import Job
 from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
 
-# TODO: cron interval must be dynamic according to user's timeline option
 def cron_start(queues):
   cron_queue = Queue()
   for _ in range(5):
@@ -18,7 +18,17 @@ def cron_start(queues):
     t.start()
   for user in db.get_all_users():
     if user['access_key'] and user['access_secret']:
-      cron_queue.put((queues.get(user['jid'], Queue()), user)) # we can abandon data if we don't, just throw a useless queue
+      tl = user['timeline'] & ~db.MODE_EVENT
+      c = 0
+      while tl:
+        if tl & 1:
+          c += 1
+        tl >>= 1
+      interval = c * 15 # 3600 / ( 240 / c ) I choose 240 per hour because 240 can be exactly divided by 1,2,3,4
+      if interval and user['last_update'] < int(time.time() + 1 - interval): # add 1 second for avoiding clock deviation
+        user['last_update'] = int(time.time())
+        db.update_user(id=user['id'], last_update=user['last_update'])
+        cron_queue.put((queues.get(user['jid'], Queue()), user)) # we can abandon data if we don't need, just throw a useless Queue
   cron_queue.join()
 
 

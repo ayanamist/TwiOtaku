@@ -15,6 +15,7 @@ import twitter
 from worker import Job
 from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
 
+# TODO: we must handle blocked ids ourselves.
 def stream(queue, user):
   api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY,
                     consumer_secret=OAUTH_CONSUMER_SECRET,

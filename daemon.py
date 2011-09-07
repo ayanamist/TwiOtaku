@@ -76,5 +76,5 @@ if __name__ == '__main__':
   cron_initial.setDaemon(True)
   cron_initial.start()
   sched = Scheduler(daemonic=False)
-  sched.add_interval_job(cron_start, minutes=1, args=(worker_queues,))
+  sched.add_interval_job(cron_start, seconds=15, args=(worker_queues,))
   sched.start()
