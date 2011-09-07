@@ -41,6 +41,14 @@ class StreamThread(threading.Thread):
 # TODO: implement track and follow (list)
 
   def run(self):
+    def readline(fp):
+      s = ''
+      while True:
+        char =fp.read(1)
+        s += char
+        if char == '\n':
+          return s
+
     queue = self.xmpp.worker_queues[self.bare_jid]
     user = db.get_user_from_jid(self.bare_jid)
     api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY,
@@ -63,14 +71,15 @@ class StreamThread(threading.Thread):
           wait_time_now_index = 0
 
         # we must eliminate useless friends list first.
-        length = user_stream_handler.readline().strip(' \r\n')
+        length = readline(user_stream_handler).strip(' \r\n')
         length = int(length)
         user_stream_handler.read(length)
 
         while True:
           if self.stopped():
             raise ThreadStop
-          length = user_stream_handler.readline().strip(' \r\n')
+          # we should not directly use readline method of user_stream_handler, because it has buffer which will block unintentionally
+          length = readline(user_stream_handler).strip(' \r\n')
           if length:
             length = int(length)
             data = json.loads(user_stream_handler.read(length))
