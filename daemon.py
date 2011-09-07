@@ -16,7 +16,7 @@ except ImportError:
 import db
 from xmpp import XMPPMessageHandler
 from cron import cron_start
-from stream import stream
+from stream import StreamThread
 from worker import worker
 from config import XMPP_USERNAME, XMPP_PASSWORD
 
@@ -107,7 +107,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
   def start_stream(self, bare_jid):
     if bare_jid not in self.stream_threads:
-      t = Thread(target=stream, args=(self, bare_jid))
+      t = StreamThread(self, bare_jid)
       self.stream_threads[bare_jid] = t
       t.setDaemon(True)
       t.start()
