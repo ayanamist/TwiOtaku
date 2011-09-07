@@ -98,6 +98,12 @@ class Util(object):
         text = '%(content)s\nRetweeted by %(username)s %(time)s [%(id_str)s%(shortid)s] via %(source)s' % msg_dict
       else:
         text = '%(username)s: %(content)s\n%(time)s [%(id_str)s%(shortid)s] via %(source)s' % msg_dict
+      if 'in_reply_to_status' in single and isinstance(single['in_reply_to_status'], twitter.Status):
+        old_allow_duplicate = self.allow_duplicate
+        self.allow_duplicate = True
+        in_reply_to_text = self.parse_single(retweeted_status)
+        self.allow_duplicate = old_allow_duplicate
+        text +='\n┌────────────\n%s\n└────────────' % in_reply_to_text
     elif isinstance(single, twitter.DirectMessage):
       msg_dict['username'] = single['sender']['screen_name']
       t += single['sender']['utc_offset']

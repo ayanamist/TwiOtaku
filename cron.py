@@ -38,7 +38,8 @@ def cron_job(cron_queue):
       queue, user = cron_queue.get(True, 3)
     except Empty:
       return
-    jid = user['jid']
+    user_jid = user['jid']
+    user_timeline = user['timeline']
 
     api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY,
                       consumer_secret=OAUTH_CONSUMER_SECRET,
@@ -47,40 +48,40 @@ def cron_job(cron_queue):
     try:
       screen_name = api.verify_credentials()['screen_name']
     except twitter.TwitterAuthenticationError:
-      db.update_user(jid=jid, access_key=None, access_secret=None)
+      db.update_user(jid=user_jid, access_key=None, access_secret=None)
       return
     if screen_name != user['screen_name']:
       user['screen_name'] = screen_name
-      db.update_user(jid=jid, screen_name=screen_name)
+      db.update_user(jid=user_jid, screen_name=screen_name)
 
     logger = logging.getLogger('cron')
 
     try:
-      if user['timeline'] & db.MODE_DM:
+      if user_timeline & db.MODE_DM:
         data = api.get_direct_messages(since_id=user['last_dm_id'])
         if data and isinstance(data, list) and isinstance(data[0], twitter.DirectMessage):
           user['last_dm_id'] = data[0]['id_str']
-          db.update_user(jid=jid, last_dm_id=user['last_dm_id'])
-          queue.put(Job(jid, data=data, allow_duplicate=False, always=False))
+          db.update_user(jid=user_jid, last_dm_id=user['last_dm_id'])
+          queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
     except BaseException:
       err = StringIO()
       traceback.print_exc(file=err)
       logger.error(err.getvalue())
 
     try:
-      if user['timeline'] & db.MODE_MENTION:
+      if user_timeline & db.MODE_MENTION:
         data = api.get_mentions(since_id=user['last_mention_id'])
         if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
           user['last_mention_id'] = data[0]['id_str']
-          db.update_user(jid=jid, last_mention_id=user['last_mention_id'])
-          queue.put(Job(jid, data=data, allow_duplicate=False, always=False))
+          db.update_user(jid=user_jid, last_mention_id=user['last_mention_id'])
+          queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
     except BaseException:
       err = StringIO()
       traceback.print_exc(file=err)
       logger.error(err.getvalue())
 
     try:
-      if user['timeline'] & db.MODE_LIST:
+      if user_timeline & db.MODE_LIST:
         if user['list_user'] and user['list_id']:
           try:
             data = api.get_list_statuses(user=user['list_user'], id=user['list_id'], since_id=user['last_list_id'])
@@ -91,20 +92,22 @@ def cron_job(cron_queue):
           else:
             if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
               user['last_list_id'] = data[0]['id_str']
-              db.update_user(jid=jid, last_list_id=user['last_list_id'])
-              queue.put(Job(jid, data=data, allow_duplicate=False, always=False))
+              db.update_user(jid=user_jid, last_list_id=user['last_list_id'])
+              queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
     except BaseException:
       err = StringIO()
       traceback.print_exc(file=err)
       logger.error(err.getvalue())
 
     try:
-      if user['timeline'] & db.MODE_HOME:
+      if user_timeline & db.MODE_HOME or user_timeline & db.MODE_MENTION:
         data = api.get_home_timeline(since_id=user['last_home_id'])
         if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
           user['last_home_id'] = data[0]['id_str']
-          db.update_user(jid=jid, last_home_id=user['last_home_id'])
-          queue.put(Job(jid, data=data, allow_duplicate=False, always=False))
+          db.update_user(jid=user_jid, last_home_id=user['last_home_id'])
+          if not user_timeline & db.MODE_HOME:
+            data = [x for x in data if '@%s' % user['screen_name'] in x['text']]
+          queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
     except BaseException:
       err = StringIO()
       traceback.print_exc(file=err)
