@@ -16,7 +16,8 @@ from worker import Job
 from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
 
 # TODO: we must handle blocked ids ourselves.
-def stream(queue, user):
+def stream(queue, jid):
+  user = db.get_user_from_jid(jid)
   api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY,
                     consumer_secret=OAUTH_CONSUMER_SECRET,
                     access_token_key=user['access_key'],
@@ -51,7 +52,7 @@ def stream(queue, user):
               else:
                 data = None
             else:
-              if user_timeline & db.MODE_HOME or (user_timeline & db.MODE_MENTION and user_at_screen_name in data['text']) \
+              if user_timeline & db.MODE_HOME or (user_timeline & db.MODE_MENTION and user_at_screen_name in data['text'])\
               or data['user']['screen_name'] == user_screen_name:
                 data = twitter.Status(data)
               else:
@@ -67,6 +68,10 @@ def stream(queue, user):
                 title = '@%s has blocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
               elif data['event'] == 'unblock':
                 title = '@%s has unblocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
+              elif data['event'] == 'list_member_added':
+                pass
+              elif data['event'] == 'list_member_removed':
+                pass
             if title:
               queue.put(Job(user_jid, title=title, always=False))
     except (urllib2.URLError, urllib2.HTTPError, SSLError), e:

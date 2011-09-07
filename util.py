@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- encoding: utf-8 -*-
 import re
 from time import mktime, localtime, strftime
 from email.utils import parsedate
@@ -10,6 +11,7 @@ from config import MAX_ID_LIST_NUM
 
 class DuplicateError(Exception):
   pass
+
 
 class ostring(object):
   def __init__(self, s):
@@ -44,11 +46,12 @@ class ostring(object):
           self._str_indices.insert(i * 2 + 3, stop)
           self._str_list.insert(i + 1, replace_text)
           return self
-      # start is smaller than any of pairs in the list, we should add them to the first.
+          # start is smaller than any of pairs in the list, we should add them to the first.
       self._str_indices.insert(0, start)
       self._str_indices.insert(1, stop)
       self._str_list.insert(0, replace_text)
       return self
+
 
 class Util(object):
   allow_duplicate = True
@@ -103,7 +106,7 @@ class Util(object):
         self.allow_duplicate = True
         in_reply_to_text = self.parse_single(retweeted_status)
         self.allow_duplicate = old_allow_duplicate
-        text +='\n┌────────────\n%s\n└────────────' % in_reply_to_text
+        text += u'\n┌────────────\n%s\n└────────────' % in_reply_to_text
     elif isinstance(single, twitter.DirectMessage):
       msg_dict['username'] = single['sender']['screen_name']
       t += single['sender']['utc_offset']

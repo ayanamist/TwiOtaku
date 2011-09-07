@@ -50,7 +50,8 @@ def init():
             "last_update"  INTEGER NOT NULL DEFAULT 0,
             "timeline"  INTEGER NOT NULL DEFAULT 3,
             "id_list_ptr"  INTEGER NOT NULL DEFAULT 0,
-            "blocked_ids"  TEXT
+            "blocked_ids"  TEXT,
+            "list_ids"  TEXT
             );
             CREATE UNIQUE INDEX "users_id"
             ON "users" ("id");
