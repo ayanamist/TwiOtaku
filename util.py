@@ -11,6 +11,44 @@ from config import MAX_ID_LIST_NUM
 class DuplicateError(Exception):
   pass
 
+class ostring(object):
+  def __init__(self, s):
+    self.original_s = s
+    self._str_list = list()
+    self._str_indices = list()
+
+  def __unicode__(self):
+    if self._str_indices:
+      str_indices = list()
+      str_indices.append(0)
+      str_indices.extend(self._str_indices)
+      result = list()
+      for i, s in enumerate(self._str_list):
+        result.append(self.original_s[str_indices[i * 2]:str_indices[i * 2 + 1]])
+        result.append(s)
+      result.append(self.original_s[str_indices[-1]:-1])
+      return u''.join(result)
+    else:
+      return unicode(self.original_s)
+
+  def replace_indices(self, start, stop, replace_text):
+    if not self._str_indices:
+      self._str_indices.append(start)
+      self._str_indices.append(stop)
+      self._str_list.append(replace_text)
+      return self
+    else:
+      for i in range(len(self._str_list)):
+        if start > self._str_indices[i * 2]:
+          self._str_indices.insert(i * 2 + 2, start)
+          self._str_indices.insert(i * 2 + 3, stop)
+          self._str_list.insert(i + 1, replace_text)
+          return self
+      # start is smaller than any of pairs in the list, we should add them to the first.
+      self._str_indices.insert(0, start)
+      self._str_indices.insert(1, stop)
+      self._str_list.insert(0, replace_text)
+      return self
 
 class Util(object):
   allow_duplicate = True
@@ -24,7 +62,6 @@ class Util(object):
     return unescape(text).replace('\r\n', '\n').replace('\r', '\n')
 
   def parse_single(self, single):
-    # TODO: we must parse entities
     if single is None:
       return None
     msg_dict = dict()
@@ -32,7 +69,19 @@ class Util(object):
     msg_dict['id_str'] = single['id_str']
     msg_dict['shortid'] = '#%s=%s' % (short_id, short_id_alpha)
     t = mktime(parsedate(single['created_at']))
-    msg_dict['content'] = Util.parse_text(single['text'])
+    msg_dict['content'] = single['text']
+    if 'entities' in single:
+      tmp = ostring(msg_dict['content'])
+      if 'urls' in single['entities']:
+        for url in single['entities']['urls']:
+          if url['expanded_url']:
+            tmp.replace_indices(url['indices'][0], url['indices'][1], url['expanded_url'])
+      if 'media' in single['entities']:
+        for media in single['entities']['media']:
+          if media['media_url']:
+            tmp.replace_indices(media['indices'][0], media['indices'][1], media['media_url'])
+      msg_dict['content'] = unicode(tmp)
+    msg_dict['content'] = Util.parse_text(msg_dict['content'])
     if isinstance(single, twitter.Status):
       if single['user']['utc_offset']:
         t += single['user']['utc_offset']
