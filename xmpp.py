@@ -160,9 +160,10 @@ class XMPPMessageHandler(object):
           if result['kind'] == 'Tweet':
             if result['annotations']['ConversationRole'] != last_conversation_role:
               data.append(origin_status)
+              origin_status = None
               last_conversation_role = result['annotations']['ConversationRole']
             data.append(result['value'])
-      else:
+      if origin_status:
         data.append(origin_status)
       while len(data) <= MAX_CONVERSATION_NUM:
         status = data[0]
