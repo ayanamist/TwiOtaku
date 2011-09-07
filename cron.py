@@ -31,7 +31,7 @@ def cron_start(queues):
         cron_queue.put((queues.get(user['jid'], Queue()), user)) # we can abandon data if we don't need, just throw a useless Queue
   cron_queue.join()
 
-
+# TODO: auto add in_reply_to_status for all mentions
 def cron_job(cron_queue):
   while True:
     try:

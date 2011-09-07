@@ -35,7 +35,7 @@ SHORT_COMMANDS = {
   '?': 'help',
   'h': 'help'
 }
-
+# TODO: add all commands back
 class XMPPMessageHandler(object):
   def __init__(self, xmpp):
     self._xmpp = xmpp

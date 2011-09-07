@@ -15,9 +15,12 @@ import twitter
 from worker import Job
 from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
 
+# TODO: auto add in_reply_to_status for all mentions
 # TODO: we must handle blocked ids ourselves.
-def stream(queue, jid):
-  user = db.get_user_from_jid(jid)
+# TODO: implement track and follow (list) and reconnect manually
+def stream(xmpp, bare_jid):
+  queue = xmpp.worker_queues[bare_jid]
+  user = db.get_user_from_jid(bare_jid)
   api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY,
                     consumer_secret=OAUTH_CONSUMER_SECRET,
                     access_token_key=user['access_key'],
@@ -93,6 +96,5 @@ def stream(queue, jid):
       err = StringIO()
       traceback.print_exc(file=err)
       stream_logger.error(err.getvalue())
-
 
 

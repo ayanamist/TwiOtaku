@@ -68,6 +68,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
   def add_online_user(self, bare_jid):
     if bare_jid in self.online_clients:
       self.start_worker(bare_jid)
+      self.start_stream(bare_jid)
 
   def sigterm_handler(self, *_):
     logging.debug('Start to shutdown.')
@@ -106,7 +107,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
   def start_stream(self, bare_jid):
     if bare_jid not in self.stream_threads:
-      t = Thread(target=stream, args=(self.worker_queues[bare_jid], bare_jid))
+      t = Thread(target=stream, args=(self, bare_jid))
       self.stream_threads[bare_jid] = t
       t.setDaemon(True)
       t.start()
