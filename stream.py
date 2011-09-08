@@ -61,6 +61,11 @@ class StreamThread(threading.Thread):
       def refresh_blocked_ids(uid):
         return api.get_blocking_ids()
 
+      def check_stop():
+        if self.stopped():
+          raise ThreadStop
+
+
       queue = self.xmpp.worker_queues[self.bare_jid]
       user = db.get_user_from_jid(self.bare_jid)
       api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY,
@@ -79,8 +84,7 @@ class StreamThread(threading.Thread):
       stream_logger = logging.getLogger('user streaming')
       while True:
         try:
-          if self.stopped():
-            raise ThreadStop
+          check_stop()
           user_stream_handler = api.user_stream()
           if wait_time_now_index:
             wait_time_now_index = 0
@@ -89,8 +93,7 @@ class StreamThread(threading.Thread):
           read_data(user_stream_handler)
 
           while True:
-            if self.stopped():
-              raise ThreadStop
+            check_stop()
             time_now = time()
             if time_now - last_blocked_ids_update >= refresh_blocked_ids_interval:
               blocked_ids = refresh_blocked_ids(user['id'])
@@ -144,8 +147,7 @@ class StreamThread(threading.Thread):
           if wait_time_now:
             stream_logger.info('%s: Sleep %d seconds.' % (user_jid, wait_time_now))
             for _ in xrange(wait_time_now):
-              if self.stopped():
-                raise ThreadStop
+              check_stop()
               sleep(1)
           if wait_time_now_index < len(wait_times):
             wait_time_now_index += 1

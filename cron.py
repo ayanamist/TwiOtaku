@@ -40,7 +40,7 @@ def cron_job(cron_queue):
         db.update_user(jid=user_jid, last_home_id=data[0]['id_str'])
         if not user_timeline & db.MODE_HOME:
           data = [x for x in data if '@%s' % user['screen_name'] in x['text']]
-        queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
+        return data
 
   @debug('cron')
   def fetch_mention():
@@ -48,7 +48,7 @@ def cron_job(cron_queue):
       data = api.get_mentions(since_id=user['last_mention_id'])
       if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
         db.update_user(jid=user_jid, last_mention_id=data[0]['id_str'])
-        queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
+        return data
 
   @debug('cron')
   def fetch_dm():
@@ -56,7 +56,7 @@ def cron_job(cron_queue):
       data = api.get_direct_messages(since_id=user['last_dm_id'])
       if data and isinstance(data, list) and isinstance(data[0], twitter.DirectMessage):
         db.update_user(jid=user_jid, last_dm_id=data[0]['id_str'])
-        queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
+        return data
 
   @debug('cron')
   def fetch_list():
@@ -72,7 +72,7 @@ def cron_job(cron_queue):
         else:
           if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
             db.update_user(jid=user_jid, last_list_id=data[0]['id_str'])
-            queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
+            return data
 
   while True:
     try:
@@ -94,11 +94,21 @@ def cron_job(cron_queue):
     if screen_name != user['screen_name']:
       user['screen_name'] = screen_name
       db.update_user(jid=user_jid, screen_name=screen_name)
+    all_data = list()
 
-    fetch_dm()
-    fetch_list()
-    fetch_mention()
-    fetch_home()
+    data = fetch_dm()
+    if data:
+      all_data.extend(data)
+    data = fetch_list()
+    if data:
+      all_data.extend(data)
+    data = fetch_mention()
+    if data:
+      all_data.extend(data)
+    data = fetch_home()
+    if data:
+      all_data.extend(data)
+    queue.put(Job(user_jid, data=all_data, allow_duplicate=False, always=False))
 
     cron_queue.task_done()
 
