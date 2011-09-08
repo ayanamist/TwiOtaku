@@ -42,8 +42,8 @@ class XMPPBot(sleekxmpp.ClientXMPP):
   def on_start(self, _):
     self.get_roster()
     self.start_workers()
-    self.start_cron()
     self.start_streams()
+    self.start_cron()
     self.send_presence()
 
   def on_message(self, msg):

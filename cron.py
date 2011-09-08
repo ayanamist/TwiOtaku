@@ -37,8 +37,7 @@ def cron_job(cron_queue):
     if user_timeline & db.MODE_HOME or user_timeline & db.MODE_MENTION:
       data = api.get_home_timeline(since_id=user['last_home_id'])
       if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
-        user['last_home_id'] = data[0]['id_str']
-        db.update_user(jid=user_jid, last_home_id=user['last_home_id'])
+        db.update_user(jid=user_jid, last_home_id=data[0]['id_str'])
         if not user_timeline & db.MODE_HOME:
           data = [x for x in data if '@%s' % user['screen_name'] in x['text']]
         queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
@@ -48,8 +47,7 @@ def cron_job(cron_queue):
     if user_timeline & db.MODE_MENTION:
       data = api.get_mentions(since_id=user['last_mention_id'])
       if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
-        user['last_mention_id'] = data[0]['id_str']
-        db.update_user(jid=user_jid, last_mention_id=user['last_mention_id'])
+        db.update_user(jid=user_jid, last_mention_id=data[0]['id_str'])
         queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
 
   @debug('cron')
@@ -57,8 +55,7 @@ def cron_job(cron_queue):
     if user_timeline & db.MODE_DM:
       data = api.get_direct_messages(since_id=user['last_dm_id'])
       if data and isinstance(data, list) and isinstance(data[0], twitter.DirectMessage):
-        user['last_dm_id'] = data[0]['id_str']
-        db.update_user(jid=user_jid, last_dm_id=user['last_dm_id'])
+        db.update_user(jid=user_jid, last_dm_id=data[0]['id_str'])
         queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
 
   @debug('cron')
@@ -74,8 +71,7 @@ def cron_job(cron_queue):
             title='List %s/%s not exists, disable List update.' % (user['list_user'], user['list_name'])))
         else:
           if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
-            user['last_list_id'] = data[0]['id_str']
-            db.update_user(jid=user_jid, last_list_id=user['last_list_id'])
+            db.update_user(jid=user_jid, last_list_id=data[0]['id_str'])
             queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
 
   while True:
