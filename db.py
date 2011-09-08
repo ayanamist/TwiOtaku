@@ -62,13 +62,12 @@ def init():
             ON "users" ("jid");
             """,
       statuses="""CREATE TABLE "statuses" (
-              "id"  TEXT NOT NULL,
-              "json"  BLOB NOT NULL,
-              "type"  INTEGER NOT NULL DEFAULT 0,
+              "id_str"  TEXT NOT NULL,
+              "json"  BLOB NOT NULL
               PRIMARY KEY ("id") ON CONFLICT REPLACE
               );
               CREATE UNIQUE INDEX "status_id"
-              ON "statuses" ("id", "type");
+              ON "statuses" ("id_str");
               """,
       invites="""CREATE TABLE "invites" (
             "id"  TEXT NOT NULL,
@@ -227,3 +226,15 @@ def set_force(is_force):
 
 def get_force():
   return _forced
+
+
+def add_status(id_str, data):
+  cursor = _conn_db.cursor()
+  sql = 'INSERT INTO statuses (id_str, data) VALUES(?,?)'
+  cursor.execute(sql, (id_str, data))
+
+
+def delete_status(id_str):
+  cursor = _conn_db.cursor()
+  sql = 'DELETE FROM statuses WHERE id_str=?'
+  cursor.execute(sql, (id_str,))

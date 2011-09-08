@@ -87,7 +87,7 @@ class StreamThread(threading.Thread):
             if self.stopped():
               raise ThreadStop
             data = read_data(user_stream_handler)
-            if 'event' not in data:
+            if 'event' in data:
               if 'direct_message' in data:
                 if user_timeline & db.MODE_DM:
                   data = twitter.DirectMessage(data['direct_message'])
@@ -102,6 +102,9 @@ class StreamThread(threading.Thread):
                   data = None
               if data:
                 queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
+            elif 'delete' in data:
+              if 'status' in data['delete']:
+                db.delete_status(data['delete']['status']['id_str'])
             else:
               title = None
               if user_timeline & db.MODE_EVENT:
