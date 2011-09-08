@@ -1,13 +1,11 @@
-import traceback
-import logging
 import time
-from StringIO import StringIO
 from threading import Thread
 from Queue import Queue, Empty
 
 import db
 import twitter
 from worker import Job
+from util import debug
 from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
 
 def cron_start(queues):
@@ -34,6 +32,52 @@ def cron_start(queues):
 
 # TODO: auto add in_reply_to_status for all mentions
 def cron_job(cron_queue):
+  @debug('cron')
+  def fetch_home():
+    if user_timeline & db.MODE_HOME or user_timeline & db.MODE_MENTION:
+      data = api.get_home_timeline(since_id=user['last_home_id'])
+      if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
+        user['last_home_id'] = data[0]['id_str']
+        db.update_user(jid=user_jid, last_home_id=user['last_home_id'])
+        if not user_timeline & db.MODE_HOME:
+          data = [x for x in data if '@%s' % user['screen_name'] in x['text']]
+        queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
+
+  @debug('cron')
+  def fetch_mention():
+    if user_timeline & db.MODE_MENTION:
+      data = api.get_mentions(since_id=user['last_mention_id'])
+      if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
+        user['last_mention_id'] = data[0]['id_str']
+        db.update_user(jid=user_jid, last_mention_id=user['last_mention_id'])
+        queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
+
+  @debug('cron')
+  def fetch_dm():
+    if user_timeline & db.MODE_DM:
+      data = api.get_direct_messages(since_id=user['last_dm_id'])
+      if data and isinstance(data, list) and isinstance(data[0], twitter.DirectMessage):
+        user['last_dm_id'] = data[0]['id_str']
+        db.update_user(jid=user_jid, last_dm_id=user['last_dm_id'])
+        queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
+
+  @debug('cron')
+  def fetch_list():
+    if user_timeline & db.MODE_LIST:
+      if user['list_user'] and user['list_id']:
+        try:
+          data = api.get_list_statuses(user=user['list_user'], id=user['list_id'], since_id=user['last_list_id'])
+        except twitter.TwitterNotFoundError:
+          user['timeline'] &= ~db.MODE_LIST
+          db.update_user(id=user['id'], timeline=user['timeline'])
+          queue.put(Job(user['jid'],
+            title='List %s/%s not exists, disable List update.' % (user['list_user'], user['list_name'])))
+        else:
+          if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
+            user['last_list_id'] = data[0]['id_str']
+            db.update_user(jid=user_jid, last_list_id=user['last_list_id'])
+            queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
+
   while True:
     try:
       queue, user = cron_queue.get(True, 3)
@@ -55,65 +99,10 @@ def cron_job(cron_queue):
       user['screen_name'] = screen_name
       db.update_user(jid=user_jid, screen_name=screen_name)
 
-    logger = logging.getLogger('cron')
-
-    try:
-      if user_timeline & db.MODE_DM:
-        data = api.get_direct_messages(since_id=user['last_dm_id'])
-        if data and isinstance(data, list) and isinstance(data[0], twitter.DirectMessage):
-          user['last_dm_id'] = data[0]['id_str']
-          db.update_user(jid=user_jid, last_dm_id=user['last_dm_id'])
-          queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
-    except BaseException:
-      err = StringIO()
-      traceback.print_exc(file=err)
-      logger.error(err.getvalue())
-
-    try:
-      if user_timeline & db.MODE_MENTION:
-        data = api.get_mentions(since_id=user['last_mention_id'])
-        if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
-          user['last_mention_id'] = data[0]['id_str']
-          db.update_user(jid=user_jid, last_mention_id=user['last_mention_id'])
-          queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
-    except BaseException:
-      err = StringIO()
-      traceback.print_exc(file=err)
-      logger.error(err.getvalue())
-
-    try:
-      if user_timeline & db.MODE_LIST:
-        if user['list_user'] and user['list_id']:
-          try:
-            data = api.get_list_statuses(user=user['list_user'], id=user['list_id'], since_id=user['last_list_id'])
-          except twitter.TwitterNotFoundError:
-            user['timeline'] &= ~db.MODE_LIST
-            db.update_user(id=user['id'], timeline=user['timeline'])
-            queue.put(Job(user['jid'],
-              title='List %s/%s not exists, disable List update.' % (user['list_user'], user['list_name'])))
-          else:
-            if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
-              user['last_list_id'] = data[0]['id_str']
-              db.update_user(jid=user_jid, last_list_id=user['last_list_id'])
-              queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
-    except BaseException:
-      err = StringIO()
-      traceback.print_exc(file=err)
-      logger.error(err.getvalue())
-
-    try:
-      if user_timeline & db.MODE_HOME or user_timeline & db.MODE_MENTION:
-        data = api.get_home_timeline(since_id=user['last_home_id'])
-        if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
-          user['last_home_id'] = data[0]['id_str']
-          db.update_user(jid=user_jid, last_home_id=user['last_home_id'])
-          if not user_timeline & db.MODE_HOME:
-            data = [x for x in data if '@%s' % user['screen_name'] in x['text']]
-          queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
-    except BaseException:
-      err = StringIO()
-      traceback.print_exc(file=err)
-      logger.error(err.getvalue())
+    fetch_dm()
+    fetch_list()
+    fetch_mention()
+    fetch_home()
 
     cron_queue.task_done()
 

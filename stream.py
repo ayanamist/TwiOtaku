@@ -1,9 +1,7 @@
 import urllib2
-import traceback
-import logging
 import threading
+import logging
 from time import sleep, time
-from StringIO import StringIO
 from ssl import SSLError
 
 try:
@@ -14,6 +12,7 @@ except ImportError:
 import db
 import twitter
 from worker import Job
+from util import debug
 from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
 
 class ThreadStop(Exception):
@@ -40,6 +39,7 @@ class StreamThread(threading.Thread):
   # TODO: implement track and follow (list) (possibly via select?)
 
   def run(self):
+    @debug('userstreaming')
     def running():
       def read_line(fp):
         s = ''
@@ -57,14 +57,9 @@ class StreamThread(threading.Thread):
           if length:
             return json.loads(user_stream_handler.read(int(length)))
 
+      @debug('refresh_blocked_ids')
       def refresh_blocked_ids(uid):
-        try:
-          return api.get_blocking_ids()
-        except BaseException:
-          err = StringIO()
-          traceback.print_exc(file=err)
-          stream_logger.error(err.getvalue())
-          return list()
+        return api.get_blocking_ids()
 
       queue = self.xmpp.worker_queues[self.bare_jid]
       user = db.get_user_from_jid(self.bare_jid)
@@ -76,12 +71,12 @@ class StreamThread(threading.Thread):
       user_jid = user['jid']
       user_screen_name = user['screen_name']
       user_at_screen_name = '@%s' % user_screen_name
-      stream_logger = logging.getLogger('stream')
       wait_times = (0, 30, 60, 120, 240)
       wait_time_now_index = 0
       last_blocked_ids_update = time()
       refresh_blocked_ids_interval = 3600
       blocked_ids = refresh_blocked_ids(user['id'])
+      stream_logger = logging.getLogger('user streaming')
       while True:
         try:
           if self.stopped():
@@ -154,10 +149,6 @@ class StreamThread(threading.Thread):
               sleep(1)
           if wait_time_now_index < len(wait_times):
             wait_time_now_index += 1
-        except BaseException:
-          err = StringIO()
-          traceback.print_exc(file=err)
-          stream_logger.error(err.getvalue())
 
     try:
       running()

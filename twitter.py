@@ -2,7 +2,6 @@
 import urllib
 import urllib2
 import urlparse
-import logging
 
 try:
   import ujson as json
@@ -420,8 +419,6 @@ class Api(object):
     else:
       url = self._build_url(url, extra_params=parameters)
 
-    logger = logging.getLogger('userstream')
-    logger.debug('User Streaming URL: %s' % url)
     opener = urllib2.build_opener()
     # It seems there are no individual connect timeout, argument timeout here is of both connect and data.
     return opener.open(url, timeout=180)

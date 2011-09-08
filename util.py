@@ -1,6 +1,9 @@
 #!/usr/bin/python
 # -*- encoding: utf-8 -*-
 import re
+import traceback
+import logging
+from StringIO import StringIO
 from time import mktime, localtime, strftime
 from email.utils import parsedate
 from xml.sax.saxutils import unescape
@@ -8,6 +11,22 @@ from xml.sax.saxutils import unescape
 import db
 import twitter
 from config import MAX_ID_LIST_NUM
+
+def debug(logger_name=''):
+  def wrap(f):
+    def newf(*args, **kwds):
+      try:
+        return f(*args, **kwds)
+      except BaseException:
+        err = StringIO()
+        traceback.print_exc(file=err)
+        logger = logging.getLogger(logger_name)
+        logger.error(err.getvalue())
+
+    return newf
+
+  return wrap
+
 
 class DuplicateError(Exception):
   pass
@@ -130,7 +149,7 @@ class Util(object):
             text = self.parse_single(single)
             if text:
               msgs.append(text)
-          except (TypeError, DuplicateError):
+          except DuplicateError:
             pass
       else:
         try:

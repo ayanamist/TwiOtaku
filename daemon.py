@@ -121,7 +121,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
 if __name__ == '__main__':
   major, minor, _ = platform.python_version_tuple()
-  if major != 2 or minor < 6:
+  if major != '2' or minor < '6':
     print 'TwiOtaku needs Python 2.6 or later. Python 3.X is not supported yet.'
     exit(1)
 

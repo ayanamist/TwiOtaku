@@ -1,15 +1,12 @@
 import random
-import logging
-import traceback
 import time
 import operator
-from StringIO import StringIO
 from urlparse import parse_qsl
 
 import oauth
 import twitter
 import db
-from util import Util
+from util import Util, debug
 from worker import Job
 from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, MAX_CONVERSATION_NUM, ADMIN_USERS
 
@@ -37,6 +34,7 @@ class XMPPMessageHandler(object):
   def __init__(self, xmpp):
     self._xmpp = xmpp
 
+  @debug('xmpp')
   def process(self, msg):
     self._jid = str(msg['from'])
     self._bare_jid = self._xmpp.getjidbare(self._jid).lower()
@@ -45,16 +43,7 @@ class XMPPMessageHandler(object):
     self._util = Util(self._user)
     self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
       access_token_key=self._user.get('access_key'), access_token_secret=self._user.get('access_secret'))
-
-    try:
-      result = self.parse_command(msg['body'].rstrip())
-    except BaseException, e:
-      result = str(e)
-      err = StringIO()
-      traceback.print_exc(file=err)
-      xmpp_logger = logging.getLogger('xmpp')
-      xmpp_logger.error(err.getvalue())
-
+    result = self.parse_command(msg['body'].rstrip())
     if result:
       msg.reply(result).send()
 
