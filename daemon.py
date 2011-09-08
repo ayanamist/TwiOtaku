@@ -1,5 +1,6 @@
 #!/usr/bin/env python26
 import sys
+import platform
 import signal
 import logging
 from Queue import Queue
@@ -119,6 +120,11 @@ class XMPPBot(sleekxmpp.ClientXMPP):
         self.start_stream(user['jid'])
 
 if __name__ == '__main__':
+  major, minor, _ = platform.python_version_tuple()
+  if major != 2 or minor < 6:
+    print 'TwiOtaku needs Python 2.6 or later. Python 3.X is not supported yet.'
+    exit(1)
+
   logging.basicConfig(level=logging.DEBUG, format='%(asctime)-15s %(name)-8s %(levelname)-8s %(message)s',
     datefmt='%m-%d %H:%M:%S', stream=sys.stdout)
   stderr = logging.StreamHandler()
