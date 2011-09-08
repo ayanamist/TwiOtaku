@@ -12,7 +12,7 @@ from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
 
 def cron_start(queues):
   cron_queue = Queue()
-  for _ in range(5):
+  for _ in range(db.get_users_count() // 5 + 1):
     t = Thread(target=cron_job, args=(cron_queue, ))
     t.setDaemon(True)
     t.start()
@@ -28,7 +28,8 @@ def cron_start(queues):
       if interval and user['last_update'] < int(time.time() + 1 - interval): # add 1 second for avoiding clock deviation
         user['last_update'] = int(time.time())
         db.update_user(id=user['id'], last_update=user['last_update'])
-        cron_queue.put((queues.get(user['jid'], Queue()), user)) # we can abandon data if we don't need, just throw a useless Queue
+        cron_queue.put(
+          (queues.get(user['jid'], Queue()), user)) # we can abandon data if we don't need, just throw a useless Queue
   cron_queue.join()
 
 # TODO: auto add in_reply_to_status for all mentions
@@ -42,9 +43,9 @@ def cron_job(cron_queue):
     user_timeline = user['timeline']
 
     api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY,
-                      consumer_secret=OAUTH_CONSUMER_SECRET,
-                      access_token_key=user['access_key'],
-                      access_token_secret=user['access_secret'])
+      consumer_secret=OAUTH_CONSUMER_SECRET,
+      access_token_key=user['access_key'],
+      access_token_secret=user['access_secret'])
     try:
       screen_name = api.verify_credentials()['screen_name']
     except twitter.TwitterAuthenticationError:
@@ -88,7 +89,8 @@ def cron_job(cron_queue):
           except twitter.TwitterNotFoundError:
             user['timeline'] &= ~db.MODE_LIST
             db.update_user(id=user['id'], timeline=user['timeline'])
-            queue.put(Job(user['jid'], title='List %s/%s not exists, disable List update.' % (user['list_user'], user['list_name'])))
+            queue.put(Job(user['jid'],
+              title='List %s/%s not exists, disable List update.' % (user['list_user'], user['list_name'])))
           else:
             if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
               user['last_list_id'] = data[0]['id_str']

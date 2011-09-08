@@ -16,6 +16,8 @@ DB_PATH = os.path.dirname(__file__) + os.sep + 'twiotaku.db'
 
 _conn_db = None
 _cache = dict()
+_cache_users_count = None
+_forced = False
 
 def init():
   global _conn_db
@@ -75,7 +77,7 @@ def init():
             CREATE UNIQUE INDEX "invite_id"
             ON "invites" ("id");
             """,
-      )
+    )
     for t in cursor.execute("SELECT name FROM sqlite_master WHERE type='table';"):
       t = t[0]
       if t in sql:
@@ -115,6 +117,16 @@ def update_user(id=None, jid=None, **kwargs):
       values.append(jid)
     sql = 'UPDATE users SET %s WHERE %s' % (','.join(cols), cond)
     cursor.execute(sql, values)
+
+
+def get_users_count():
+  if _forced or _cache_users_count is None:
+    cursor = _conn_db.cursor()
+    sql = 'SELECT COUNT(id) FROM users'
+    cursor.execute(sql)
+    return list(cursor)[0][0]
+  else:
+    return _cache_users_count
 
 
 def add_user(jid):
@@ -191,3 +203,12 @@ def update_long_id_from_short_id(uid, short_id, long_id, single_type):
   cursor.execute(sql, (uid, short_id))
   sql = 'INSERT INTO id_lists (uid, short_id, long_id, type) VALUES(?, ?, ?, ?)'
   cursor.execute(sql, (uid, short_id, long_id, single_type))
+
+
+def set_force(is_force):
+  global _forced
+  _forced = is_force
+
+
+def get_force():
+  return _forced
