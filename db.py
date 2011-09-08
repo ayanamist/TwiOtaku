@@ -3,6 +3,13 @@ from copy import deepcopy
 
 import apsw
 
+try:
+  import ujson as json
+except ImportError:
+  import json
+
+import twitter
+
 MODE_NONE = 0
 MODE_DM = 1
 MODE_MENTION = 2
@@ -22,74 +29,83 @@ _forced = False
 
 def init():
   global _conn_db
-  if not _conn_db:
-    _conn_db = apsw.Connection(DB_PATH)
-    cursor = _conn_db.cursor()
-    sql = dict(
-      id_lists="""CREATE TABLE "id_lists" (
-                "uid"  INTEGER NOT NULL,
-                "short_id"  INTEGER NOT NULL,
-                "long_id"  TEXT NOT NULL,
-                "type"  INTEGER NOT NULL DEFAULT 0
-                );
-                CREATE INDEX "id_lists_uid_longid_type"
-                ON "id_lists" ("uid", "long_id", "type");
-                CREATE INDEX "is_lists_uid_shortid_type"
-                ON "id_lists" ("uid", "short_id");
-                """,
-      users="""CREATE TABLE "users" (
-            "id"  INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-            "jid"  TEXT NOT NULL,
-            "screen_name"  TEXT,
-            "access_key"  TEXT,
-            "access_secret"  TEXT,
-            "list_user"  TEXT,
-            "list_id"  TEXT,
-            "list_name"  TEXT,
-            "last_home_id"  TEXT,
-            "last_mention_id"  TEXT,
-            "last_dm_id"  TEXT,
-            "last_list_id"  TEXT,
-            "last_update"  INTEGER NOT NULL DEFAULT 0,
-            "timeline"  INTEGER NOT NULL DEFAULT 3,
-            "id_list_ptr"  INTEGER NOT NULL DEFAULT 0,
-            "blocked_ids"  TEXT,
-            "list_ids"  TEXT
-            );
-            CREATE UNIQUE INDEX "users_id"
-            ON "users" ("id");
-            CREATE UNIQUE INDEX "users_jid"
-            ON "users" ("jid");
-            """,
-      statuses="""CREATE TABLE "statuses" (
-              "id_str"  TEXT NOT NULL,
-              "json"  BLOB NOT NULL,
-              PRIMARY KEY ("id_str") ON CONFLICT REPLACE
+  if _conn_db:
+    return _conn_db
+  _conn_db = apsw.Connection(DB_PATH)
+  cursor = _conn_db.cursor()
+  sql = dict(
+    id_lists="""CREATE TABLE "id_lists" (
+              "uid"  INTEGER NOT NULL,
+              "short_id"  INTEGER NOT NULL,
+              "long_id"  TEXT NOT NULL,
+              "type"  INTEGER NOT NULL DEFAULT 0
               );
-              CREATE UNIQUE INDEX "status_id"
-              ON "statuses" ("id_str");
+              CREATE INDEX "id_lists_uid_longid_type"
+              ON "id_lists" ("uid", "long_id", "type");
+              CREATE INDEX "is_lists_uid_shortid_type"
+              ON "id_lists" ("uid", "short_id");
               """,
-      invites="""CREATE TABLE "invites" (
-            "id"  TEXT NOT NULL,
-            "create_time"   INTEGER NOT NULL,
-            PRIMARY KEY ("id") ON CONFLICT FAIL
+    users="""CREATE TABLE "users" (
+          "id"  INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          "jid"  TEXT NOT NULL,
+          "screen_name"  TEXT,
+          "access_key"  TEXT,
+          "access_secret"  TEXT,
+          "list_user"  TEXT,
+          "list_id"  TEXT,
+          "list_name"  TEXT,
+          "last_home_id"  TEXT,
+          "last_mention_id"  TEXT,
+          "last_dm_id"  TEXT,
+          "last_list_id"  TEXT,
+          "last_update"  INTEGER NOT NULL DEFAULT 0,
+          "timeline"  INTEGER NOT NULL DEFAULT 3,
+          "id_list_ptr"  INTEGER NOT NULL DEFAULT 0,
+          );
+          CREATE UNIQUE INDEX "users_id"
+          ON "users" ("id");
+          CREATE UNIQUE INDEX "users_jid"
+          ON "users" ("jid");
+          """,
+    statuses="""CREATE TABLE "statuses" (
+            "id_str"  TEXT NOT NULL,
+            "json"  BLOB NOT NULL,
+            PRIMARY KEY ("id_str") ON CONFLICT REPLACE
             );
-            CREATE UNIQUE INDEX "invite_id"
-            ON "invites" ("id");
+            CREATE UNIQUE INDEX "status_id"
+            ON "statuses" ("id_str");
             """,
-    )
-    for t in cursor.execute("SELECT name FROM sqlite_master WHERE type='table';"):
-      t = t[0]
-      if t in sql:
-        del(sql[t])
-    begin_transaction()
-    for v in sql.itervalues():
-      cursor.execute(v)
-    end_transaction()
+    invites="""CREATE TABLE "invites" (
+          "id"  TEXT NOT NULL,
+          "create_time"   INTEGER NOT NULL,
+          PRIMARY KEY ("id") ON CONFLICT FAIL
+          );
+          CREATE UNIQUE INDEX "invite_id"
+          ON "invites" ("id");
+          """,
+    list_ids="""CREATE TABLE "list_ids" (
+              "uid"  INTEGER NOT NULL,
+              "value"   TEXT,
+              "modify_time"   INTEGER NOT NULL,
+              PRIMARY KEY ("uid") ON CONFLICT REPLACE
+              );
+              CREATE UNIQUE INDEX "list_ids_uid"
+              ON "list_ids" ("uid");
+          """,
+  )
+  for t in cursor.execute("SELECT name FROM sqlite_master WHERE type='table';"):
+    t = t[0]
+    if t in sql:
+      del(sql[t])
+  begin_transaction()
+  for v in sql.itervalues():
+    cursor.execute(v)
+  end_transaction()
   return _conn_db
 
 
 def get_user_from_jid(jid):
+  global _cache_users
   if not _forced and jid in _cache_users:
     return deepcopy(_cache_users[jid])
   else:
@@ -99,7 +115,6 @@ def get_user_from_jid(jid):
       d = cursor.getdescription()
       for i in range(len(d)):
         user[d[i][0]] = u[i]
-    global _cache_users
     _cache_users[user['id']] = _cache_users[jid] = deepcopy(user)
     return user
 
@@ -130,6 +145,7 @@ def update_user(id=None, jid=None, **kwargs):
 
 
 def get_users_count():
+  global _cache_users_count
   if not _forced and _cache_users_count is not None:
     return _cache_users_count
   else:
@@ -238,3 +254,11 @@ def delete_status(id_str):
   cursor = _conn_db.cursor()
   sql = 'DELETE FROM statuses WHERE id_str=?'
   cursor.execute(sql, (id_str,))
+
+
+def get_status(id_str):
+  cursor = _conn_db.cursor()
+  sql = 'SELECT id_str, json FROM statuses WHERE id_str=?'
+  for _, data in cursor.execute(sql, (id_str,)):
+    return twitter.Status(json.loads(data))
+  return None

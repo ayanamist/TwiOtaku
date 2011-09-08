@@ -28,11 +28,7 @@ import random
 import urlparse
 import hmac
 import binascii
-
-try:
-  from urlparse import parse_qs, parse_qsl
-except ImportError:
-  from cgi import parse_qs, parse_qsl
+from urlparse import parse_qs, parse_qsl
 
 from urlfetch import fetch
 
@@ -277,6 +273,19 @@ class Request(dict):
     return dict([(k, v) for k, v in self.iteritems()
                         if not k.startswith('oauth_')])
 
+  def to_header(self, realm=''):
+    """Serialize as a header for an HTTPAuth request."""
+    oauth_params = ((k, v) for k, v in self.iteritems() if k.startswith('oauth_'))
+    stringy_params = ((k, escape(str(v))) for k, v in oauth_params)
+    header_params = ('%s="%s"' % (k, v) for k, v in stringy_params)
+    params_header = ', '.join(header_params)
+
+    auth_header = 'OAuth realm="%s"' % realm
+    if params_header:
+      auth_header += params_header
+
+    return {'Authorization': auth_header}
+
   def to_postdata(self):
     """Serialize as post data for a POST request."""
     # tell urlencode to deal with sequence values and map them correctly
@@ -296,19 +305,11 @@ class Request(dict):
     for k, v in self.items():
       query.setdefault(k, []).append(v)
 
-    try:
-      scheme = base_url.scheme
-      netloc = base_url.netloc
-      path = base_url.path
-      params = base_url.params
-      fragment = base_url.fragment
-    except AttributeError:
-      # must be python <2.5
-      scheme = base_url[0]
-      netloc = base_url[1]
-      path = base_url[2]
-      params = base_url[3]
-      fragment = base_url[5]
+    scheme = base_url.scheme
+    netloc = base_url.netloc
+    path = base_url.path
+    params = base_url.params
+    fragment = base_url.fragment
 
     url = (scheme, netloc, path, params,
            urllib.urlencode(query, True), fragment)
@@ -486,7 +487,7 @@ class Client():
       parameters.update(dict(parse_qsl(body)))
 
     req = Request.from_consumer_and_token(self.consumer, token=self.token, http_method=method, http_url=uri,
-                                          parameters=parameters)
+      parameters=parameters)
 
     req.sign_request(self.method, self.consumer, self.token)
 

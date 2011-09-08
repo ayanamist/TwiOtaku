@@ -2,7 +2,7 @@ import urllib2
 import traceback
 import logging
 import threading
-from time import sleep
+from time import sleep, time
 from StringIO import StringIO
 from ssl import SSLError
 
@@ -37,7 +37,6 @@ class StreamThread(threading.Thread):
     return self._stop.is_set()
 
   # TODO: auto add in_reply_to_status for all mentions
-  # TODO: we must handle blocked ids ourselves.
   # TODO: implement track and follow (list) (possibly via select?)
 
   def run(self):
@@ -58,6 +57,14 @@ class StreamThread(threading.Thread):
           if length:
             return json.loads(user_stream_handler.read(int(length)))
 
+      def refresh_blocked_ids(uid):
+        try:
+          return api.get_blocking_ids()
+        except BaseException:
+          err = StringIO()
+          traceback.print_exc(file=err)
+          stream_logger.error(err.getvalue())
+          return list()
 
       queue = self.xmpp.worker_queues[self.bare_jid]
       user = db.get_user_from_jid(self.bare_jid)
@@ -72,6 +79,9 @@ class StreamThread(threading.Thread):
       stream_logger = logging.getLogger('stream')
       wait_times = (0, 30, 60, 120, 240)
       wait_time_now_index = 0
+      last_blocked_ids_update = time()
+      refresh_blocked_ids_interval = 3600
+      blocked_ids = refresh_blocked_ids(user['id'])
       while True:
         try:
           if self.stopped():
@@ -86,6 +96,10 @@ class StreamThread(threading.Thread):
           while True:
             if self.stopped():
               raise ThreadStop
+            time_now = time()
+            if time_now - last_blocked_ids_update >= refresh_blocked_ids_interval:
+              blocked_ids = refresh_blocked_ids(user['id'])
+              last_blocked_ids_update = time_now
             data = read_data(user_stream_handler)
             if 'event' in data:
               title = None
@@ -93,8 +107,10 @@ class StreamThread(threading.Thread):
                 if data['event'] == 'follow':
                   title = '@%s is now following @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
                 elif data['event'] == 'block':
+                  blocked_ids = refresh_blocked_ids(user['id'])
                   title = '@%s has blocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
                 elif data['event'] == 'unblock':
+                  blocked_ids = refresh_blocked_ids(user['id'])
                   title = '@%s has unblocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
                 elif data['event'] == 'list_member_added':
                   pass
@@ -112,8 +128,8 @@ class StreamThread(threading.Thread):
                 else:
                   data = None
               else:
-                if user_timeline & db.MODE_HOME or (
-                  user_timeline & db.MODE_MENTION and user_at_screen_name in data['text'])\
+                if data['user']['id_str'] not in blocked_ids and user_timeline & db.MODE_HOME\
+                   or (user_timeline & db.MODE_MENTION and user_at_screen_name in data['text'])\
                 or data['user']['screen_name'] == user_screen_name:
                   data = twitter.Status(data)
                 else:

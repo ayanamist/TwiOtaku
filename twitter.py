@@ -312,9 +312,12 @@ class Api(object):
     url = '%s/blocks/destroy.json' % self.base_url
     return self._fetch_url(url, parameters={'screen_name': user}, http_method='POST')
 
-  def get_blocking_ids(self):
+  def get_blocking_ids(self, stringify_ids=True):
+    parameters = dict()
+    if stringify_ids:
+      parameters['since_id'] = stringify_ids
     url = '%s/blocks/blocking/ids.json' % self.base_url
-    return self._fetch_url(url)
+    return self._fetch_url(url, parameters=parameters)
 
   def verify_credentials(self):
     url = '%s/account/verify_credentials.json' % self.base_url
@@ -352,10 +355,7 @@ class Api(object):
       return unicode(s).encode('utf-8')
 
   def _encode_parameters(self, parameters):
-    if parameters is None:
-      return None
-    else:
-      return urllib.urlencode(dict([(k, self._encode(v)) for k, v in parameters.items() if v is not None]))
+    return urllib.urlencode(dict([(k, self._encode(v)) for k, v in parameters.items() if v is not None]))
 
   def _encode_post_data(self, post_data):
     if post_data is None:

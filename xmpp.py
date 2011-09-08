@@ -4,11 +4,7 @@ import traceback
 import time
 import operator
 from StringIO import StringIO
-
-try:
-  from urlparse import parse_qsl
-except ImportError:
-  from cgi import parse_qsl
+from urlparse import parse_qsl
 
 import oauth
 import twitter
@@ -112,7 +108,7 @@ class XMPPMessageHandler(object):
 
   def func_invite(self, invite_code=None):
     def generate_invite_code():
-      valid_chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+      valid_chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
       return ''.join(random.choice(valid_chars) for _ in range(8))
 
     expire_days = 3
