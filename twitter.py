@@ -196,6 +196,21 @@ class Api(object):
       parameters['count'] = count
     return [DirectMessage(x) for x in self._fetch_url(url, parameters=parameters)]
 
+  def get_sent_direct_messages(self, since_id=None, page=None, include_entities=1, max_id=None, count=None):
+    url = '%s/direct_messages/sent.json' % self.base_url
+    parameters = dict()
+    if since_id:
+      parameters['since_id'] = since_id
+    if page:
+      parameters['page'] = page
+    if include_entities:
+      parameters['include_entities'] = include_entities
+    if max_id:
+      parameters['max_id'] = max_id
+    if count:
+      parameters['count'] = count
+    return [DirectMessage(x) for x in self._fetch_url(url, parameters=parameters)]
+
   def get_direct_message(self, id):
     data = self.get_direct_messages(max_id=id, count=1)
     if not data:
@@ -371,8 +386,8 @@ class Api(object):
       if post_data:
         parameters = post_data.copy()
       req = oauth.Request.from_consumer_and_token(self._oauth_consumer, token=self._oauth_token,
-                                                  http_method=http_method, http_url=url,
-                                                  parameters=parameters)
+        http_method=http_method, http_url=url,
+        parameters=parameters)
       req.sign_request(self._signature_method_hmac_sha1, self._oauth_consumer, self._oauth_token)
       if http_method == "POST":
         encoded_post_data = req.to_postdata()
@@ -398,8 +413,8 @@ class Api(object):
       parameters['replies'] = 'all'
     if self._oauth_consumer is not None:
       req = oauth.Request.from_consumer_and_token(self._oauth_consumer, token=self._oauth_token,
-                                                  http_method='GET', http_url=url,
-                                                  parameters=parameters)
+        http_method='GET', http_url=url,
+        parameters=parameters)
       req.sign_request(self._signature_method_hmac_sha1, self._oauth_consumer, self._oauth_token)
       url = req.to_url()
     else:

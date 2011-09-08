@@ -2,6 +2,7 @@ import random
 import logging
 import traceback
 import time
+import operator
 from StringIO import StringIO
 
 try:
@@ -183,5 +184,12 @@ class XMPPMessageHandler(object):
         else:
           data.insert(0, status)
     else:
-      data = [self._api.get_direct_message(long_id)]
+      all_dms = self._api.get_direct_messages(max_id=long_id, count=50)
+      all_dms.extend(self._api.get_sent_direct_messages(max_id=long_id, count=50))
+      for dm in sorted(all_dms, key=operator.itemgetter('id'), reverse=True):
+        if dm['recipient_screen_name'] == self._user['screen_name']\
+        or dm['sender_screen_name'] == self._user['screen_name']:
+          data.insert(0, dm)
+          if len(data) >= MAX_CONVERSATION_NUM:
+            break
     self._queue.put(Job(self._jid, data=data, title='Conversation:', reverse=False))
