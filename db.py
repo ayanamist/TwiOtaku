@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 
 import apsw
 
@@ -15,7 +16,7 @@ TYPE_DM = 1
 DB_PATH = os.path.dirname(__file__) + os.sep + 'twiotaku.db'
 
 _conn_db = None
-_cache = dict()
+_cache_users = dict()
 _cache_users_count = None
 _forced = False
 
@@ -90,13 +91,18 @@ def init():
 
 
 def get_user_from_jid(jid):
-  cursor = _conn_db.cursor()
-  user = dict()
-  for u in cursor.execute('SELECT * FROM users WHERE jid=?', (jid, )):
-    d = cursor.getdescription()
-    for i in range(len(d)):
-      user[d[i][0]] = u[i]
-  return user
+  if not _forced and jid in _cache_users:
+    return deepcopy(_cache_users[jid])
+  else:
+    cursor = _conn_db.cursor()
+    user = dict()
+    for u in cursor.execute('SELECT * FROM users WHERE jid=?', (jid, )):
+      d = cursor.getdescription()
+      for i in range(len(d)):
+        user[d[i][0]] = u[i]
+    global _cache_users
+    _cache_users[user['id']] = _cache_users[jid] = deepcopy(user)
+    return user
 
 
 def update_user(id=None, jid=None, **kwargs):
@@ -117,34 +123,43 @@ def update_user(id=None, jid=None, **kwargs):
       values.append(jid)
     sql = 'UPDATE users SET %s WHERE %s' % (','.join(cols), cond)
     cursor.execute(sql, values)
+    global _cache_users
+    if id and id in _cache_users and isinstance(_cache_users[id], dict):
+      _cache_users[id].update(kwargs)
+    elif jid and jid in _cache_users and isinstance(_cache_users[jid], dict):
+      _cache_users[jid].update(kwargs)
 
 
 def get_users_count():
-  if _forced or _cache_users_count is None:
+  if not _forced and _cache_users_count is not None:
+    return _cache_users_count
+  else:
     cursor = _conn_db.cursor()
     sql = 'SELECT COUNT(id) FROM users'
     cursor.execute(sql)
     return list(cursor)[0][0]
-  else:
-    return _cache_users_count
 
 
 def add_user(jid):
   cursor = _conn_db.cursor()
   sql = 'INSERT INTO users (jid) VALUES(?)'
   cursor.execute(sql, (jid,))
+  global _cache_users_count
+  _cache_users_count += 1
 
 
 def get_all_users():
   cursor = _conn_db.cursor()
   sql = 'SELECT * FROM users'
   d = None
+  global _cache_users
   for u in cursor.execute(sql):
     if d is None:
       d = cursor.getdescription()
     user = dict()
     for i in range(len(d)):
       user[d[i][0]] = u[i]
+    _cache_users[user['id']] = _cache_users[user['jid']] = deepcopy(user)
     yield user
 
 
