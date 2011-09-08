@@ -65,26 +65,24 @@ class Util(object):
     return unescape(text).replace('\r\n', '\n').replace('\r', '\n')
 
   def parse_single(self, single):
+    def parse_entities(data):
+      if 'entities' in data:
+        tmp = ostring(data['text'])
+        if 'urls' in data['entities']:
+          for url in data['entities']['urls']:
+            if url['expanded_url']:
+              tmp.replace_indices(url['indices'][0], url['indices'][1], url['expanded_url'])
+        if 'media' in data['entities']:
+          for media in data['entities']['media']:
+            if media['media_url']:
+              tmp.replace_indices(media['indices'][0], media['indices'][1], media['media_url'])
+        return unicode(tmp)
+
     if single is None:
       return None
     msg_dict = dict()
     short_id, short_id_alpha = self.generate_short_id(single)
-    msg_dict['id_str'] = single['id_str']
-    msg_dict['shortid'] = '#%s=%s' % (short_id, short_id_alpha)
     t = mktime(parsedate(single['created_at']))
-    msg_dict['content'] = single['text']
-    if 'entities' in single:
-      tmp = ostring(msg_dict['content'])
-      if 'urls' in single['entities']:
-        for url in single['entities']['urls']:
-          if url['expanded_url']:
-            tmp.replace_indices(url['indices'][0], url['indices'][1], url['expanded_url'])
-      if 'media' in single['entities']:
-        for media in single['entities']['media']:
-          if media['media_url']:
-            tmp.replace_indices(media['indices'][0], media['indices'][1], media['media_url'])
-      msg_dict['content'] = unicode(tmp)
-    msg_dict['content'] = Util.parse_text(msg_dict['content'])
     if isinstance(single, twitter.Status):
       if single['user']['utc_offset']:
         t += single['user']['utc_offset']
@@ -96,11 +94,14 @@ class Util(object):
       if retweeted_status is not None:
         old_allow_duplicate = self.allow_duplicate
         self.allow_duplicate = True
-        msg_dict['content'] = self.parse_single(retweeted_status)
+        msg_dict['content'] = self.parse_single(twitter.Status(retweeted_status))
         self.allow_duplicate = old_allow_duplicate
-        text = '%(content)s\nRetweeted by %(username)s %(time)s [%(id_str)s%(shortid)s] via %(source)s' % msg_dict
+        text = u'%(content)s\n└Retweeted by %(username)s %(time)s via %(source)s' % msg_dict
       else:
-        text = '%(username)s: %(content)s\n%(time)s [%(id_str)s%(shortid)s] via %(source)s' % msg_dict
+        msg_dict['id_str'] = single['id_str']
+        msg_dict['shortid'] = '#%s=%s' % (short_id, short_id_alpha)
+        msg_dict['content'] = Util.parse_text(parse_entities(single))
+        text = u'%(username)s: %(content)s\n%(time)s [%(id_str)s%(shortid)s] via %(source)s' % msg_dict
       if 'in_reply_to_status' in single and isinstance(single['in_reply_to_status'], twitter.Status):
         old_allow_duplicate = self.allow_duplicate
         self.allow_duplicate = True
@@ -108,10 +109,12 @@ class Util(object):
         self.allow_duplicate = old_allow_duplicate
         text += u'\n┌────────────\n%s\n└────────────' % in_reply_to_text
     elif isinstance(single, twitter.DirectMessage):
+      msg_dict['shortid'] = '#%s=%s' % (short_id, short_id_alpha)
       msg_dict['username'] = single['sender']['screen_name']
       t += single['sender']['utc_offset']
       msg_dict['time'] = strftime('%Y-%m-%d %H:%M:%S', localtime(t))
-      text = 'Direct Message:\n%(username)s: %(content)s\n%(time)s [%(id_str)s%(shortid)s]' % msg_dict
+      msg_dict['content'] = Util.parse_text(parse_entities(single))
+      text = u'Direct Message:\n%(username)s: %(content)s\n%(time)s [%(shortid)s]' % msg_dict
     else:
       raise TypeError('Not a valid Status or Direct Message.')
     return text
@@ -134,7 +137,7 @@ class Util(object):
           text = self.parse_single(data)
           if text:
             msgs.append(text)
-        except (TypeError, DuplicateError):
+        except DuplicateError:
           pass
       return msgs
 

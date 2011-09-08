@@ -41,15 +41,16 @@ class XMPPBot(sleekxmpp.ClientXMPP):
   def on_start(self, _):
     self.get_roster()
     self.start_workers()
-    self.start_streams()
     self.start_cron()
+    self.start_streams()
     self.send_presence()
 
   def on_message(self, msg):
     if msg['type'] == 'chat':
       XMPPMessageHandler(self).process(msg)
     elif msg['type'] == 'error':
-      if msg['error']['type'] == 'cancel': # If we send lots of stanzas at the same time, some of them will be returned as type "error", we must resend them.
+      if msg['error'][
+         'type'] == 'cancel': # If we send lots of stanzas at the same time, some of them will be returned as type "error", we must resend them.
         msg.reply(msg['body']).send()
       else:
         self.logger.info('%s -> %s: %s' % (msg['from'], msg['to'], str(msg['error'])))
@@ -119,7 +120,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
 if __name__ == '__main__':
   logging.basicConfig(level=logging.DEBUG, format='%(asctime)-15s %(name)-8s %(levelname)-8s %(message)s',
-                      datefmt='%m-%d %H:%M:%S', stream=sys.stdout)
+    datefmt='%m-%d %H:%M:%S', stream=sys.stdout)
   stderr = logging.StreamHandler()
   stderr.setLevel(logging.ERROR)
   logging.getLogger('').addHandler(stderr)

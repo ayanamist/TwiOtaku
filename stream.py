@@ -88,24 +88,6 @@ class StreamThread(threading.Thread):
               raise ThreadStop
             data = read_data(user_stream_handler)
             if 'event' in data:
-              if 'direct_message' in data:
-                if user_timeline & db.MODE_DM:
-                  data = twitter.DirectMessage(data['direct_message'])
-                else:
-                  data = None
-              else:
-                if user_timeline & db.MODE_HOME or (
-                  user_timeline & db.MODE_MENTION and user_at_screen_name in data['text'])\
-                or data['user']['screen_name'] == user_screen_name:
-                  data = twitter.Status(data)
-                else:
-                  data = None
-              if data:
-                queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
-            elif 'delete' in data:
-              if 'status' in data['delete']:
-                db.delete_status(data['delete']['status']['id_str'])
-            else:
               title = None
               if user_timeline & db.MODE_EVENT:
                 if data['event'] == 'follow':
@@ -120,6 +102,24 @@ class StreamThread(threading.Thread):
                   pass
               if title:
                 queue.put(Job(user_jid, title=title, always=False))
+            elif 'delete' in data:
+              if 'status' in data['delete']:
+                db.delete_status(data['delete']['status']['id_str'])
+            else:
+              if 'direct_message' in data:
+                if user_timeline & db.MODE_DM:
+                  data = twitter.DirectMessage(data['direct_message'])
+                else:
+                  data = None
+              else:
+                if user_timeline & db.MODE_HOME or (
+                  user_timeline & db.MODE_MENTION and user_at_screen_name in data['text'])\
+                or data['user']['screen_name'] == user_screen_name:
+                  data = twitter.Status(data)
+                else:
+                  data = None
+              if data:
+                queue.put(Job(user_jid, data=data, allow_duplicate=False, always=False))
         except (urllib2.URLError, urllib2.HTTPError, SSLError), e:
           if isinstance(e, urllib2.HTTPError):
             if e.code == 401:

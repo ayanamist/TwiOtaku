@@ -63,8 +63,8 @@ def init():
             """,
       statuses="""CREATE TABLE "statuses" (
               "id_str"  TEXT NOT NULL,
-              "json"  BLOB NOT NULL
-              PRIMARY KEY ("id") ON CONFLICT REPLACE
+              "json"  BLOB NOT NULL,
+              PRIMARY KEY ("id_str") ON CONFLICT REPLACE
               );
               CREATE UNIQUE INDEX "status_id"
               ON "statuses" ("id_str");
