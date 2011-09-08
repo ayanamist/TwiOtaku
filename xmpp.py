@@ -47,7 +47,7 @@ class XMPPMessageHandler(object):
     self._user = db.get_user_from_jid(self._bare_jid)
     self._util = Util(self._user)
     self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
-                            access_token_key=self._user.get('access_key'), access_token_secret=self._user.get('access_secret'))
+      access_token_key=self._user.get('access_key'), access_token_secret=self._user.get('access_secret'))
 
     try:
       result = self.parse_command(msg['body'].rstrip())
@@ -102,8 +102,9 @@ class XMPPMessageHandler(object):
       resp = client.request(twitter.ACCESS_TOKEN_URL, "POST")
       access_token = dict(parse_qsl(resp))
       if 'oauth_token' in access_token:
-        db.update_user(self._user['id'], access_key=access_token['oauth_token'], access_secret=access_token['oauth_token_secret'],
-                       screen_name=access_token['screen_name'])
+        db.update_user(self._user['id'], access_key=access_token['oauth_token'],
+          access_secret=access_token['oauth_token_secret'],
+          screen_name=access_token['screen_name'])
         self._xmpp.add_online_user(self._bare_jid)
         return 'Successfully bind you with Twitter user @%s.' % access_token['screen_name']
     return 'Invalid PIN code.'
@@ -165,7 +166,9 @@ class XMPPMessageHandler(object):
             data.append(result['value'])
       if origin_status:
         data.append(origin_status)
-      while len(data) <= MAX_CONVERSATION_NUM:
+      one_short = data[0]['id_str'] == long_id
+      while len(data) <= MAX_CONVERSATION_NUM or one_short:
+        one_short = False
         status = data[0]
         if status['in_reply_to_status_id_str']:
           long_id = status['in_reply_to_status_id_str']
