@@ -36,7 +36,6 @@ class StreamThread(threading.Thread):
   def stopped(self):
     return self._stop.is_set()
 
-  # TODO: auto add in_reply_to_status for all mentions
   # TODO: implement track and follow (list) (possibly via select?)
 
   def run(self):
@@ -139,6 +138,11 @@ class StreamThread(threading.Thread):
                    or (user_timeline & db.MODE_MENTION and user_at_screen_name in data['text'])\
                 or data['user']['screen_name'] == user_screen_name:
                   data = twitter.Status(data)
+                  if user_at_screen_name in data['text'] and 'in_reply_to_status_id_str' in data:
+                    try:
+                      data['in_reply_to_status'] = api.get_status(data['in_reply_to_status_id_str'])
+                    except BaseException:
+                      pass
                 else:
                   data = None
               if data:

@@ -153,7 +153,7 @@ class Util(object):
       if 'in_reply_to_status' in single and isinstance(single['in_reply_to_status'], twitter.Status):
         old_allow_duplicate = self.allow_duplicate
         self.allow_duplicate = True
-        in_reply_to_text = self.parse_single(retweeted_status)
+        in_reply_to_text = self.parse_single(single['in_reply_to_status'])
         self.allow_duplicate = old_allow_duplicate
         text += u'\n┌────────────\n%s\n└────────────' % in_reply_to_text
     elif isinstance(single, twitter.DirectMessage):

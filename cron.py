@@ -30,7 +30,7 @@ def cron_start(queues):
           (queues.get(user['jid'], Queue()), user)) # we can abandon data if we don't need, just throw a useless Queue
   cron_queue.join()
 
-# TODO: auto add in_reply_to_status for all mentions
+
 def cron_job(cron_queue):
   @debug('cron')
   def fetch_home():
@@ -110,6 +110,15 @@ def cron_job(cron_queue):
     data = fetch_home()
     if data:
       all_data.extend(data)
+
+    user_at_screen_name = '@%s' % user['screen_name']
+    for x in all_data:
+      if user_at_screen_name in x['text'] and 'in_reply_to_status_id_str' in x:
+        try:
+          x['in_reply_to_status'] = api.get_status(x['in_reply_to_status_id_str'])
+        except BaseException:
+          pass
+
     queue.put(Job(user_jid, data=all_data, allow_duplicate=False, always=False))
 
     cron_queue.task_done()
