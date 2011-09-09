@@ -28,6 +28,7 @@ class StreamThread(threading.Thread):
     self._stop = threading.Event()
     self.xmpp = xmpp
     self.bare_jid = bare_jid
+    self.blocked_ids = list()
 
   def stop(self):
     self._stop.set()
@@ -57,9 +58,14 @@ class StreamThread(threading.Thread):
           if length:
             return json.loads(user_stream_handler.read(int(length)))
 
-      @debug('refresh_blocked_ids')
-      def refresh_blocked_ids(uid):
-        return api.get_blocking_ids()
+      def refresh_blocked_ids():
+        @debug('refresh_blocked_ids')
+        def wrap():
+          return api.get_blocking_ids()
+
+        result = wrap()
+        if result is not None:
+          self.blocked_ids = result
 
       def check_stop():
         if self.stopped():
@@ -80,7 +86,7 @@ class StreamThread(threading.Thread):
       wait_time_now_index = 0
       last_blocked_ids_update = time()
       refresh_blocked_ids_interval = 3600
-      blocked_ids = refresh_blocked_ids(user['id'])
+      refresh_blocked_ids()
       stream_logger = logging.getLogger('user streaming')
       while True:
         try:
@@ -96,7 +102,7 @@ class StreamThread(threading.Thread):
             check_stop()
             time_now = time()
             if time_now - last_blocked_ids_update >= refresh_blocked_ids_interval:
-              blocked_ids = refresh_blocked_ids(user['id'])
+              refresh_blocked_ids()
               last_blocked_ids_update = time_now
             data = read_data(user_stream_handler)
             if 'event' in data:
@@ -105,10 +111,10 @@ class StreamThread(threading.Thread):
                 if data['event'] == 'follow':
                   title = '@%s is now following @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
                 elif data['event'] == 'block':
-                  blocked_ids = refresh_blocked_ids(user['id'])
+                  refresh_blocked_ids()
                   title = '@%s has blocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
                 elif data['event'] == 'unblock':
-                  blocked_ids = refresh_blocked_ids(user['id'])
+                  refresh_blocked_ids()
                   title = '@%s has unblocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
                 elif data['event'] == 'list_member_added':
                   pass
@@ -126,7 +132,7 @@ class StreamThread(threading.Thread):
                 else:
                   data = None
               else:
-                if data['user']['id_str'] not in blocked_ids and user_timeline & db.MODE_HOME\
+                if data['user']['id_str'] not in self.blocked_ids and user_timeline & db.MODE_HOME\
                    or (user_timeline & db.MODE_MENTION and user_at_screen_name in data['text'])\
                 or data['user']['screen_name'] == user_screen_name:
                   data = twitter.Status(data)
