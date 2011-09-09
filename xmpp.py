@@ -15,6 +15,7 @@ SHORT_COMMANDS = {
   '@': 'reply',
   'r': 'reply',
   'd': 'dm',
+  'ra': 'replyall',
   're': 'retweet',
   'ho': 'home',
   'lt': 'list',
@@ -50,7 +51,7 @@ class XMPPMessageHandler(object):
       access_token_key=self._user.get('access_key'), access_token_secret=self._user.get('access_secret'))
     try:
       result = self.parse_command(msg['body'].rstrip())
-    except twitter.TwitterError, e:
+    except (twitter.TwitterError, TypeError, ValueError), e:
       result = e.message
     if result:
       msg.reply(result).send()
@@ -136,9 +137,44 @@ class XMPPMessageHandler(object):
       else:
         direct_message = self._api.get_direct_message(long_id)
         screen_name = direct_message['sender']['screen_name']
+        long_id = None
       message = u'@%s %s' % (screen_name, ' '.join(content))
       self._api.post_update(message.encode('UTF8'), long_id)
 
+  def func_replyall(self, short_id, *content):
+    long_id, long_id_type = self._util.restore_short_id(short_id)
+    if long_id_type == db.TYPE_STATUS:
+      data = self._api.get_status(long_id)
+      mention_users = [data['user']['screen_name']]
+    else:
+      data = self._api.get_direct_message(long_id)
+      mention_users = [data['sender']['screen_name']]
+      long_id = None
+    if 'entities' in data and 'user_mentions' in data['entities']:
+      for x in data['entities']['user_mentions']:
+        if x['screen_name'] not in mention_users and x['screen_name'] != self._user['screen_name']:
+          mention_users.append(x['screen_name'])
+    message = u'%s %s' % (' '.join(['@' + x for x in mention_users]), ' '.join(content))
+    self._api.post_update(message.encode('UTF8'), long_id)
+
+  def func_rt(self, short_id, *content):
+    long_id, long_id_type = self._util.restore_short_id(short_id)
+    if long_id_type == db.TYPE_STATUS:
+      status = self._api.get_status(long_id)
+      user_msg = ' '.join(content)
+      if user_msg and ord(user_msg[-1]) < 128:
+        user_msg += ' '
+      message = u'%sRT @%s:%s' % (user_msg, status['user']['screen_name'], status['text'])
+      self._api.post_update(message.encode('UTF8'), long_id)
+    else:
+      raise TypeError('Can not RT a direct message.')
+
+  def func_retweet(self, short_id):
+    long_id, long_id_type = self._util.restore_short_id(short_id)
+    if long_id_type == db.TYPE_STATUS:
+      self._api.create_retweet(long_id)
+    else:
+      raise TypeError('Can not retweet a direct message.')
 
   def func_msg(self, short_id_or_long_id):
     long_id, long_id_type = self._util.restore_short_id(short_id_or_long_id)
