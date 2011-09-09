@@ -160,7 +160,7 @@ class XMPPMessageHandler(object):
           long_id = status['in_reply_to_status_id_str']
           try:
             status = self._api.get_status(long_id)
-          except twitter.TwitterNotFoundError:
+          except (twitter.TwitterNotFoundError, twitter.TwitterForbiddenError):
             break
         else:
           break

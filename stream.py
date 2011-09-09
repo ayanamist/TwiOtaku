@@ -132,6 +132,9 @@ class StreamThread(threading.Thread):
                 else:
                   data = None
               else:
+                # It should not save status here, because sqlite only accepts around 60 transactions per second,
+                # and for feature of user streaming, it's easy to overcome this limitation which makes the whole
+                # program more and more slowly, also cron threads will collect the same items at the same time.
                 if data['user']['id_str'] not in self.blocked_ids and user_timeline & db.MODE_HOME\
                    or (user_timeline & db.MODE_MENTION and user_at_screen_name in data['text'])\
                 or data['user']['screen_name'] == user_screen_name:

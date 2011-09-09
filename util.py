@@ -8,10 +8,16 @@ from time import mktime, localtime, strftime
 from email.utils import parsedate
 from xml.sax.saxutils import unescape
 
+try:
+  import ujson as json
+except ImportError:
+  import json
+
 import db
 import twitter
 from config import MAX_ID_LIST_NUM
 
+# decorator for logging
 def debug(logger_name=''):
   def wrap(f):
     def newf(*args, **kwds):
@@ -26,6 +32,27 @@ def debug(logger_name=''):
     return newf
 
   return wrap
+
+# decorator for auto cache status
+def store_status(f):
+  def newf(*args, **kwds):
+    result = f(*args, **kwds)
+    if isinstance(result, list):
+      db.begin_transaction()
+      for x in result:
+        if isinstance(x, twitter.Status):
+          db.add_status(x['id_str'], json.dumps(x))
+      db.commit_transaction()
+    elif isinstance(result, twitter.Status):
+      db.add_status(result['id_str'], json.dumps(result))
+    elif isinstance(result, twitter.Result):
+      db.begin_transaction()
+      for x in result[0]['results']:
+        db.add_status(x['value']['id_str'], json.dumps(x['value']))
+      db.commit_transaction()
+    return result
+
+  return newf
 
 
 class DuplicateError(Exception):
@@ -96,6 +123,8 @@ class Util(object):
             if media['media_url']:
               tmp.replace_indices(media['indices'][0], media['indices'][1], media['media_url'])
         return unicode(tmp)
+      else:
+        return data
 
     if single is None:
       return None

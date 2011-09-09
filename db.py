@@ -25,7 +25,6 @@ DB_PATH = os.path.dirname(__file__) + os.sep + 'twiotaku.db'
 _conn_db = None
 _cache_users = dict()
 _cache_users_count = None
-_forced = False
 
 def init():
   global _conn_db
@@ -97,16 +96,14 @@ def init():
     t = t[0]
     if t in sql:
       del(sql[t])
-  begin_transaction()
   for v in sql.itervalues():
     cursor.execute(v)
-  end_transaction()
   return _conn_db
 
 
 def get_user_from_jid(jid):
   global _cache_users
-  if not _forced and jid in _cache_users:
+  if jid in _cache_users:
     return deepcopy(_cache_users[jid])
   else:
     cursor = _conn_db.cursor()
@@ -146,7 +143,7 @@ def update_user(id=None, jid=None, **kwargs):
 
 def get_users_count():
   global _cache_users_count
-  if not _forced and _cache_users_count is not None:
+  if _cache_users_count is not None:
     return _cache_users_count
   else:
     cursor = _conn_db.cursor()
@@ -202,11 +199,6 @@ def begin_transaction():
   cursor.execute('BEGIN TRANSACTION')
 
 
-def end_transaction():
-  cursor = _conn_db.cursor()
-  cursor.execute('END TRANSACTION')
-
-
 def commit_transaction():
   cursor = _conn_db.cursor()
   cursor.execute('COMMIT')
@@ -235,18 +227,9 @@ def update_long_id_from_short_id(uid, short_id, long_id, single_type):
   cursor.execute(sql, (uid, short_id, long_id, single_type))
 
 
-def set_force(is_force):
-  global _forced
-  _forced = is_force
-
-
-def get_force():
-  return _forced
-
-
 def add_status(id_str, data):
   cursor = _conn_db.cursor()
-  sql = 'INSERT INTO statuses (id_str, data) VALUES(?,?)'
+  sql = 'INSERT OR REPLACE INTO statuses (id_str, json) VALUES(?,?)'
   cursor.execute(sql, (id_str, data))
 
 
@@ -260,5 +243,5 @@ def get_status(id_str):
   cursor = _conn_db.cursor()
   sql = 'SELECT id_str, json FROM statuses WHERE id_str=?'
   for _, data in cursor.execute(sql, (id_str,)):
-    return twitter.Status(json.loads(data))
+    return twitter.Status(json.loads(str(data)))
   return None
