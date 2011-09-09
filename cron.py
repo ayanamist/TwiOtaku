@@ -34,13 +34,15 @@ def cron_start(queues):
 def cron_job(cron_queue):
   @debug('cron')
   def fetch_home():
-    if user_timeline & db.MODE_HOME or user_timeline & db.MODE_MENTION:
-      data = api.get_home_timeline(since_id=user['last_home_id'])
-      if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
-        db.update_user(jid=user_jid, last_home_id=data[0]['id_str'])
-        if not user_timeline & db.MODE_HOME:
+    data = api.get_home_timeline(since_id=user['last_home_id'])
+    if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
+      db.update_user(jid=user_jid, last_home_id=data[0]['id_str'])
+      if not user_timeline & db.MODE_HOME:
+        if user_timeline & db.MODE_MENTION:
           data = [x for x in data if '@%s' % user['screen_name'] in x['text']]
-        return data
+        else:
+          data = [x for x in data if user['screen_name'] == x['user']['screen_name']]
+      return data
 
   @debug('cron')
   def fetch_mention():
