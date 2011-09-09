@@ -1,6 +1,7 @@
 import random
 import time
 import operator
+import re
 from urlparse import parse_qsl
 
 import oauth
@@ -27,8 +28,12 @@ SHORT_COMMANDS = {
   'uf': 'unfav',
   'u': 'user',
   '?': 'help',
-  'h': 'help'
-}
+  'h': 'help',
+  }
+
+_screen_name_regex = r'[a-zA-Z0-9_]+'
+_check_screen_name = lambda screen_name: bool(re.match('^%s$' % _screen_name_regex, screen_name))
+
 # TODO: add all commands back
 class XMPPMessageHandler(object):
   def __init__(self, xmpp):
@@ -43,7 +48,10 @@ class XMPPMessageHandler(object):
     self._util = Util(self._user)
     self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
       access_token_key=self._user.get('access_key'), access_token_secret=self._user.get('access_secret'))
-    result = self.parse_command(msg['body'].rstrip())
+    try:
+      result = self.parse_command(msg['body'].rstrip())
+    except twitter.TwitterError, e:
+      result = e.message
     if result:
       msg.reply(result).send()
 
@@ -61,8 +69,6 @@ class XMPPMessageHandler(object):
         return 'Invalid command.'
       return func(*args[1:])
     else:
-      if len(cmd) > twitter.CHARACTER_LIMIT:
-        return 'Words count %s exceeed %s characters.' % (len(cmd), twitter.CHARACTER_LIMIT)
       if type(cmd) == unicode:
         cmd = cmd.encode('UTF8')
       self._api.post_update(cmd)
@@ -178,3 +184,73 @@ class XMPPMessageHandler(object):
           if len(data) >= MAX_CONVERSATION_NUM:
             break
     self._queue.put(Job(self._jid, data=data, title='Conversation:', reverse=False))
+
+
+  def func_on(self, *args):
+    if args:
+      for a in args:
+        a = a.lower()
+        if a == 'home':
+          self._user['timeline'] |= db.MODE_HOME
+        elif a == 'mention':
+          self._user['timeline'] |= db.MODE_MENTION
+        elif a == 'dm':
+          self._user['timeline'] |= db.MODE_DM
+        elif a == 'list':
+          self._user['timeline'] |= db.MODE_LIST
+        elif a == 'event':
+          self._user['timeline'] |= db.MODE_EVENT
+      self._xmpp.stream_threads[self._bare_jid].user_changed()
+      db.update_user(id=self._user['id'], timeline=self._user['timeline'])
+    modes = []
+    if self._user['timeline'] & db.MODE_LIST:
+      modes.append('list')
+    if self._user['timeline'] & db.MODE_HOME:
+      modes.append('home')
+    if self._user['timeline'] & db.MODE_MENTION:
+      modes.append('mention')
+    if self._user['timeline'] & db.MODE_DM:
+      modes.append('dm')
+    if self._user['timeline'] & db.MODE_EVENT:
+      modes.append('event')
+    modes_str = ', '.join(modes) if modes else 'nothing'
+    return 'You have enabled update for %s.' % modes_str
+
+  def func_off(self, *args):
+    if args:
+      for a in args:
+        a = a.lower()
+        if a == 'home':
+          self._user['timeline'] &= ~db.MODE_HOME
+        elif a == 'mention':
+          self._user['timeline'] &= ~db.MODE_MENTION
+        elif a == 'dm':
+          self._user['timeline'] &= ~db.MODE_DM
+        elif a == 'list':
+          self._user['timeline'] &= ~db.MODE_LIST
+        elif a == 'event':
+          self._user['timeline'] &= ~db.MODE_EVENT
+    else:
+      self._user['timeline'] = db.MODE_NONE
+    db.update_user(self._user['id'], timeline=self._user['timeline'])
+    self._xmpp.stream_threads[self._bare_jid].user_changed()
+    return self.func_on()
+
+  def func_live(self, list_user=None, list_name=None):
+    if list_user:
+      if not list_name:
+        path = list_user.split('/', 1)
+        if len(path) == 1:
+          list_user = self._user['screen_name']
+          list_name = path[0]
+        else:
+          list_user, list_name = path
+      response = self._api.get_list(list_user.encode('UTF8'), list_name.encode('UTF8'))
+      self._user['list_user'] = response['user']['screen_name']
+      self._user['list_id'] = response['id']
+      self._user['list_name'] = response['slug']
+      db.update_user(id=self._user['id'], list_user=self._user['list_user'], list_name=self._user['list_name'],
+        list_id=self._user['list_id'])
+    if self._user['list_user'] and self._user['list_id'] and self._user['list_name']:
+      return 'List update is assigned for %s/%s.' % (self._user['list_user'], self._user['list_name'])
+    return 'Please specify a list first.'
