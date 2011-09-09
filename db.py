@@ -31,6 +31,7 @@ def init():
   if _conn_db:
     return _conn_db
   _conn_db = apsw.Connection(DB_PATH)
+  _conn_db.setbusytimeout(3000) # add a retry timeout 3 seconds for busy handling
   cursor = _conn_db.cursor()
   sql = dict(
     id_lists="""CREATE TABLE "id_lists" (
