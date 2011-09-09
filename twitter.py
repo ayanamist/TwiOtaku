@@ -61,7 +61,7 @@ class Result(list):
   def __init__(self, seq=()):
     super(Result, self).__init__(seq)
     if self:
-      for result in enumerate(self[0]['results']):
+      for result in self[0]['results']:
         result['value'] = Status(result['value'])
 
 
