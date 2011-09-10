@@ -187,6 +187,21 @@ class XMPPMessageHandler(object):
     else:
       raise TypeError('Can not retweet a direct message.')
 
+  def func_del(self, short_id=None):
+    if not short_id:
+      statuses = self._api.get_user_timeline(screen_name=self._user['screen_name'], count=1)
+      if statuses:
+        long_id = statuses[0]['id_str']
+        long_id_type = db.TYPE_STATUS
+      else:
+        raise twitter.TwitterNotFoundError('Not found.')
+    else:
+      long_id, long_id_type = self._util.restore_short_id(short_id)
+    if long_id_type == db.TYPE_STATUS:
+      self._api.destroy_status(long_id)
+    else:
+      self._api.destroy_direct_message(long_id)
+
   def func_dm(self, screen_name_or_short_id_or_page=None, *content):
     if not screen_name_or_short_id_or_page or\
        (screen_name_or_short_id_or_page[0].lower() == 'p' and screen_name_or_short_id_or_page[1:].isdigit()):
