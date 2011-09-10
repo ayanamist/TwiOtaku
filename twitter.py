@@ -158,11 +158,13 @@ class Api(object):
     return Status(self._fetch_url(url, post_data={'id': id}))
 
   @store_status
-  def post_update(self, status, in_reply_to_status_id=None):
+  def post_update(self, status, in_reply_to_status_id=None, include_entities=1):
     url = '%s/statuses/update.json' % self.base_url
     data = {'status': status}
     if in_reply_to_status_id:
       data['in_reply_to_status_id'] = in_reply_to_status_id
+    if include_entities:
+      data['include_entities'] = include_entities
     return Status(self._fetch_url(url, post_data=data))
 
   def get_user(self, user):
@@ -238,10 +240,12 @@ class Api(object):
     return Status(self._fetch_url(url, post_data={'id': id}))
 
   @store_status
-  def get_favorites(self, user=None, page=None):
+  def get_favorites(self, user=None, page=None, include_entities=1):
     parameters = dict()
     if page:
       parameters['page'] = page
+    if include_entities:
+      parameters['include_entities'] = include_entities
     if user:
       url = '%s/favorites/%s.json' % (self.base_url, user)
     else:
@@ -263,23 +267,28 @@ class Api(object):
     return [Status(x) for x in self._fetch_url(url, parameters=parameters)]
 
   @store_status
-  def create_retweet(self, id):
+  def create_retweet(self, id, include_entities=1):
     url = '%s/statuses/retweet/%s.json' % (self.base_url, id)
-    return Status(self._fetch_url(url, post_data={'id': id}))
+    parameters = dict()
+    if include_entities:
+      parameters['include_entities'] = include_entities
+    return Status(self._fetch_url(url, post_data={'id': id}, parameters=parameters))
 
-  def get_lists(self, user, cursor=-1):
-    url = '%s/%s/lists.json' % (self.base_url, user)
-    parameters = {'cursor': cursor}
+  def get_lists(self, screen_name, cursor=-1):
+    url = '%s/lists.json' % self.base_url
+    parameters = {'cursor': cursor, 'screen_name': screen_name}
     return self._fetch_url(url, parameters=parameters)
 
-  def get_list(self, user, id):
-    url = '%s/%s/lists/%s.json' % (self.base_url, user, id)
-    return self._fetch_url(url)
+  def get_list(self, screen_name, slug):
+    url = '%s/lists/show.json' % self.base_url
+    parameters = {'slug': slug, 'owner_screen_name': screen_name}
+    return self._fetch_url(url, parameters=parameters)
 
   @store_status
-  def get_list_statuses(self, user, id, since_id=None, max_id=None, page=None, include_entities=1):
-    url = '%s/%s/lists/%s/statuses.json' % (self.base_url, user, id)
-    parameters = dict()
+  def get_list_statuses(self, screen_name, slug, since_id=None, max_id=None, page=None, include_entities=1,
+                        include_rts=1):
+    url = '%s/lists/statuses.json' % self.base_url
+    parameters = {'slug': slug, 'owner_screen_name': screen_name}
     if since_id:
       parameters['since_id'] = since_id
     if max_id:
@@ -288,6 +297,8 @@ class Api(object):
       parameters['page'] = page
     if include_entities:
       parameters['include_entities'] = include_entities
+    if include_rts:
+      parameters['include_rts'] = include_rts
     return [Status(x) for x in self._fetch_url(url, parameters=parameters)]
 
   def create_block(self, user):

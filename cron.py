@@ -65,7 +65,8 @@ def cron_job(cron_queue):
     if user_timeline & db.MODE_LIST:
       if user['list_user'] and user['list_id']:
         try:
-          data = api.get_list_statuses(user=user['list_user'], id=user['list_id'], since_id=user['last_list_id'])
+          data = api.get_list_statuses(screen_name=user['list_user'], slug=user['list_id'],
+            since_id=user['last_list_id'])
         except twitter.TwitterNotFoundError:
           user['timeline'] &= ~db.MODE_LIST
           db.update_user(id=user['id'], timeline=user['timeline'])

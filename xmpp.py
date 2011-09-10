@@ -124,11 +124,22 @@ class XMPPMessageHandler(object):
       db.add_invite_code(invite_code, create_time)
       return 'You have generated a new invite code which is available for %d days:\n%s' % (expire_days, invite_code)
 
+  def func_list(self, list_user_name, page=1):
+    path = list_user_name.split('/', 1)
+    if len(path) == 1:
+      list_user = self._user['screen_name']
+      list_name = path[0]
+    else:
+      list_user, list_name = path
+    page = int(page)
+    statuses = self._api.get_list_statuses(list_user, list_name, page=page)
+    self._queue.put(Job(self._jid, data=statuses, title='List %s Statuses: Page %d' % (list_user_name, page)))
+
   def func_reply(self, short_id_or_page=None, *content):
     if short_id_or_page is None or (short_id_or_page[0].lower() == 'p' and short_id_or_page[1:].isdigit()):
       page = int(short_id_or_page[1:]) if short_id_or_page else 1
       statuses = self._api.get_mentions(page=page)
-      self._queue.put(Job(self._jid, data=statuses, title='Mentions: Page %s' % page))
+      self._queue.put(Job(self._jid, data=statuses, title='Mentions: Page %d' % page))
     else:
       long_id, long_id_type = self._util.restore_short_id(short_id_or_page)
       if long_id_type == db.TYPE_STATUS:
@@ -241,7 +252,6 @@ class XMPPMessageHandler(object):
             break
     self._queue.put(Job(self._jid, data=data, title='Conversation:', reverse=False))
 
-
   def func_on(self, *args):
     if args:
       for a in args:
@@ -309,4 +319,3 @@ class XMPPMessageHandler(object):
     if self._user['list_user'] and self._user['list_id'] and self._user['list_name']:
       return 'List update is assigned for %s/%s.' % (self._user['list_user'], self._user['list_name'])
     return 'Please specify a list as screen_name/list_name format first.'
-
