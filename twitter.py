@@ -199,17 +199,15 @@ class Api(object):
       parameters['count'] = count
     return [DirectMessage(x) for x in self._fetch_url(url, parameters=parameters)]
 
-  def get_direct_message(self, id):
-    data = self.get_direct_messages(max_id=id, count=1)
+  def get_direct_message(self, id, include_entities=1):
+    data = self.get_direct_messages(max_id=id, count=1, include_entities=include_entities)
     if not data:
       raise TwitterNotFoundError('Not found.')
     return data[0]
 
-  def post_direct_message(self, user, text, include_entities=1):
+  def post_direct_message(self, user, text):
     url = '%s/direct_messages/new.json' % self.base_url
     data = {'text': text, 'user': user}
-    if include_entities:
-      data['include_entities'] = include_entities
     return DirectMessage(self._fetch_url(url, post_data=data))
 
   def destroy_direct_message(self, id, include_entities=1):

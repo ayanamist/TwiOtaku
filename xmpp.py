@@ -126,8 +126,8 @@ class XMPPMessageHandler(object):
 
   def func_reply(self, short_id_or_page=None, *content):
     if short_id_or_page is None or (short_id_or_page[0].lower() == 'p' and short_id_or_page[1:].isdigit()):
-      page = short_id_or_page[1:] if short_id_or_page else '1'
-      statuses = self._api.get_mentions(page=int(page))
+      page = int(short_id_or_page[1:]) if short_id_or_page else 1
+      statuses = self._api.get_mentions(page=page)
       self._queue.put(Job(self._jid, data=statuses, title='Mentions: Page %s' % page))
     else:
       long_id, long_id_type = self._util.restore_short_id(short_id_or_page)
@@ -175,6 +175,26 @@ class XMPPMessageHandler(object):
       self._api.create_retweet(long_id)
     else:
       raise TypeError('Can not retweet a direct message.')
+
+  def func_dm(self, screen_name_or_short_id_or_page=None, *content):
+    if not screen_name_or_short_id_or_page or\
+       (screen_name_or_short_id_or_page[0].lower() == 'p' and screen_name_or_short_id_or_page[1:].isdigit()):
+      page = int(screen_name_or_short_id_or_page[1:]) if screen_name_or_short_id_or_page else 1
+      statuses = self._api.get_direct_messages(page=page)
+      self._queue.put(Job(self._jid, data=statuses, title='Direct Messages: Page %s' % page))
+    else:
+      if screen_name_or_short_id_or_page and screen_name_or_short_id_or_page[0] == '#':
+        long_id, long_id_type = self._util.restore_short_id(screen_name_or_short_id_or_page)
+        if long_id_type == db.TYPE_STATUS:
+          status = self._api.get_status(long_id)
+          screen_name = status['user']['screen_name']
+        else:
+          direct_message = self._api.get_direct_message(long_id)
+          screen_name = direct_message['sender']['screen_name']
+      else:
+        screen_name = screen_name_or_short_id_or_page
+      message = ' '.join(content)
+      self._api.post_direct_message(screen_name.encode('UTF8'), message.encode('UTF8'))
 
   def func_msg(self, short_id_or_long_id):
     long_id, long_id_type = self._util.restore_short_id(short_id_or_long_id)
