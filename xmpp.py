@@ -292,15 +292,14 @@ class XMPPMessageHandler(object):
     self._xmpp.stream_threads[self._bare_jid].user_changed()
     return self.func_on()
 
-  def func_live(self, list_user=None, list_name=None):
-    if list_user:
-      if not list_name:
-        path = list_user.split('/', 1)
-        if len(path) == 1:
-          list_user = self._user['screen_name']
-          list_name = path[0]
-        else:
-          list_user, list_name = path
+  def func_live(self, list_user_name=None):
+    if list_user_name:
+      path = list_user_name.split('/', 1)
+      if len(path) == 1:
+        list_user = self._user['screen_name']
+        list_name = path[0]
+      else:
+        list_user, list_name = path
       response = self._api.get_list(list_user.encode('UTF8'), list_name.encode('UTF8'))
       self._user['list_user'] = response['user']['screen_name']
       self._user['list_id'] = response['id']
@@ -309,4 +308,5 @@ class XMPPMessageHandler(object):
         list_id=self._user['list_id'])
     if self._user['list_user'] and self._user['list_id'] and self._user['list_name']:
       return 'List update is assigned for %s/%s.' % (self._user['list_user'], self._user['list_name'])
-    return 'Please specify a list first.'
+    return 'Please specify a list as screen_name/list_name format first.'
+
