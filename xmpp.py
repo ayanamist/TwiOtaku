@@ -122,7 +122,7 @@ class XMPPMessageHandler(object):
       invite_code = generate_invite_code()
       create_time = int(time.time())
       db.add_invite_code(invite_code, create_time)
-      return 'You have generated a new invite code which is available for %d days:\n%s' % (expire_days, invite_code)
+      return 'You have generated a new invite code which is available for %d days: %s' % (expire_days, invite_code)
 
   def func_list(self, list_user_name, page=1):
     path = list_user_name.split('/', 1)
