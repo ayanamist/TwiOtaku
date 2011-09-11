@@ -380,3 +380,6 @@ class XMPPMessageHandler(object):
     if self._user['list_user'] and self._user['list_id'] and self._user['list_name']:
       return 'List update is assigned for %s/%s.' % (self._user['list_user'], self._user['list_name'])
     return 'Please specify a list as screen_name/list_name format first.'
+
+  def func_help(self):
+    return 'Please refer to following url to get more help.\nhttp://code.google.com/p/twiotaku/wiki/CommandsReferrence'
