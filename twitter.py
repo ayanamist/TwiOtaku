@@ -247,14 +247,14 @@ class Api(object):
     return Status(self._fetch_url(url, post_data={'id': id}))
 
   @store_status
-  def get_favorites(self, user=None, page=None, include_entities=1):
+  def get_favorites(self, screen_name=None, page=None, include_entities=1):
     parameters = dict()
     if page:
       parameters['page'] = page
     if include_entities:
       parameters['include_entities'] = include_entities
-    if user:
-      url = '%s/favorites/%s.json' % (self.base_url, user)
+    if screen_name:
+      url = '%s/favorites/%s.json' % (self.base_url, screen_name)
     else:
       url = '%s/favorites.json' % self.base_url
     return [Status(x) for x in self._fetch_url(url, parameters=parameters)]

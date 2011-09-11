@@ -177,6 +177,25 @@ class XMPPMessageHandler(object):
   def func_me(self, page=1):
     self.func_timeline(self._user['screen_name'], page)
 
+  def func_fav(self, short_id_or_page=1):
+    if short_id_or_page and short_id_or_page[0] == '#':
+      long_id, long_id_type = self._util.restore_short_id(short_id_or_page)
+      if long_id_type == db.TYPE_DM:
+        raise TypeError('Can not create a direct message as favourite.')
+      self._api.create_favorite(long_id)
+      return 'Successfully create %s as favourite.' % str(long_id)
+    else:
+      page = int(short_id_or_page)
+      statuses = self._api.get_favorites(self._user['screen_name'], page=page)
+      self._queue.put(Job(self._jid, data=statuses, title='Favourite: Page %d' % page))
+
+  def func_unfav(self, short_id):
+    long_id, long_id_type = self._util.restore_short_id(short_id)
+    if long_id_type == db.TYPE_DM:
+      raise TypeError('Can not delete a direct message as favourite.')
+    self._api.destroy_favorite(long_id)
+    return 'Successfully delete %s as favourite.' % str(long_id)
+
   def func_reply(self, short_id_or_page=None, *content):
     if not content:
       page = int(short_id_or_page) if short_id_or_page else 1
