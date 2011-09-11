@@ -15,11 +15,11 @@ except ImportError:
   import json
 
 import db
-from xmpp import XMPPMessageHandler
-from cron import cron_start
-from stream import StreamThread
-from worker import worker
 from config import XMPP_USERNAME, XMPP_PASSWORD
+from core.xmpp import XMPPMessageHandler
+from core.cron import cron_start
+from core.stream import StreamThread
+from core.worker import worker
 
 # TODO: implement i18n support
 class XMPPBot(sleekxmpp.ClientXMPP):

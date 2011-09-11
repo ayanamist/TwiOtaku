@@ -8,10 +8,10 @@ try:
 except ImportError:
   import json
 
-import oauth
 import db
+import oauth
 from urlfetch import fetch
-from util import store_status
+from decorators import store_status
 
 CHARACTER_LIMIT = 140
 

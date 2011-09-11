@@ -10,18 +10,7 @@ except ImportError:
 
 import twitter
 
-MODE_NONE = 0
-MODE_DM = 1
-MODE_MENTION = 2
-MODE_HOME = 4
-MODE_LIST = 8
-MODE_EVENT = 16
-
-TYPE_STATUS = 0
-TYPE_DM = 1
-
-DB_PATH = os.path.dirname(__file__) + os.sep + 'twiotaku.db'
-
+_db_path = os.path.abspath(os.path.dirname(__file__) + os.sep + '..' + os.sep + 'data' + os.sep + 'twiotaku.db')
 _conn_db = None
 _cache_users = dict()
 _cache_users_count = None
@@ -30,7 +19,7 @@ def init():
   global _conn_db
   if _conn_db:
     return _conn_db
-  _conn_db = apsw.Connection(DB_PATH)
+  _conn_db = apsw.Connection(_db_path)
   _conn_db.setbusytimeout(3000) # add a retry timeout 3 seconds for busy handling
   cursor = _conn_db.cursor()
   sql = dict(

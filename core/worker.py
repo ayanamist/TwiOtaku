@@ -1,5 +1,6 @@
 import db
-from util import Util, debug
+from lib.util import Util
+from lib.decorators import debug
 
 class Job(object):
   def __init__(self, jid, data=None, title=None, reverse=True, allow_duplicate=True, include_reply=False, always=True):

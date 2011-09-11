@@ -10,10 +10,10 @@ except ImportError:
   import json
 
 import db
-import twitter
-from worker import Job
-from util import debug
 from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
+from worker import Job
+from lib import twitter
+from lib.decorators import debug
 
 class ThreadStop(Exception):
   pass

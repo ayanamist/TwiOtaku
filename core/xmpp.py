@@ -5,12 +5,12 @@ import re
 from urlparse import parse_qsl
 from email.utils import parsedate
 
-import oauth
-import twitter
 import db
-from util import Util, debug
-from worker import Job
 from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, MAX_CONVERSATION_NUM, ADMIN_USERS
+from worker import Job
+from lib import oauth, twitter
+from lib.util import Util
+from lib.decorators import debug
 
 SHORT_COMMANDS = {
   '@': 'reply',

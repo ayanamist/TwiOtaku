@@ -3,10 +3,10 @@ from threading import Thread
 from Queue import Queue, Empty
 
 import db
-import twitter
-from worker import Job
-from util import debug
 from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
+from worker import Job
+from lib import twitter
+from lib.decorators import debug
 
 def cron_start(queues):
   cron_queue = Queue()

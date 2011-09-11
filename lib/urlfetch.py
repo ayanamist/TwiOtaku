@@ -18,4 +18,5 @@ def fetch(url, method='GET', body=None, headers=None, retries=3, redirect=True, 
     else:
       pool = HTTPConnectionPool(host, port=port)
     _pool[hash_result] = pool
-  return pool.urlopen(url=url, method=method, body=body, headers=headers, retries=retries, redirect=redirect, assert_same_host=assert_same_host)
+  return pool.urlopen(url=url, method=method, body=body, headers=headers, retries=retries, redirect=redirect,
+    assert_same_host=assert_same_host)
