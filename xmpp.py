@@ -313,6 +313,18 @@ class XMPPMessageHandler(object):
         raise twitter.TwitterNotFoundError('Not found.')
     self._queue.put(Job(self._jid, data=data, title='Conversation:', reverse=False))
 
+  def func_block(self, screen_name):
+    self._api.create_block(screen_name)
+    return 'Successfully block %s.' % screen_name
+
+  def func_unblock(self, screen_name):
+    self._api.destroy_block(screen_name)
+    return 'Successfully unblock %s.' % screen_name
+
+  def func_spam(self, screen_name):
+    self._api.report_spam(screen_name)
+    return 'Successfully report %s as spam.' % screen_name
+
   def func_on(self, *args):
     if args:
       for a in args:

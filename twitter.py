@@ -308,17 +308,17 @@ class Api(object):
       parameters['include_rts'] = include_rts
     return [Status(x) for x in self._fetch_url(url, parameters=parameters)]
 
-  def create_block(self, user):
+  def create_block(self, screen_name):
     url = '%s/blocks/create.json' % self.base_url
-    return self._fetch_url(url, parameters={'screen_name': user}, http_method='POST')
+    return self._fetch_url(url, parameters={'screen_name': screen_name}, http_method='POST')
 
-  def report_spam(self, user):
+  def report_spam(self, screen_name):
     url = '%s/report_spam.json' % self.base_url
-    return self._fetch_url(url, parameters={'screen_name': user}, http_method='POST')
+    return self._fetch_url(url, parameters={'screen_name': screen_name}, http_method='POST')
 
-  def destroy_block(self, user):
+  def destroy_block(self, screen_name):
     url = '%s/blocks/destroy.json' % self.base_url
-    return self._fetch_url(url, parameters={'screen_name': user}, http_method='POST')
+    return self._fetch_url(url, parameters={'screen_name': screen_name}, http_method='POST')
 
   def get_blocking_ids(self, stringify_ids=True):
     parameters = dict()
@@ -379,8 +379,8 @@ class Api(object):
         raise TwitterForbiddenError(data['error'])
       if status == 404:
         raise TwitterNotFoundError(data['error'])
-      if status == 500:
-        raise TwitterInternalServerError(data['error'])
+      if status >= 500:
+        raise TwitterInternalServerError('%d: %s' % (status, data['error']))
       raise TwitterError(data['error'])
 
   def _fetch_url(self, url, post_data=None, parameters=None, http_method='GET'):
@@ -410,7 +410,7 @@ class Api(object):
     try:
       json_data = json.loads(content)
     except ValueError:
-      raise TwitterInternalServerError('Internal Server Error')
+      raise TwitterInternalServerError('%d: Internal Server Error' % response.status)
     self._check_for_twitter_error(json_data, response.status)
     return json_data
 
