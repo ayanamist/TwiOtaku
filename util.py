@@ -107,10 +107,7 @@ class Util(object):
     self._user = user
 
   @staticmethod
-  def parse_text(text):
-    return unescape(text).replace('\r\n', '\n').replace('\r', '\n')
-
-  def parse_single(self, single):
+  def parse_text(data):
     def parse_entities(data):
       if 'entities' in data:
         tmp = ostring(data['text'])
@@ -126,6 +123,11 @@ class Util(object):
       else:
         return data
 
+    data['text'] = unescape(data['text'])
+    return parse_entities(data).replace('\r\n', '\n').replace('\r', '\n')
+
+
+  def parse_single(self, single):
     if single is None:
       return None
     msg_dict = dict()
@@ -148,7 +150,7 @@ class Util(object):
       else:
         msg_dict['id_str'] = single['id_str']
         msg_dict['shortid'] = '#%s=%s' % (short_id, short_id_alpha)
-        msg_dict['content'] = Util.parse_text(parse_entities(single))
+        msg_dict['content'] = Util.parse_text(single)
         text = u'%(username)s: %(content)s\n%(time)s [%(id_str)s%(shortid)s] via %(source)s' % msg_dict
       if 'in_reply_to_status' in single and isinstance(single['in_reply_to_status'], twitter.Status):
         old_allow_duplicate = self.allow_duplicate
@@ -161,7 +163,7 @@ class Util(object):
       msg_dict['username'] = single['sender']['screen_name']
       t += single['sender']['utc_offset']
       msg_dict['time'] = strftime('%Y-%m-%d %H:%M:%S', localtime(t))
-      msg_dict['content'] = Util.parse_text(parse_entities(single))
+      msg_dict['content'] = Util.parse_text(single)
       text = u'Direct Message:\n%(username)s: %(content)s\n%(time)s [%(shortid)s]' % msg_dict
     else:
       raise TypeError('Not a valid Status or Direct Message.')

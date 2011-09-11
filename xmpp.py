@@ -198,9 +198,11 @@ class XMPPMessageHandler(object):
     else:
       long_id, long_id_type = self._util.restore_short_id(short_id)
     if long_id_type == db.TYPE_STATUS:
-      self._api.destroy_status(long_id)
+      status = self._api.destroy_status(long_id)
+      return 'Status deleted: %s' % Util.parse_text(status)
     else:
-      self._api.destroy_direct_message(long_id)
+      dm = self._api.destroy_direct_message(long_id)
+      return 'Direct message to %s deleted: %s' % (dm['recipient_screen_name'], Util.parse_text(dm))
 
   def func_dm(self, screen_name_or_short_id_or_page=None, *content):
     if not screen_name_or_short_id_or_page or\
