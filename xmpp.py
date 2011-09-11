@@ -158,6 +158,7 @@ class XMPPMessageHandler(object):
       texts.append('Bio: %s' % twitter_user['description'])
     return '\n'.join(texts)
 
+  # TODO: more powerful list commands https://code.google.com/p/twi-meido/issues/detail?id=20
   def func_list(self, list_user_name, page=1):
     path = list_user_name.split('/', 1)
     if len(path) == 1:
@@ -213,6 +214,7 @@ class XMPPMessageHandler(object):
       status = self._api.post_update(message.encode('UTF8'), long_id)
       self._queue.put(Job(self._jid, data=status))
 
+  # TODO: https://code.google.com/p/twi-meido/issues/detail?id=9 use comma to seperate several tweets.
   def func_replyall(self, short_id, *content):
     long_id, long_id_type = self._util.restore_short_id(short_id)
     if long_id_type == db.TYPE_STATUS:

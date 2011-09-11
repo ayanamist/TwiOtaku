@@ -1,4 +1,4 @@
-#!/usr/bin/env python26
+#!/usr/bin/env python
 import sys
 import platform
 import signal
@@ -21,6 +21,7 @@ from stream import StreamThread
 from worker import worker
 from config import XMPP_USERNAME, XMPP_PASSWORD
 
+# TODO: implement i18n support
 class XMPPBot(sleekxmpp.ClientXMPP):
   def __init__(self):
     self.worker_queues = dict()
