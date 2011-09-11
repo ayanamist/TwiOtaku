@@ -41,7 +41,7 @@ def cron_job(cron_queue):
         if user_timeline & db.MODE_MENTION:
           data = [x for x in data if '@%s' % user['screen_name'] in x['text']]
         else:
-          data = [x for x in data if user['screen_name'] == x['user']['screen_name']]
+          data = list()
       return data
 
   @debug('cron')

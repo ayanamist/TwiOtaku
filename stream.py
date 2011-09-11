@@ -167,8 +167,7 @@ class StreamThread(threading.Thread):
               # program more and more slowly, also cron threads will collect the same items at the same time.
               user_at_screen_name = '@%s' % self.user['screen_name']
               if data['user']['id_str'] not in self.blocked_ids and self.user['timeline'] & db.MODE_HOME\
-                 or (self.user['timeline'] & db.MODE_MENTION and user_at_screen_name in data['text'])\
-              or data['user']['screen_name'] == self.user['screen_name']:
+              or (self.user['timeline'] & db.MODE_MENTION and user_at_screen_name in data['text']):
                 data = twitter.Status(data)
                 if user_at_screen_name in data['text'] and 'in_reply_to_status_id_str' in data:
                   try:

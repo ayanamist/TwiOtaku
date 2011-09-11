@@ -71,9 +71,8 @@ class XMPPMessageHandler(object):
         return 'Invalid command.'
       return func(*args[1:])
     else:
-      if type(cmd) == unicode:
-        cmd = cmd.encode('UTF8')
-      self._api.post_update(cmd)
+      status = self._api.post_update(cmd.encode('UTF8'))
+      self._queue.put(Job(self._jid, data=status))
 
   def func_oauth(self):
     consumer = oauth.Consumer(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET)
@@ -211,7 +210,8 @@ class XMPPMessageHandler(object):
         screen_name = direct_message['sender']['screen_name']
         long_id = None
       message = u'@%s %s' % (screen_name, ' '.join(content))
-      self._api.post_update(message.encode('UTF8'), long_id)
+      status = self._api.post_update(message.encode('UTF8'), long_id)
+      self._queue.put(Job(self._jid, data=status))
 
   def func_replyall(self, short_id, *content):
     long_id, long_id_type = self._util.restore_short_id(short_id)
@@ -227,7 +227,8 @@ class XMPPMessageHandler(object):
         if x['screen_name'] not in mention_users and x['screen_name'] != self._user['screen_name']:
           mention_users.append(x['screen_name'])
     message = u'%s %s' % (' '.join(['@' + x for x in mention_users]), ' '.join(content))
-    self._api.post_update(message.encode('UTF8'), long_id)
+    status = self._api.post_update(message.encode('UTF8'), long_id)
+    self._queue.put(Job(self._jid, data=status))
 
   def func_rt(self, short_id, *content):
     long_id, long_id_type = self._util.restore_short_id(short_id)
@@ -237,14 +238,16 @@ class XMPPMessageHandler(object):
       if user_msg and ord(user_msg[-1]) < 128:
         user_msg += ' '
       message = u'%sRT @%s:%s' % (user_msg, status['user']['screen_name'], status['text'])
-      self._api.post_update(message.encode('UTF8'), long_id)
+      status = self._api.post_update(message.encode('UTF8'), long_id)
+      self._queue.put(Job(self._jid, data=status))
     else:
       raise TypeError('Can not RT a direct message.')
 
   def func_retweet(self, short_id):
     long_id, long_id_type = self._util.restore_short_id(short_id)
     if long_id_type == db.TYPE_STATUS:
-      self._api.create_retweet(long_id)
+      status = self._api.create_retweet(long_id)
+      self._queue.put(Job(self._jid, data=status))
     else:
       raise TypeError('Can not retweet a direct message.')
 
@@ -282,7 +285,9 @@ class XMPPMessageHandler(object):
       else:
         screen_name = screen_name_or_short_id_or_page
       message = ' '.join(content)
-      self._api.post_direct_message(screen_name.encode('UTF8'), message.encode('UTF8'))
+      dm = self._api.post_direct_message(screen_name.encode('UTF8'), message.encode('UTF8'))
+      self._queue.put(Job(self._jid, data=dm))
+
 
   def func_msg(self, short_id_or_long_id):
     long_id, long_id_type = self._util.restore_short_id(short_id_or_long_id)

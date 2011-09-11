@@ -156,7 +156,6 @@ class Api(object):
     parameters = dict()
     if include_entities:
       parameters['include_entities'] = include_entities
-    db.delete_status(id)
     url = '%s/statuses/destroy/%s.json' % (self.base_url, id)
     return Status(self._fetch_url(url, post_data={'id': id}))
 
