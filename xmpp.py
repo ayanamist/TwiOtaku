@@ -185,7 +185,7 @@ class XMPPMessageHandler(object):
       return 'Successfully create %s as favourite.' % str(long_id)
     else:
       page = int(short_id_or_page)
-      statuses = self._api.get_favorites(self._user['screen_name'], page=page)
+      statuses = self._api.get_favorites(page=page)
       self._queue.put(Job(self._jid, data=statuses, title='Favourite: Page %d' % page))
 
   def func_unfav(self, short_id):
