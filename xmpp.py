@@ -3,6 +3,7 @@ import time
 import operator
 import re
 from urlparse import parse_qsl
+from email.utils import parsedate
 
 import oauth
 import twitter
@@ -123,6 +124,40 @@ class XMPPMessageHandler(object):
       create_time = int(time.time())
       db.add_invite_code(invite_code, create_time)
       return 'You have generated a new invite code which is available for %d days: %s' % (expire_days, invite_code)
+
+  def func_user(self, screen_name=None):
+    if screen_name is None:
+      screen_name = self._user['screen_name']
+    twitter_user = self._api.get_user(screen_name=screen_name)
+    texts = ['User @%s (%s):' % (twitter_user['screen_name'], twitter_user['name'])]
+    follow_str = ''
+    if twitter_user['protected']:
+      follow_str = 'Protected user. '
+    if twitter_user['following']:
+      follow_str += 'You are following.'
+    else:
+      if twitter_user['follow_request_sent']:
+        follow_str += 'You have sent follow request.'
+      else:
+        follow_str += 'You are not following.'
+    texts.append(follow_str)
+    avatar_url = twitter_user['profile_image_url_https']
+    i = avatar_url.rfind('_normal.')
+    if i != -1:
+      avatar_url = avatar_url[:i] + avatar_url[i + 7:]
+    texts.append('Avatar: %s' % avatar_url)
+    if twitter_user['url']:
+      texts.append('Web: %s' % twitter_user['url'])
+    if twitter_user['location']:
+      texts.append('Location: %s' % twitter_user['location'])
+    texts.append('Following: %d' % twitter_user['friends_count'])
+    texts.append('Followers: %d' % twitter_user['followers_count'])
+    texts.append('Tweets: %d' % twitter_user['statuses_count'])
+    texts.append('Tweets per day: %.2f' % (twitter_user['statuses_count'] * 86400 /
+                                           (time.time() - time.mktime(parsedate(twitter_user['created_at'])))))
+    if twitter_user['description']:
+      texts.append('Bio: %s' % twitter_user['description'])
+    return '\n'.join(texts)
 
   def func_list(self, list_user_name, page=1):
     path = list_user_name.split('/', 1)

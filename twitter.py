@@ -170,9 +170,12 @@ class Api(object):
       data['include_entities'] = include_entities
     return Status(self._fetch_url(url, post_data=data))
 
-  def get_user(self, user):
-    url = '%s/users/show.json?screen_name=%s' % (self.base_url, user)
-    return self._fetch_url(url)
+  def get_user(self, screen_name, include_entities=1):
+    url = '%s/users/show.json' % self.base_url
+    parameters = {'screen_name': screen_name}
+    if include_entities:
+      parameters['include_entities'] = include_entities
+    return self._fetch_url(url, parameters=parameters)
 
   def get_direct_messages(self, since_id=None, page=None, include_entities=1, max_id=None, count=None):
     url = '%s/direct_messages.json' % self.base_url
