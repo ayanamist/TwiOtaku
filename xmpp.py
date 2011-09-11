@@ -85,10 +85,10 @@ class XMPPMessageHandler(object):
     return 'Please visit below url to get PIN code:\n%s\nthen you should use "-bind PIN" command to actually bind your Twitter.' % redirect_url
 
   def func_bind(self, pin_code):
-    if type(pin_code) is unicode:
-      pin_code = pin_code.encode('UTF8')
     if self._user['access_key']:
       token = oauth.Token(self._user['access_key'])
+      if type(pin_code) is unicode:
+        pin_code = pin_code.encode('UTF8')
       token.set_verifier(pin_code)
       consumer = oauth.Consumer(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET)
       client = oauth.Client(consumer, token)
