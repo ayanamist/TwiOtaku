@@ -209,9 +209,10 @@ class Api(object):
 
   def get_direct_message(self, id, include_entities=1):
     data = self.get_direct_messages(max_id=id, count=1, include_entities=include_entities)
-    if not data:
+    if data and data[0]['id_str'] == str(id):
+      return data[0]
+    else:
       raise TwitterNotFoundError('Not found.')
-    return data[0]
 
   def post_direct_message(self, user, text):
     url = '%s/direct_messages/new.json' % self.base_url

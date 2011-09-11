@@ -301,13 +301,16 @@ class XMPPMessageHandler(object):
           data.insert(0, status)
     else:
       all_dms = self._api.get_direct_messages(max_id=long_id, count=50)
-      all_dms.extend(self._api.get_sent_direct_messages(max_id=long_id, count=50))
-      for dm in sorted(all_dms, key=operator.itemgetter('id'), reverse=True):
-        if dm['recipient_screen_name'] == self._user['screen_name']\
-        or dm['sender_screen_name'] == self._user['screen_name']:
-          data.insert(0, dm)
-          if len(data) >= MAX_CONVERSATION_NUM:
-            break
+      if all_dms and all_dms[0]['id_str'] == str(long_id):
+        all_dms.extend(self._api.get_sent_direct_messages(max_id=long_id, count=50))
+        for dm in sorted(all_dms, key=operator.itemgetter('id'), reverse=True):
+          if dm['recipient_screen_name'] == self._user['screen_name']\
+          or dm['sender_screen_name'] == self._user['screen_name']:
+            data.insert(0, dm)
+            if len(data) >= MAX_CONVERSATION_NUM:
+              break
+      else:
+        raise twitter.TwitterNotFoundError('Not found.')
     self._queue.put(Job(self._jid, data=data, title='Conversation:', reverse=False))
 
   def func_on(self, *args):
