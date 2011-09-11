@@ -349,6 +349,26 @@ class XMPPMessageHandler(object):
     self._api.report_spam(screen_name)
     return 'Successfully report %s as spam.' % screen_name
 
+  def func_follow(self, screen_name):
+    twitter_user = self._api.create_friendship(screen_name)
+    if twitter_user.get('protected') and twitter_user.get('follow_request_sent'):
+      return 'Have sent follow request to %s' % screen_name
+    else:
+      return 'Successfully follow %s.' % screen_name
+
+  def func_unfollow(self, screen_name):
+    self._api.destroy_friendship(screen_name)
+    return 'Successfully unfollow %s.' % screen_name
+
+  def func_if(self, user_a, user_b=None):
+    if user_b is None:
+      user_b = self._user['screen_name']
+    result = self._api.exists_friendship(user_a=user_a, user_b=user_b)
+    if result:
+      return '%s is already following %s.' % (user_a, user_b)
+    else:
+      return '%s is not following %s yet.' % (user_a, user_b)
+
   def func_on(self, *args):
     if args:
       for a in args:
