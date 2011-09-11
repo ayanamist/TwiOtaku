@@ -135,9 +135,16 @@ class XMPPMessageHandler(object):
     statuses = self._api.get_list_statuses(list_user, list_name, page=page)
     self._queue.put(Job(self._jid, data=statuses, title='List %s Statuses: Page %d' % (list_user_name, page)))
 
+  def func_timeline(self, screen_name, page=1):
+    statuses = self._api.get_user_timeline(screen_name=screen_name, page=page)
+    self._queue.put(Job(self._jid, data=statuses, title='User %s Timeline: Page %d' % (screen_name, page)))
+
+  def func_me(self, page=1):
+    self.func_timeline(self._user['screen_name'], page)
+
   def func_reply(self, short_id_or_page=None, *content):
-    if short_id_or_page is None or (short_id_or_page[0].lower() == 'p' and short_id_or_page[1:].isdigit()):
-      page = int(short_id_or_page[1:]) if short_id_or_page else 1
+    if not content:
+      page = int(short_id_or_page) if short_id_or_page else 1
       statuses = self._api.get_mentions(page=page)
       self._queue.put(Job(self._jid, data=statuses, title='Mentions: Page %d' % page))
     else:
@@ -205,9 +212,8 @@ class XMPPMessageHandler(object):
       return 'Direct message to %s deleted: %s' % (dm['recipient_screen_name'], Util.parse_text(dm))
 
   def func_dm(self, screen_name_or_short_id_or_page=None, *content):
-    if not screen_name_or_short_id_or_page or\
-       (screen_name_or_short_id_or_page[0].lower() == 'p' and screen_name_or_short_id_or_page[1:].isdigit()):
-      page = int(screen_name_or_short_id_or_page[1:]) if screen_name_or_short_id_or_page else 1
+    if not content:
+      page = int(screen_name_or_short_id_or_page) if screen_name_or_short_id_or_page else 1
       statuses = self._api.get_direct_messages(page=page)
       self._queue.put(Job(self._jid, data=statuses, title='Direct Messages: Page %s' % page))
     else:
