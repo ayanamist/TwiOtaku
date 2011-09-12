@@ -8,7 +8,7 @@ try:
 except ImportError:
   import json
 
-import twitter
+from lib import twitter
 
 _db_path = os.path.abspath(os.path.dirname(__file__) + os.sep + '..' + os.sep + 'data' + os.sep + 'twiotaku.db')
 _conn_db = None

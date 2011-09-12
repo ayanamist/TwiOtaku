@@ -109,11 +109,12 @@ class XMPPMessageHandler(object):
 
     expire_days = 3
 
-    if invite_code and not self._user:
+    if invite_code:
       invite_code, create_time = db.get_invite_code(invite_code)
       if invite_code and create_time and create_time + expire_days * 24 * 3600 > time.time():
         db.delete_invite_code(invite_code)
-        db.add_user(self._bare_jid)
+        if not self._user:
+          db.add_user(self._bare_jid)
         return 'Your account %s has been added, enjoy using TwiOtaku.' % self._bare_jid
       else:
         return 'Invite code is invalid or expired.'
