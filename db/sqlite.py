@@ -46,7 +46,7 @@ def init():
           "last_list_id"  TEXT,
           "last_update"  INTEGER NOT NULL DEFAULT 0,
           "timeline"  INTEGER NOT NULL DEFAULT 3,
-          "id_list_ptr"  INTEGER NOT NULL DEFAULT 0,
+          "id_list_ptr"  INTEGER NOT NULL DEFAULT 0
           );
           CREATE UNIQUE INDEX "users_id"
           ON "users" ("id");
@@ -79,7 +79,7 @@ def init():
               ON "list_ids" ("uid");
           """,
   )
-  for t in cursor.execute("SELECT name FROM sqlite_master WHERE type='table';"):
+  for t in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'"):
     t = t[0]
     if t in sql:
       del(sql[t])
