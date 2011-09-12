@@ -100,7 +100,6 @@ def cron_job(cron_queue):
       consumer_secret=OAUTH_CONSUMER_SECRET,
       access_token_key=user['access_key'],
       access_token_secret=user['access_secret'])
-    verify_credentials()
     all_data = list()
 
     data = fetch_dm()
