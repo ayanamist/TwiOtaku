@@ -79,11 +79,14 @@ class XMPPMessageHandler(object):
     consumer = oauth.Consumer(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET)
     client = oauth.Client(consumer)
     resp = client.request(twitter.REQUEST_TOKEN_URL)
-    self._request_token = dict(parse_qsl(resp))
-    oauth_token = self._request_token['oauth_token']
-    redirect_url = "%s?oauth_token=%s" % (twitter.AUTHORIZATION_URL, oauth_token)
-    db.update_user(self._user['id'], access_key=oauth_token, access_secret=None)
-    return 'Please visit below url to get PIN code:\n%s\nthen you should use "-bind PIN" command to actually bind your Twitter.' % redirect_url
+    if resp:
+      _request_token = dict(parse_qsl(resp))
+      oauth_token = _request_token['oauth_token']
+      redirect_url = "%s?oauth_token=%s" % (twitter.AUTHORIZATION_URL, oauth_token)
+      db.update_user(self._user['id'], access_key=oauth_token, access_secret=None)
+      return 'Please visit below url to get PIN code:\n%s\nthen you should use "-bind PIN" command to actually bind your Twitter.' % redirect_url
+    else:
+      return 'Network error.'
 
   def func_bind(self, pin_code):
     if self._user['access_key']:
