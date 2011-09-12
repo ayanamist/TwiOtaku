@@ -2,6 +2,7 @@ import random
 import time
 import operator
 import re
+from Queue import Queue
 from urlparse import parse_qsl
 from email.utils import parsedate
 
@@ -45,7 +46,7 @@ class XMPPMessageHandler(object):
   def process(self, msg):
     self._jid = str(msg['from'])
     self._bare_jid = self._xmpp.getjidbare(self._jid).lower()
-    self._queue = self._xmpp.worker_queues[self._bare_jid]
+    self._queue = self._xmpp.worker_queues.get(self._bare_jid, Queue())
     self._user = db.get_user_from_jid(self._bare_jid)
     self._util = Util(self._user)
     self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
