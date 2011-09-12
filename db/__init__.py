@@ -32,7 +32,7 @@ if _db_type == 'sqlite':
   _vars['init'] = sqlite.init
   _vars['update_long_id_from_short_id'] = sqlite.update_long_id_from_short_id
   _vars['update_user'] = sqlite.update_user
-elif _db_type == 'leveldb':
+elif _db_type == 'redis':
   raise NotImplementedError
 else:
   raise NotImplementedError
