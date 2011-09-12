@@ -75,7 +75,7 @@ class Util(object):
               tmp.replace_indices(media['indices'][0], media['indices'][1], media['media_url'])
         return unicode(tmp)
       else:
-        return data
+        return data['text']
 
     data['text'] = unescape(data['text'])
     return parse_entities(data).replace('\r\n', '\n').replace('\r', '\n')
@@ -115,7 +115,8 @@ class Util(object):
     elif isinstance(single, twitter.DirectMessage):
       msg_dict['shortid'] = '#%s=%s' % (short_id, short_id_alpha)
       msg_dict['username'] = single['sender']['screen_name']
-      t += single['sender']['utc_offset']
+      if single['sender']['utc_offset']:
+        t += single['sender']['utc_offset']
       msg_dict['time'] = strftime('%Y-%m-%d %H:%M:%S', localtime(t))
       msg_dict['content'] = Util.parse_text(single)
       text = u'Direct Message:\n%(username)s: %(content)s\n%(time)s [%(shortid)s]' % msg_dict

@@ -1,7 +1,6 @@
 import random
 import time
 import operator
-import re
 from Queue import Queue
 from urlparse import parse_qsl
 from email.utils import parsedate
@@ -33,9 +32,6 @@ SHORT_COMMANDS = {
   '?': 'help',
   'h': 'help',
   }
-
-_screen_name_regex = r'[a-zA-Z0-9_]+'
-_check_screen_name = lambda screen_name: bool(re.match('^%s$' % _screen_name_regex, screen_name))
 
 # TODO: add all commands back
 class XMPPMessageHandler(object):
