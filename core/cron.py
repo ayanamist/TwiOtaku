@@ -75,17 +75,6 @@ def cron_job(cron_queue):
             db.update_user(jid=user_jid, last_list_id=data[0]['id_str'])
             return data
 
-  @debug('cron')
-  def verify_credentials():
-    try:
-      screen_name = api.verify_credentials()['screen_name']
-    except twitter.TwitterUnauthorizedError:
-      db.update_user(jid=user_jid, access_key=None, access_secret=None)
-      return
-    if screen_name != user['screen_name']:
-      user['screen_name'] = screen_name
-      db.update_user(jid=user_jid, screen_name=screen_name)
-
   while True:
     try:
       queue, user = cron_queue.get(True, 3)
@@ -102,7 +91,7 @@ def cron_job(cron_queue):
 
     data = fetch_dm()
     if data:
-      all_data.extend(data)
+      queue.put(Job(user_jid, data=data, title='Direct Message:', allow_duplicate=False, always=False))
     data = fetch_list()
     if data:
       all_data.extend(data)

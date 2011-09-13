@@ -156,9 +156,11 @@ class StreamThread(threading.Thread):
             if 'status' in data['delete']:
               db.delete_status(data['delete']['status']['id_str'])
           else:
+            title = None
             if 'direct_message' in data:
               if self.user['timeline'] & db.MODE_DM:
                 data = twitter.DirectMessage(data['direct_message'])
+                title = 'Direct Message:'
               else:
                 data = None
             else:
@@ -177,7 +179,7 @@ class StreamThread(threading.Thread):
               else:
                 data = None
             if data:
-              self.queue.put(Job(self.user['jid'], data=data, allow_duplicate=False, always=False))
+              self.queue.put(Job(self.user['jid'], data=data, allow_duplicate=False, always=False, title=title))
       except (urllib2.URLError, urllib2.HTTPError, SSLError), e:
         if isinstance(e, urllib2.HTTPError):
           if e.code == 401:

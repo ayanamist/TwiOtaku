@@ -122,7 +122,7 @@ class Util(object):
         t += single['sender']['utc_offset']
       msg_dict['time'] = strftime('%Y-%m-%d %H:%M:%S', localtime(t))
       msg_dict['content'] = Util.parse_text(single)
-      text = u'Direct Message:\n%(username)s: %(content)s\n%(time)s [%(shortid)s]' % msg_dict
+      text = u'%(username)s: %(content)s\n%(time)s [%(shortid)s]' % msg_dict
     else:
       raise TypeError('Not a valid Status or Direct Message.')
     return text
