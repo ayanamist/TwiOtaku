@@ -81,7 +81,7 @@ def cron_job(cron_queue):
   def verify_credentials():
     try:
       screen_name = api.verify_credentials()['screen_name']
-    except twitter.TwitterAuthenticationError:
+    except twitter.TwitterUnauthorizedError:
       db.update_user(jid=user_jid, access_key=None, access_secret=None)
       return
     if screen_name != user['screen_name']:

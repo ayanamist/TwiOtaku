@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import httplib
 import urllib
 import urllib2
 import urlparse
@@ -26,27 +27,43 @@ SIGNIN_URL = 'https://api.twitter.com/oauth/authenticate'
 BASE_URL = 'https://api.twitter.com/1'
 
 class TwitterError(Exception):
-  pass
+  def __init__(self, messsage):
+    if messsage is not None:
+      super(TwitterError, self).__init__(messsage)
+    else:
+      super(TwitterError, self).__init__()
 
 
-class TwitterAuthenticationError(TwitterError):
-  pass
+class TwitterBadRequestError(Exception):
+  message = 'Bad Request.'
 
 
-class TwitterInternalServerError(TwitterError):
-  pass
-
-
-class TwitterNotFoundError(TwitterError):
-  pass
+class TwitterUnauthorizedError(TwitterError):
+  message = 'Unauthorized.'
 
 
 class TwitterForbiddenError(TwitterError):
-  pass
+  message = 'Forbidden.'
 
 
-class TwitterUserStreamingTooOftenError(TwitterError):
-  pass
+class TwitterNotFoundError(TwitterError):
+  message = 'Not Found.'
+
+
+class TwitterEnhanceYourCalmError(TwitterError):
+  message = 'Enhance Your Calm.'
+
+
+class TwitterInternalServerError(TwitterError):
+  message = 'Internal Server Error.'
+
+
+class TwitterBadGatewayError(TwitterError):
+  message = 'Bad Gateway.'
+
+
+class TwitterServiceUnavailableError(TwitterError):
+  message = 'Service Unavailable.'
 
 
 class Status(dict):
@@ -333,17 +350,35 @@ class Api(object):
     else:
       return urllib.urlencode(dict([(k, self._encode(v)) for k, v in post_data.items()]))
 
-  def _check_for_twitter_error(self, data, status):
-    if type(data) is dict and 'error' in data:
-      if status == 401:
-        raise TwitterAuthenticationError(data['error'])
-      if status == 403:
-        raise TwitterForbiddenError(data['error'])
-      if status == 404:
-        raise TwitterNotFoundError(data['error'])
-      if status >= 500:
-        raise TwitterInternalServerError('%d: %s' % (status, data['error']))
-      raise TwitterError(data['error'])
+  def _check_for_twitter_error(self, response):
+    error_message = None
+    try:
+      data = json.loads(response.data)
+    except ValueError:
+      data = response.data
+    else:
+      if isinstance(data, dict) and 'error' in data:
+        error_message = data['error']
+    if response.status == httplib.OK:
+      return data
+    elif response.status == httplib.BAD_REQUEST:
+      raise TwitterBadRequestError(error_message)
+    elif response.status == httplib.UNAUTHORIZED:
+      raise TwitterUnauthorizedError(error_message)
+    elif response.status == httplib.FORBIDDEN:
+      raise TwitterForbiddenError(error_message)
+    elif response.status == httplib.NOT_FOUND:
+      raise TwitterNotFoundError(error_message)
+    elif response.status == 420:
+      raise TwitterEnhanceYourCalmError(error_message)
+    elif response.status == httplib.INTERNAL_SERVER_ERROR:
+      raise TwitterInternalServerError(error_message)
+    elif response.status == httplib.BAD_GATEWAY:
+      raise TwitterBadGatewayError(error_message)
+    elif response.status == httplib.SERVICE_UNAVAILABLE:
+      raise TwitterServiceUnavailableError(error_message)
+    else:
+      raise TwitterError('%d: %s' % (response.status, str(error_message)))
 
   def _fetch_url(self, url, post_data=None, parameters=None, http_method='GET'):
     headers = {'Accept-Encoding': 'gzip'}
@@ -368,13 +403,7 @@ class Api(object):
       url = self._build_url(url, extra_params=extra_params)
       encoded_post_data = self._encode_post_data(post_data)
     response = fetch(method=http_method, url=url, body=encoded_post_data, headers=headers)
-    content = response.data
-    try:
-      json_data = json.loads(content)
-    except ValueError:
-      raise TwitterInternalServerError('%d: Internal Server Error' % response.status)
-    self._check_for_twitter_error(json_data, response.status)
-    return json_data
+    return self._check_for_twitter_error(response)
 
   # return a file-like object
   def user_stream(self, reply_all=False):

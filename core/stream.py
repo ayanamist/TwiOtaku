@@ -101,7 +101,7 @@ class StreamThread(threading.Thread):
       try:
         data = self.api.verify_credentials()
         screen_name = data['screen_name']
-      except twitter.TwitterAuthenticationError:
+      except twitter.TwitterUnauthorizedError:
         db.update_user(jid=self.bare_jid, access_key=None, access_secret=None)
         raise ThreadStop
       else:
