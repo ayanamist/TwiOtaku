@@ -98,7 +98,7 @@ class XMPPMessageHandler(object):
           access_secret=access_token['oauth_token_secret'],
           screen_name=access_token['screen_name'])
         self._xmpp.add_online_user(self._bare_jid)
-        return 'Successfully bind you with Twitter user @%s.' % access_token['screen_name']
+        return 'Associated you with @%s.' % access_token['screen_name']
     return 'Invalid PIN code.'
 
   def func_invite(self, invite_code=None):
@@ -243,7 +243,7 @@ class XMPPMessageHandler(object):
       if long_id_type == db.TYPE_DM:
         raise TypeError('Can not create a direct message as favourite.')
       self._api.create_favorite(long_id)
-      return 'Successfully create %s as favourite.' % str(long_id)
+      return 'Created %s to favourites.' % str(long_id)
     else:
       page = int(short_id_or_page)
       statuses = self._api.get_favorites(page=page)
@@ -254,7 +254,7 @@ class XMPPMessageHandler(object):
     if long_id_type == db.TYPE_DM:
       raise TypeError('Can not delete a direct message as favourite.')
     self._api.destroy_favorite(long_id)
-    return 'Successfully delete %s as favourite.' % str(long_id)
+    return 'Deleted %s from favourites.' % str(long_id)
 
   def func_reply(self, short_id_or_page=None, *content):
     if not content:
@@ -420,7 +420,7 @@ class XMPPMessageHandler(object):
         direct_message = self._api.get_direct_message(long_id)
         screen_name = direct_message['sender_screen_name']
     self._api.create_block(screen_name)
-    return 'Successfully block %s.' % screen_name
+    return 'Blocked %s.' % screen_name
 
   def func_unblock(self, screen_name):
     if screen_name and screen_name[0] == '#':
@@ -432,7 +432,7 @@ class XMPPMessageHandler(object):
         direct_message = self._api.get_direct_message(long_id)
         screen_name = direct_message['sender_screen_name']
     self._api.destroy_block(screen_name)
-    return 'Successfully unblock %s.' % screen_name
+    return 'Delete %s from blocked.' % screen_name
 
   def func_spam(self, screen_name):
     if screen_name and screen_name[0] == '#':
@@ -444,7 +444,7 @@ class XMPPMessageHandler(object):
         direct_message = self._api.get_direct_message(long_id)
         screen_name = direct_message['sender_screen_name']
     self._api.report_spam(screen_name)
-    return 'Successfully report %s as spam.' % screen_name
+    return 'Reported %s as spam.' % screen_name
 
   def func_follow(self, screen_name):
     if screen_name and screen_name[0] == '#':
@@ -459,7 +459,7 @@ class XMPPMessageHandler(object):
     if twitter_user.get('protected') and twitter_user.get('follow_request_sent'):
       return 'Have sent follow request to %s' % screen_name
     else:
-      return 'Successfully follow %s.' % screen_name
+      return 'Following %s.' % screen_name
 
   def func_unfollow(self, screen_name):
     if screen_name and screen_name[0] == '#':
@@ -471,7 +471,7 @@ class XMPPMessageHandler(object):
         direct_message = self._api.get_direct_message(long_id)
         screen_name = direct_message['sender_screen_name']
     self._api.destroy_friendship(screen_name)
-    return 'Successfully unfollow %s.' % screen_name
+    return 'Unfollowed %s.' % screen_name
 
   def func_if(self, user_a, user_b=None):
     if user_b is None:
