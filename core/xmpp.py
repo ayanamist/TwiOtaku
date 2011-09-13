@@ -126,9 +126,18 @@ class XMPPMessageHandler(object):
       return 'You have generated a new invite code which is available for %d days: %s' % (expire_days, invite_code)
 
   def func_user(self, screen_name=None):
-    if screen_name is None:
-      screen_name = self._user['screen_name']
-    twitter_user = self._api.get_user(screen_name=screen_name)
+    if screen_name and screen_name[0] == '#':
+      long_id, long_id_type = self._util.restore_short_id(screen_name)
+      if long_id_type == db.TYPE_STATUS:
+        status = self._api.get_status(long_id)
+        twitter_user = status['user']
+      else:
+        direct_message = self._api.get_direct_message(long_id)
+        twitter_user = direct_message['sender']
+    else:
+      if screen_name is None:
+        screen_name = self._user['screen_name']
+      twitter_user = self._api.get_user(screen_name=screen_name)
     texts = ['User @%s (%s):' % (twitter_user['screen_name'], twitter_user['name'])]
     follow_str = ''
     if twitter_user['protected']:
@@ -153,6 +162,11 @@ class XMPPMessageHandler(object):
     texts.append('Following: %d' % twitter_user['friends_count'])
     texts.append('Followers: %d' % twitter_user['followers_count'])
     texts.append('Tweets: %d' % twitter_user['statuses_count'])
+    join_time = time.mktime(parsedate(twitter_user['created_at']))
+    if twitter_user['utc_offset']:
+      join_time += twitter_user['utc_offset']
+    join_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(join_time))
+    texts.append('Joined at: %s' % join_time)
     texts.append('Tweets per day: %.2f' % (twitter_user['statuses_count'] * 86400 /
                                            (time.time() - time.mktime(parsedate(twitter_user['created_at'])))))
     if twitter_user['description']:
@@ -209,7 +223,7 @@ class XMPPMessageHandler(object):
         screen_name = status['user']['screen_name']
       else:
         direct_message = self._api.get_direct_message(long_id)
-        screen_name = direct_message['sender']['screen_name']
+        screen_name = direct_message['sender_screen_name']
         long_id = None
       message = u'@%s %s' % (screen_name, ' '.join(content))
       status = self._api.post_update(message.encode('UTF8'), long_id)
