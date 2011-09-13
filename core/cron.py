@@ -16,18 +16,16 @@ def cron_start(queues):
     t.start()
   for user in db.get_all_users():
     if user['access_key'] and user['access_secret']:
-      tl = user['timeline'] & ~db.MODE_EVENT
-      c = 0
-      while tl:
-        if tl & 1:
-          c += 1
-        tl >>= 1
-      interval = c * 15 # 3600 / ( 240 / c ) I choose 240 per hour because 240 can be exactly divided by 1,2,3,4
-      if interval and user['last_update'] < int(time.time() + 1 - interval): # add 1 second for avoiding clock deviation
+      tl = user['timeline'] & ~db.MODE_EVENT # event only exists in user streaming api.
+      if tl:
         user['last_update'] = int(time.time())
         db.update_user(id=user['id'], last_update=user['last_update'])
-        cron_queue.put(
-          (queues.get(user['jid'], Queue()), user)) # we can abandon data if we don't need, just throw a useless Queue
+        if time.time() - user['last_update'] > 180:
+          # if it's a long time since last update, we should abandon these old data.
+          queue = Queue()
+        else:
+          queue = queues.get(user['jid'], Queue())
+        cron_queue.put((queue, user))
   cron_queue.join()
 
 

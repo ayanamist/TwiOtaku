@@ -104,10 +104,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
       logger.error('Can not connect to server.')
 
   def start_cron(self):
-    cron_initial = Thread(target=cron_start, args=(dict(),))
-    cron_initial.setDaemon(True)
-    cron_initial.start()
-    self.sched.add_interval_job(cron_start, seconds=15, args=(self.worker_queues,))
+    self.sched.add_interval_job(cron_start, minutes=1, args=(self.worker_queues,))
     self.sched.start()
 
   def start_stream(self, bare_jid):
