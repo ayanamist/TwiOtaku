@@ -366,18 +366,50 @@ class XMPPMessageHandler(object):
     self._queue.put(Job(self._jid, data=data, title='Conversation:', reverse=False))
 
   def func_block(self, screen_name):
+    if screen_name and screen_name[0] == '#':
+      long_id, long_id_type = self._util.restore_short_id(screen_name)
+      if long_id_type == db.TYPE_STATUS:
+        status = self._api.get_status(long_id)
+        screen_name = status['user']['screen_name']
+      else:
+        direct_message = self._api.get_direct_message(long_id)
+        screen_name = direct_message['sender_screen_name']
     self._api.create_block(screen_name)
     return 'Successfully block %s.' % screen_name
 
   def func_unblock(self, screen_name):
+    if screen_name and screen_name[0] == '#':
+      long_id, long_id_type = self._util.restore_short_id(screen_name)
+      if long_id_type == db.TYPE_STATUS:
+        status = self._api.get_status(long_id)
+        screen_name = status['user']['screen_name']
+      else:
+        direct_message = self._api.get_direct_message(long_id)
+        screen_name = direct_message['sender_screen_name']
     self._api.destroy_block(screen_name)
     return 'Successfully unblock %s.' % screen_name
 
   def func_spam(self, screen_name):
+    if screen_name and screen_name[0] == '#':
+      long_id, long_id_type = self._util.restore_short_id(screen_name)
+      if long_id_type == db.TYPE_STATUS:
+        status = self._api.get_status(long_id)
+        screen_name = status['user']['screen_name']
+      else:
+        direct_message = self._api.get_direct_message(long_id)
+        screen_name = direct_message['sender_screen_name']
     self._api.report_spam(screen_name)
     return 'Successfully report %s as spam.' % screen_name
 
   def func_follow(self, screen_name):
+    if screen_name and screen_name[0] == '#':
+      long_id, long_id_type = self._util.restore_short_id(screen_name)
+      if long_id_type == db.TYPE_STATUS:
+        status = self._api.get_status(long_id)
+        screen_name = status['user']['screen_name']
+      else:
+        direct_message = self._api.get_direct_message(long_id)
+        screen_name = direct_message['sender_screen_name']
     twitter_user = self._api.create_friendship(screen_name)
     if twitter_user.get('protected') and twitter_user.get('follow_request_sent'):
       return 'Have sent follow request to %s' % screen_name
@@ -385,6 +417,14 @@ class XMPPMessageHandler(object):
       return 'Successfully follow %s.' % screen_name
 
   def func_unfollow(self, screen_name):
+    if screen_name and screen_name[0] == '#':
+      long_id, long_id_type = self._util.restore_short_id(screen_name)
+      if long_id_type == db.TYPE_STATUS:
+        status = self._api.get_status(long_id)
+        screen_name = status['user']['screen_name']
+      else:
+        direct_message = self._api.get_direct_message(long_id)
+        screen_name = direct_message['sender_screen_name']
     self._api.destroy_friendship(screen_name)
     return 'Successfully unfollow %s.' % screen_name
 
