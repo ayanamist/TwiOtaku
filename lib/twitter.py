@@ -265,9 +265,33 @@ class Api(object):
     parameters = {'include_entities': int(bool(include_entities))}
     return Status(self._fetch_url(url, post_data={'id': id}, parameters=parameters))
 
-  def get_lists(self, screen_name, cursor=-1):
-    url = '%s/lists.json' % self.base_url
-    parameters = {'cursor': cursor, 'screen_name': screen_name}
+  def create_list(self, name, public=True):
+    url = '%s/lists/create.json' % self.base_url
+    parameters = {'name': name}
+    if not public:
+      parameters['mode'] = 'private'
+    return self._fetch_url(url, parameters=parameters, http_method='POST')
+
+  def destroy_list(self, owner_screen_name, slug):
+    url = '%s/lists/destroy.json' % self.base_url
+    parameters = {'owner_screen_name': owner_screen_name, 'slug': slug}
+    return self._fetch_url(url, parameters=parameters, http_method='POST')
+
+  def create_list_member(self, owner_screen_name, slug, screen_name):
+    url = '%s/lists/members/create.json' % self.base_url
+    parameters = {'owner_screen_name': owner_screen_name, 'slug': slug, 'screen_name': screen_name}
+    return self._fetch_url(url, parameters=parameters, http_method='POST')
+
+  def destroy_list_member(self, owner_screen_name, slug, screen_name):
+    url = '%s/lists/members/destroy.json' % self.base_url
+    parameters = {'owner_screen_name': owner_screen_name, 'slug': slug, 'screen_name': screen_name}
+    return self._fetch_url(url, parameters=parameters, http_method='POST')
+
+  def get_all_lists(self, screen_name=None):
+    url = '%s/lists/all.json' % self.base_url
+    parameters = dict()
+    if screen_name:
+      parameters['screen_name'] = screen_name
     return self._fetch_url(url, parameters=parameters)
 
   def get_list(self, screen_name, slug):

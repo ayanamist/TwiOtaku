@@ -172,17 +172,59 @@ class XMPPMessageHandler(object):
       texts.append('Bio: %s' % twitter_user['description'])
     return '\n'.join(texts)
 
-  # TODO: more powerful list commands https://code.google.com/p/twi-meido/issues/detail?id=20
-  def func_list(self, list_user_name, page=1):
-    path = list_user_name.split('/', 1)
-    if len(path) == 1:
-      list_user = self._user['screen_name']
-      list_name = path[0]
+  def func_list(self, *args):
+    length = len(args)
+    if not length:
+      lists = self._api.get_all_lists()
+      texts = list()
+      for l in lists:
+        texts.append('%s %s: %s' % (l['slug'] if l['user']['screen_name'] == self._user['screen_name']
+                                    else '%s/%s' % (l['user']['screen_name'], l['slug']), l['mode'], l['description']))
+      return 'Subscribing Lists:\n' + '\n'.join(texts)
+    elif length == 1 or (length == 2 and args[1].isdigit()):
+      list_user_name = args[0]
+      path = list_user_name.split('/', 1)
+      if len(path) == 1:
+        list_user = self._user['screen_name']
+        list_name = path[0]
+      else:
+        list_user, list_name = path
+      page = int(args[1]) if length == 2 else 1
+      statuses = self._api.get_list_statuses(list_user, list_name, page=page)
+      self._queue.put(Job(self._jid, data=statuses, title='List %s Statuses: Page %d' % (list_user_name, page)))
     else:
-      list_user, list_name = path
-    page = int(page)
-    statuses = self._api.get_list_statuses(list_user, list_name, page=page)
-    self._queue.put(Job(self._jid, data=statuses, title='List %s Statuses: Page %d' % (list_user_name, page)))
+      list_command = args[0].lower()
+      if list_command == 'info' and length == 2:
+        list_user_name = args[1]
+        path = list_user_name.split('/', 1)
+        if len(path) == 1:
+          list_user = self._user['screen_name']
+          list_name = path[0]
+        else:
+          list_user, list_name = path
+        l = self._api.get_list(screen_name=list_user, slug=list_name)
+        texts = ['List %s/%s %s: %s' % (l['user']['screen_name'], l['slug'], l['mode'],
+                                        'You are following.' if l['following'] else ''),
+                 'Member Count: %d' % l['member_count'], 'Subscriber Count: %d' % l['subscriber_count'],
+                 'Description: %s' % l['description']]
+        return '\n'.join(texts)
+      elif list_command in ('add', 'del') and 2 <= length <= 3:
+        if length == 2:
+          if list_command == 'add':
+            self._api.create_list(args[1], public=False)
+            return 'Created private list %s.' % args[1]
+          else:
+            self._api.destroy_list(self._user['screen_name'], args[1])
+            return 'Deleted list %s.' % args[1]
+        else:
+          if list_command == 'add':
+            self._api.create_list_member(self._user['screen_name'], args[1], args[2])
+            return 'Added %s to list %s.' % (args[2], args[1])
+          else:
+            self._api.destroy_list_member(self._user['screen_name'], args[1], args[2])
+            return 'Removed %s from list %s.' % (args[2], args[1])
+      else:
+        raise TypeError('Not supported list command.')
 
   def func_home(self, page=1):
     statuses = self._api.get_home_timeline(page=page)
