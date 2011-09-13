@@ -33,7 +33,6 @@ SHORT_COMMANDS = {
   'h': 'help',
   }
 
-# TODO: add all commands back
 class XMPPMessageHandler(object):
   def __init__(self, xmpp):
     self._xmpp = xmpp
@@ -184,6 +183,10 @@ class XMPPMessageHandler(object):
     page = int(page)
     statuses = self._api.get_list_statuses(list_user, list_name, page=page)
     self._queue.put(Job(self._jid, data=statuses, title='List %s Statuses: Page %d' % (list_user_name, page)))
+
+  def func_home(self, page=1):
+    statuses = self._api.get_home_timeline(page=page)
+    self._queue.put(Job(self._jid, data=statuses, title='Home Timeline: Page %d' % page))
 
   def func_timeline(self, screen_name, page=1):
     statuses = self._api.get_user_timeline(screen_name=screen_name, page=page)
