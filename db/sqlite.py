@@ -9,13 +9,16 @@ except ImportError:
 
 from lib import twitter
 
-_db_path = os.path.abspath(os.path.dirname(__file__) + os.sep + '..' + os.sep + 'data' + os.sep + 'twiotaku.db')
+_db_path = os.path.abspath('data' + os.sep + 'twiotaku.db')
 _conn_db = None
 
 def init():
   global _conn_db
   if _conn_db:
     return _conn_db
+  if not os.path.exists(os.path.dirname(_db_path)):
+    os.makedirs(os.path.dirname(_db_path))
+
   _conn_db = apsw.Connection(_db_path)
   _conn_db.setbusytimeout(3000) # add a retry timeout 3 seconds for busy handling
   cursor = _conn_db.cursor()

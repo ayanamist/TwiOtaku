@@ -1,3 +1,5 @@
 *.db
+data
 .idea
+*.pyc
 config.sample.py

@@ -74,8 +74,9 @@ class XMPPBot(sleekxmpp.ClientXMPP):
       self.start_stream(bare_jid)
 
   def sigterm_handler(self, *_):
-    logging.debug('Start to shutdown.')
+    logging.info('Shutdown cron scheduler.')
     self.sched.shutdown()
+    logging.info('Shutdown workers.')
     for q in self.worker_queues.itervalues():
       q.put(None)
     for t in self.worker_threads.itervalues():
