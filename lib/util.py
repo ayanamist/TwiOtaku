@@ -33,6 +33,9 @@ class ostring(object):
     else:
       return unicode(self.original_s)
 
+  def __str__(self):
+    return unicode(self).encode('UTF8')
+
   def replace_indices(self, start, stop, replace_text):
     if not self._str_indices:
       self._str_indices.append(start)
