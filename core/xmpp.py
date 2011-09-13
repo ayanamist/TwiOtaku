@@ -215,22 +215,33 @@ class XMPPMessageHandler(object):
       status = self._api.post_update(message.encode('UTF8'), long_id)
       self._queue.put(Job(self._jid, data=status))
 
-  # TODO: https://code.google.com/p/twi-meido/issues/detail?id=9 use comma to seperate several tweets.
-  def func_replyall(self, short_id, *content):
-    long_id, long_id_type = self._util.restore_short_id(short_id)
-    if long_id_type == db.TYPE_STATUS:
-      data = self._api.get_status(long_id)
-      mention_users = [data['user']['screen_name']]
-    else:
-      data = self._api.get_direct_message(long_id)
-      mention_users = [data['sender']['screen_name']]
-      long_id = None
-    if 'entities' in data and 'user_mentions' in data['entities']:
-      for x in data['entities']['user_mentions']:
-        if x['screen_name'] not in mention_users and x['screen_name'] != self._user['screen_name']:
-          mention_users.append(x['screen_name'])
+  def func_replyall(self, short_ids, *content):
+    def add_mention_user(screen_name):
+      if screen_name not in mention_users and screen_name != self._user['screen_name']:
+        mention_users.append(screen_name)
+
+    first_long_id = None
+    mention_users = list()
+    for short_id in short_ids.split(','):
+      long_id, long_id_type = self._util.restore_short_id(short_id)
+      try:
+        if long_id_type == db.TYPE_STATUS:
+          if first_long_id is None:
+            first_long_id = long_id
+          data = self._api.get_status(long_id)
+          add_mention_user(data['user']['screen_name'])
+        else:
+          data = self._api.get_direct_message(long_id)
+          add_mention_user(data['sender_screen_name'])
+        if 'entities' in data and 'user_mentions' in data['entities']:
+          for x in data['entities']['user_mentions']:
+            add_mention_user(x['screen_name'])
+      except twitter.TwitterNotFoundError:
+        pass
+    if not mention_users:
+      raise twitter.TwitterNotFoundError
     message = u'%s %s' % (' '.join(['@' + x for x in mention_users]), ' '.join(content))
-    status = self._api.post_update(message.encode('UTF8'), long_id)
+    status = self._api.post_update(message.encode('UTF8'), first_long_id)
     self._queue.put(Job(self._jid, data=status))
 
   def func_rt(self, short_id, *content):
