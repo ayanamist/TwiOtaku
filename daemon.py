@@ -20,6 +20,7 @@ from core.xmpp import XMPPMessageHandler
 from core.cron import cron_start
 from core.stream import StreamThread
 from core.worker import worker
+from lib import logger
 
 # TODO: implement i18n support
 class XMPPBot(sleekxmpp.ClientXMPP):
@@ -127,11 +128,9 @@ if __name__ == '__main__':
     print 'TwiOtaku needs Python 2.6 or later. Python 3.X is not supported yet.'
     exit(1)
 
-  logging.basicConfig(level=logging.DEBUG, format='%(asctime)-15s %(name)-8s %(levelname)-8s %(message)s',
-    datefmt='%m-%d %H:%M:%S', stream=sys.stdout)
-  stderr = logging.StreamHandler()
-  stderr.setLevel(logging.ERROR)
-  logging.getLogger('').addHandler(stderr)
+  logging.basicConfig(level=logging.DEBUG, format=logger.LOGGING_FORMAT, datefmt=logger.LOGGING_DATEFMT,
+    stream=sys.stdout)
+  logging.setLoggerClass(logger.DetailLogger)
 
   db.init()
 
