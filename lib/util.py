@@ -195,7 +195,7 @@ class Util(object):
     try:
       short_id = int(g)
     except ValueError:
-      short_id = alpha_to_digit(short_id)
+      short_id = alpha_to_digit(g)
     if short_id < MAX_ID_LIST_NUM:
       return db.get_long_id_from_short_id(self._user['id'], short_id)
     else:
