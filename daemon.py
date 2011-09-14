@@ -6,6 +6,13 @@ import logging
 from Queue import Queue
 from threading import Thread
 
+# we must write these code here because sleekxmpp will set its own logger during import!
+from lib import logger
+
+logging.basicConfig(level=logging.DEBUG, format=logger.LOGGING_FORMAT, datefmt=logger.LOGGING_DATEFMT,
+  stream=sys.stdout)
+logging.setLoggerClass(logger.ErrorLogger)
+
 import sleekxmpp
 from apscheduler.scheduler import Scheduler
 
@@ -20,7 +27,6 @@ from core.xmpp import XMPPMessageHandler
 from core.cron import cron_start
 from core.stream import StreamThread
 from core.worker import worker
-from lib import logger
 
 # TODO: implement i18n support
 class XMPPBot(sleekxmpp.ClientXMPP):
@@ -127,10 +133,6 @@ if __name__ == '__main__':
   if major != '2' or minor < '6':
     print 'TwiOtaku needs Python 2.6 or later. Python 3.X is not supported yet.'
     exit(1)
-
-  logging.basicConfig(level=logging.DEBUG, format=logger.LOGGING_FORMAT, datefmt=logger.LOGGING_DATEFMT,
-    stream=sys.stdout)
-  logging.setLoggerClass(logger.DetailLogger)
 
   db.init()
 

@@ -11,7 +11,7 @@ import db
 import twitter
 
 # decorator for logging
-def debug(logger_name=''):
+def debug(logger_name=__name__):
   def wrap(f):
     def newf(*args, **kwds):
       try:
