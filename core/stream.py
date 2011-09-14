@@ -181,6 +181,7 @@ class StreamThread(threading.Thread):
             if data:
               self.queue.put(Job(self.user['jid'], data=data, allow_duplicate=False, always=False, title=title))
       except (urllib2.URLError, urllib2.HTTPError, SSLError), e:
+        stream_logger.warn('User Streaming connection failed.')
         if isinstance(e, urllib2.HTTPError):
           if e.code == 401:
             stream_logger.error('User %s OAuth unauthorized, exiting.' % self.user['jid'])
