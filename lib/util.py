@@ -114,7 +114,7 @@ class Util(object):
         self.allow_duplicate = True
         in_reply_to_text = self.parse_single(single['in_reply_to_status'])
         self.allow_duplicate = old_allow_duplicate
-        text += u'\n┌────────────\n%s\n└────────────' % in_reply_to_text
+        text += u'\n◤→ %s◢' % in_reply_to_text
     elif isinstance(single, twitter.DirectMessage):
       msg_dict['shortid'] = '#%s=%s' % (short_id, short_id_alpha)
       msg_dict['username'] = single['sender']['screen_name']
