@@ -49,7 +49,7 @@ class XMPPMessageHandler(object):
     try:
       result = self.parse_command(msg['body'].rstrip())
     except (twitter.TwitterError, TypeError, ValueError), e:
-      result = e.message
+      result = unicode(e)
     if result:
       msg.reply(result).send()
 

@@ -3,6 +3,7 @@ import httplib
 import urllib
 import urllib2
 import urlparse
+from ssl import SSLError
 
 try:
   import ujson as json
@@ -27,11 +28,13 @@ SIGNIN_URL = 'https://api.twitter.com/oauth/authenticate'
 BASE_URL = 'https://api.twitter.com/1'
 
 class TwitterError(Exception):
+  message = ''
+
   def __init__(self, messsage):
     if messsage is not None:
       super(TwitterError, self).__init__(messsage)
     else:
-      super(TwitterError, self).__init__()
+      super(TwitterError, self).__init__(self.message)
 
 
 class TwitterBadRequestError(Exception):
@@ -64,6 +67,10 @@ class TwitterBadGatewayError(TwitterError):
 
 class TwitterServiceUnavailableError(TwitterError):
   message = 'Service Unavailable.'
+
+
+class TwitterNetworkError(TwitterError):
+  message = 'Network Error.'
 
 
 class Status(dict):
@@ -383,7 +390,7 @@ class Api(object):
     else:
       if isinstance(data, dict) and 'error' in data:
         error_message = data['error']
-    if response.status == httplib.OK:
+    if response.status == httplib.OK and not error_message:
       return data
     elif response.status == httplib.BAD_REQUEST:
       raise TwitterBadRequestError(error_message)
@@ -426,8 +433,12 @@ class Api(object):
     else:
       url = self._build_url(url, extra_params=extra_params)
       encoded_post_data = self._encode_post_data(post_data)
-    response = fetch(method=http_method, url=url, body=encoded_post_data, headers=headers)
-    return self._check_for_twitter_error(response)
+    try:
+      response = fetch(method=http_method, url=url, body=encoded_post_data, headers=headers)
+    except SSLError:
+      raise TwitterNetworkError
+    else:
+      return self._check_for_twitter_error(response)
 
   # return a file-like object
   def user_stream(self, reply_all=False):
