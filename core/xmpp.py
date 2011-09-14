@@ -364,6 +364,7 @@ class XMPPMessageHandler(object):
 
   def func_msg(self, short_id_or_long_id):
     long_id, long_id_type = self._util.restore_short_id(short_id_or_long_id)
+    long_id_str = str(long_id)
     data = list()
     if long_id_type == db.TYPE_STATUS:
       origin_status = self._api.get_status(long_id)
@@ -397,6 +398,7 @@ class XMPPMessageHandler(object):
         else:
           data.insert(0, status)
     else:
+      long_id_str = ''
       all_dms = self._api.get_direct_messages(max_id=long_id, count=50)
       if all_dms and all_dms[0]['id_str'] == str(long_id):
         all_dms.extend(self._api.get_sent_direct_messages(max_id=long_id, count=50))
@@ -408,7 +410,7 @@ class XMPPMessageHandler(object):
               break
       else:
         raise twitter.TwitterNotFoundError('Not found.')
-    self._queue.put(Job(self._jid, data=data, title='Conversation:', reverse=False))
+    self._queue.put(Job(self._jid, data=data, title='Conversation: %s' % long_id_str, reverse=False))
 
   def func_block(self, screen_name):
     if screen_name and screen_name[0] == '#':
