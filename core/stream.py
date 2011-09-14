@@ -58,7 +58,9 @@ class StreamThread(threading.Thread):
     try:
       self.running()
     except ThreadStop:
+      self.xmpp.global_lock.acquire()
       del self.xmpp.stream_threads[self.bare_jid]
+      self.xmpp.global_lock.release()
       return
 
   @debug('userstreaming')
