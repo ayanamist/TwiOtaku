@@ -36,6 +36,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     sleekxmpp.ClientXMPP.__init__(self, XMPP_USERNAME, XMPP_PASSWORD)
     self.auto_authorize = True
     self.auto_subscribe = True
+    self.first_run = True
     self.add_event_handler('session_start', self.on_start)
     self.add_event_handler('message', self.on_message)
     self.add_event_handler('changed_status', self.on_changed_status)
@@ -43,9 +44,11 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
   def on_start(self, _):
     self.get_roster()
-    self.start_workers()
-    self.start_streams()
-    self.start_cron()
+    if self.first_run:
+      self.start_workers()
+      self.start_streams()
+      self.start_cron()
+      self.first_run = False
     self.send_presence()
 
   def on_message(self, msg):
