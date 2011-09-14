@@ -1,6 +1,6 @@
 import time
 from threading import Thread
-from Queue import Queue, Empty
+from Queue import Queue
 
 import db
 from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
@@ -10,22 +10,20 @@ from lib.decorators import debug
 
 def cron_start(queues):
   cron_queue = Queue()
-  for _ in range(db.get_users_count() // 5 + 1):
-    t = Thread(target=cron_job, args=(cron_queue, ))
-    t.setDaemon(True)
-    t.start()
   for user in db.get_all_users():
     if user['access_key'] and user['access_secret']:
       tl = user['timeline'] & ~db.MODE_EVENT # event only exists in user streaming api.
       if tl:
-        user['last_update'] = int(time.time())
-        db.update_user(id=user['id'], last_update=user['last_update'])
         if time.time() - user['last_update'] > 180:
           # if it's a long time since last update, we should abandon these old data.
           queue = Queue()
         else:
           queue = queues.get(user['jid'], Queue())
         cron_queue.put((queue, user))
+  for _ in range(db.get_users_count() // 5 + 1):
+    t = Thread(target=cron_job, args=(cron_queue, ))
+    t.setDaemon(True)
+    t.start()
   cron_queue.join()
 
 
@@ -75,13 +73,11 @@ def cron_job(cron_queue):
             db.update_user(jid=user_jid, last_list_id=data[0]['id_str'])
             return data
 
-  while True:
-    try:
-      queue, user = cron_queue.get(True, 3)
-    except Empty:
-      return
+  while not cron_queue.empty():
+    queue, user = cron_queue.get()
     user_jid = user['jid']
     user_timeline = user['timeline']
+    db.update_user(id=user['id'], last_update=int(time.time()))
 
     api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY,
       consumer_secret=OAUTH_CONSUMER_SECRET,
