@@ -189,7 +189,10 @@ class XMPPMessageHandler(object):
         list_name = path[0]
       else:
         list_user, list_name = path
-      page = int(args[1]) if length == 2 else 1
+      try:
+        page = int(args[1]) if length == 2 else 1
+      except ValueError:
+        return 'Unknown page number: %s.' % args[1]
       statuses = self._api.get_list_statuses(list_user, list_name, page=page)
       self._queue.put(Job(self._jid, data=statuses, title='List %s Statuses: Page %d' % (list_user_name, page)))
     else:
@@ -245,7 +248,10 @@ class XMPPMessageHandler(object):
       self._api.create_favorite(long_id)
       return 'Created %s to favourites.' % str(long_id)
     else:
-      page = int(short_id_or_page)
+      try:
+        page = int(short_id_or_page)
+      except ValueError:
+        return 'Unknown page number: %s.' % short_id_or_page
       statuses = self._api.get_favorites(page=page)
       self._queue.put(Job(self._jid, data=statuses, title='Favourite: Page %d' % page))
 
@@ -256,9 +262,12 @@ class XMPPMessageHandler(object):
     self._api.destroy_favorite(long_id)
     return 'Deleted %s from favourites.' % str(long_id)
 
-  def func_reply(self, short_id_or_page=None, *content):
+  def func_reply(self, short_id_or_page='', *content):
     if not content:
-      page = int(short_id_or_page) if short_id_or_page else 1
+      try:
+        page = int(short_id_or_page) if short_id_or_page else 1
+      except ValueError:
+        return 'Unknown page number %s.' % short_id_or_page
       statuses = self._api.get_mentions(page=page)
       self._queue.put(Job(self._jid, data=statuses, title='Mentions: Page %d' % page))
     else:
@@ -341,9 +350,12 @@ class XMPPMessageHandler(object):
       dm = self._api.destroy_direct_message(long_id)
       return 'Direct message to %s deleted: %s' % (dm['recipient_screen_name'], Util.parse_text(dm))
 
-  def func_dm(self, screen_name_or_short_id_or_page=None, *content):
+  def func_dm(self, screen_name_or_short_id_or_page='', *content):
     if not content:
-      page = int(screen_name_or_short_id_or_page) if screen_name_or_short_id_or_page else 1
+      try:
+        page = int(screen_name_or_short_id_or_page) if screen_name_or_short_id_or_page else 1
+      except ValueError:
+        return 'Unknown page number: %s.' % screen_name_or_short_id_or_page
       statuses = self._api.get_direct_messages(page=page)
       self._queue.put(Job(self._jid, data=statuses, title='Direct Messages: Page %s' % page))
     else:
