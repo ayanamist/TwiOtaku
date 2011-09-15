@@ -234,7 +234,7 @@ class XMPPMessageHandler(object):
 
   def func_timeline(self, screen_name, page=1):
     statuses = self._api.get_user_timeline(screen_name=screen_name, page=page)
-    self._queue.put(Job(self._jid, data=statuses, title='User %s Timeline: Page %d' % (screen_name, page)))
+    self._queue.put(Job(self._jid, data=statuses, title='User @%s Timeline: Page %d' % (screen_name, page)))
 
   def func_me(self, page=1):
     self.func_timeline(self._user['screen_name'], page)
