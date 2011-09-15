@@ -44,15 +44,15 @@ class ostring(object):
       return self
     else:
       for i in range(len(self._str_list)):
-        if start > self._str_indices[i * 2]:
-          self._str_indices.insert(i * 2 + 2, start)
-          self._str_indices.insert(i * 2 + 3, stop)
-          self._str_list.insert(i + 1, replace_text)
+        if start < self._str_indices[i * 2]:
+          self._str_indices.insert(i * 2, start)
+          self._str_indices.insert(i * 2 + 1, stop)
+          self._str_list.insert(i, replace_text)
           return self
-          # start is smaller than any of pairs in the list, we should add them to the first.
-      self._str_indices.insert(0, start)
-      self._str_indices.insert(1, stop)
-      self._str_list.insert(0, replace_text)
+        # start is larger than any of pairs in the list, we should add them to the last.
+      self._str_indices.append(start)
+      self._str_indices.append(stop)
+      self._str_list.append(replace_text)
       return self
 
 
