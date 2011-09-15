@@ -17,7 +17,6 @@ SHORT_COMMANDS = {
   'r': 'reply',
   'd': 'dm',
   'ra': 'replyall',
-  're': 'retweet',
   'ho': 'home',
   'lt': 'list',
   'tl': 'timeline',
@@ -314,7 +313,12 @@ class XMPPMessageHandler(object):
 
   def func_rt(self, short_id, *content):
     long_id, long_id_type = self._util.restore_short_id(short_id)
-    if long_id_type == db.TYPE_STATUS:
+    if long_id_type == db.TYPE_DM:
+      raise TypeError('Can not retweet a direct message.')
+    if not content:
+      status = self._api.create_retweet(long_id)
+      self._queue.put(Job(self._jid, data=status, allow_duplicate=False))
+    else:
       status = self._api.get_status(long_id)
       user_msg = ' '.join(content)
       if user_msg and ord(user_msg[-1]) < 128:
@@ -322,16 +326,6 @@ class XMPPMessageHandler(object):
       message = u'%sRT @%s:%s' % (user_msg, status['user']['screen_name'], status['text'])
       status = self._api.post_update(message.encode('UTF8'), long_id)
       self._queue.put(Job(self._jid, data=status, allow_duplicate=False))
-    else:
-      raise TypeError('Can not RT a direct message.')
-
-  def func_retweet(self, short_id):
-    long_id, long_id_type = self._util.restore_short_id(short_id)
-    if long_id_type == db.TYPE_STATUS:
-      status = self._api.create_retweet(long_id)
-      self._queue.put(Job(self._jid, data=status, allow_duplicate=False))
-    else:
-      raise TypeError('Can not retweet a direct message.')
 
   def func_del(self, short_id=None):
     if not short_id:
