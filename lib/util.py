@@ -5,9 +5,11 @@ from time import mktime, localtime, strftime
 from email.utils import parsedate
 from xml.sax.saxutils import unescape
 
+import jinja2
+
 import db
 import twitter
-from config import MAX_ID_LIST_NUM
+from config import MAX_ID_LIST_NUM, DEFAULT_MESSAGE_TEMPLATE
 
 class DuplicateError(Exception):
   pass
@@ -49,7 +51,7 @@ class ostring(object):
           self._str_indices.insert(i * 2 + 1, stop)
           self._str_list.insert(i, replace_text)
           return self
-        # start is larger than any of pairs in the list, we should add them to the last.
+          # start is larger than any of pairs in the list, we should add them to the last.
       self._str_indices.append(start)
       self._str_indices.append(stop)
       self._str_list.append(replace_text)
@@ -63,8 +65,7 @@ class Util(object):
   def __init__(self, user):
     self._user = user
 
-  @staticmethod
-  def parse_text(data):
+  def parse_text(self, data):
     def parse_entities(data):
       if 'entities' in data:
         tmp = ostring(data['text'])
@@ -83,49 +84,49 @@ class Util(object):
     data['text'] = unescape(data['text'])
     return parse_entities(data).replace('\r\n', '\n').replace('\r', '\n')
 
-
-  def parse_single(self, single):
+  def make_namespace(self, single):
     if single is None:
       return None
-    msg_dict = dict()
     short_id, short_id_alpha = self.generate_short_id(single)
     t = mktime(parsedate(single['created_at']))
     if isinstance(single, twitter.Status):
       if single['user']['utc_offset']:
         t += single['user']['utc_offset']
-      msg_dict['time'] = strftime('%m-%d %H:%M:%S', localtime(t))
-      msg_dict['username'] = single['user']['screen_name']
-      source = re.match(r'<a .*>(.*)</a>', single['source'])
-      msg_dict['source'] = source.group(1) if source else single['source']
-      retweeted_status = single.get('retweeted_status')
-      if retweeted_status is not None:
-        old_allow_duplicate = self.allow_duplicate
-        self.allow_duplicate = True
-        msg_dict['content'] = self.parse_single(twitter.Status(retweeted_status))
-        self.allow_duplicate = old_allow_duplicate
-        text = u'%(content)s\n└Retweeted by %(username)s %(time)s via %(source)s' % msg_dict
-      else:
-        msg_dict['id_str'] = single['id_str']
-        msg_dict['shortid'] = '#%s=%s' % (short_id, short_id_alpha)
-        msg_dict['content'] = Util.parse_text(single)
-        text = u'%(username)s: %(content)s\n↑ %(time)s [%(shortid)s] via %(source)s' % msg_dict
-      if 'in_reply_to_status' in single and isinstance(single['in_reply_to_status'], twitter.Status):
-        old_allow_duplicate = self.allow_duplicate
-        self.allow_duplicate = True
-        in_reply_to_text = self.parse_single(single['in_reply_to_status'])
-        self.allow_duplicate = old_allow_duplicate
-        text += u'\n◤→ %s◢' % in_reply_to_text
-    elif isinstance(single, twitter.DirectMessage):
-      msg_dict['shortid'] = '#%s=%s' % (short_id, short_id_alpha)
-      msg_dict['username'] = single['sender']['screen_name']
+    else:
       if single['sender']['utc_offset']:
         t += single['sender']['utc_offset']
-      msg_dict['time'] = strftime('%Y-%m-%d %H:%M:%S', localtime(t))
-      msg_dict['content'] = Util.parse_text(single)
-      text = u'%(username)s: %(content)s\n↑ %(time)s [%(shortid)s]' % msg_dict
+    single['created_at_fmt'] = strftime('%m-%d %H:%M:%S', localtime(t))
+    if 'source' in single:
+      source = re.match(r'<a .*>(.*)</a>', single['source'])
+      single['source'] = source.group(1) if source else single['source']
     else:
-      raise TypeError('Not a valid Status or Direct Message.')
-    return text
+      single['source'] = None
+    single['short_id_str_num'] = short_id
+    single['short_id_str_alpha'] = short_id_alpha
+    single['text'] = self.parse_text(single)
+    if 'user' not in single:
+      single['user'] = None
+    if 'in_reply_to_status' in single:
+      single['in_reply_to_status'] = self.make_namespace(single['in_reply_to_status'])
+    else:
+      single['in_reply_to_status'] = None
+    if 'retweeted_status' in single:
+      single['retweeted_status'] = self.make_namespace(single['retweeted_status'])
+      retweet = single
+      single = single['retweeted_status']
+      single['retweet'] = retweet
+      del single['retweet']['retweeted_status']
+    else:
+      single['retweet'] = None
+    return single
+
+  def parse_status(self, single, allow_duplicate=True):
+    old_allow_duplicate = self.allow_duplicate
+    self.allow_duplicate = allow_duplicate
+    single = self.make_namespace(single)
+    self.allow_duplicate = old_allow_duplicate
+    t = jinja2.Template(DEFAULT_MESSAGE_TEMPLATE)
+    return t.render(**single)
 
   def parse_data(self, data, reverse=True):
     if data:
@@ -135,14 +136,14 @@ class Util(object):
           data.reverse()
         for single in data:
           try:
-            text = self.parse_single(single)
+            text = self.parse_status(single, self.allow_duplicate)
             if text:
               msgs.append(text)
           except DuplicateError:
             pass
       else:
         try:
-          text = self.parse_single(data)
+          text = self.parse_status(data, self.allow_duplicate)
           if text:
             msgs.append(text)
         except DuplicateError:

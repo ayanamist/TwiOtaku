@@ -47,7 +47,7 @@ class XMPPMessageHandler(object):
       access_token_key=self._user.get('access_key'), access_token_secret=self._user.get('access_secret'))
     try:
       result = self.parse_command(msg['body'].rstrip())
-    except (twitter.TwitterError, TypeError, ValueError), e:
+    except Exception, e:
       result = unicode(e)
     if result:
       msg.reply(result).send()
@@ -339,10 +339,10 @@ class XMPPMessageHandler(object):
       long_id, long_id_type = self._util.restore_short_id(short_id)
     if long_id_type == db.TYPE_STATUS:
       status = self._api.destroy_status(long_id)
-      return 'Status deleted: %s' % Util.parse_text(status)
+      return 'Status deleted: %s' % self._util.parse_text(status)
     else:
       dm = self._api.destroy_direct_message(long_id)
-      return 'Direct message to %s deleted: %s' % (dm['recipient_screen_name'], Util.parse_text(dm))
+      return 'Direct message to %s deleted: %s' % (dm['recipient_screen_name'], self._util.parse_text(dm))
 
   def func_dm(self, screen_name_or_short_id_or_page='', *content):
     if not content:

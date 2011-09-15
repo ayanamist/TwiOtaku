@@ -202,6 +202,6 @@ class StreamThread(threading.Thread):
           for _ in xrange(wait_time_now):
             check_stop()
             sleep(1)
-        if wait_time_now_index < len(wait_times):
+        if wait_time_now_index + 1 < len(wait_times):
           wait_time_now_index += 1
 
