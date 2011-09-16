@@ -229,10 +229,18 @@ class XMPPMessageHandler(object):
         raise TypeError('Not supported list command.')
 
   def func_home(self, page=1):
+    try:
+      page = int(page)
+    except ValueError:
+      return 'Unknown page number: %s.' % page
     statuses = self._api.get_home_timeline(page=page)
     self._queue.put(Job(self._jid, data=statuses, title='Home Timeline: Page %d' % page))
 
   def func_timeline(self, screen_name, page=1):
+    try:
+      page = int(page)
+    except ValueError:
+      return 'Unknown page number: %s.' % page
     statuses = self._api.get_user_timeline(screen_name=screen_name, page=page)
     self._queue.put(Job(self._jid, data=statuses, title='User @%s Timeline: Page %d' % (screen_name, page)))
 
