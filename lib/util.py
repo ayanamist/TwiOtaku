@@ -121,7 +121,11 @@ class Util(object):
     # TODO: implement sandbox
     # TODO: implement datefmt
     t = jinja2.Template(self._user['msg_tpl'] if self._user['msg_tpl'] else DEFAULT_MESSAGE_TEMPLATE)
-    return t.render(**single)
+    try:
+      result = t.render(**single)
+    except Exception, e:
+      result = unicode(e)
+    return result
 
   def parse_data(self, data, reverse=True):
     if data:
