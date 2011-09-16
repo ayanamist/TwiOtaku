@@ -5,10 +5,9 @@ from time import mktime, localtime, strftime
 from email.utils import parsedate
 from xml.sax.saxutils import unescape
 
-import jinja2
-
 import db
 import twitter
+from template import Template
 from config import MAX_ID_LIST_NUM, DEFAULT_MESSAGE_TEMPLATE, DEFAULT_DATE_FORMAT
 
 class DuplicateError(Exception):
@@ -117,9 +116,7 @@ class Util(object):
 
   def parse_status(self, single):
     single = self.make_namespace(single, self.allow_duplicate)
-    # TODO: implement cache
-    # TODO: implement sandbox
-    t = jinja2.Template(self._user['msg_tpl'] if self._user['msg_tpl'] else DEFAULT_MESSAGE_TEMPLATE)
+    t = Template(self._user['msg_tpl'] if self._user['msg_tpl'] else DEFAULT_MESSAGE_TEMPLATE)
     try:
       result = t.render(**single)
     except Exception, e:
