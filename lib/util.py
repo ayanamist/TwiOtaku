@@ -81,8 +81,7 @@ class Util(object):
       else:
         return data['text']
 
-    data['text'] = unescape(data['text'])
-    return parse_entities(data).replace('\r\n', '\n').replace('\r', '\n')
+    return unescape(parse_entities(data)).replace('\r\n', '\n').replace('\r', '\n')
 
   def make_namespace(self, single, allow_duplicate=True):
     old_allow_duplicate = self.allow_duplicate
