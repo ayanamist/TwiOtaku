@@ -28,20 +28,14 @@ def worker(xmpp, q):
         user = db.get_user_from_jid(bare_jid)
         util = Util(user)
         util.allow_duplicate = item.allow_duplicate
-        try:
-          result = util.parse_data(item.data, reverse=item.reverse)
-        except Exception, e:
-          if item.always:
-            xmpp.send_message(item.jid, unicode(e))
-          raise e
-        else:
-          if result:
-            if item.title:
-              msg = u'%s\n%s' % (item.title, ''.join(result) if isinstance(result, list) else result)
-              xmpp.send_message(item.jid, msg)
-            else:
-              for m in result:
-                xmpp.send_message(item.jid, m)
+        result = util.parse_data(item.data, reverse=item.reverse)
+        if result:
+          if item.title:
+            msg = u'%s\n%s' % (item.title, ''.join(result) if isinstance(result, list) else result)
+            xmpp.send_message(item.jid, msg)
+          else:
+            for m in result:
+              xmpp.send_message(item.jid, m)
 
   while True:
     item = q.get()
