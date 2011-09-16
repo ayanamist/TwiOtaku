@@ -47,7 +47,10 @@ def init():
           "last_list_id"  TEXT,
           "last_update"  INTEGER NOT NULL DEFAULT 0,
           "timeline"  INTEGER NOT NULL DEFAULT 3,
-          "id_list_ptr"  INTEGER NOT NULL DEFAULT 0
+          "id_list_ptr"  INTEGER NOT NULL DEFAULT 0,
+          "msg_tpl"  BLOB,
+          "date_fmt"  TEXT,
+          "always"  INTEGER NOT NULL DEFAULT 0
           );
           CREATE UNIQUE INDEX "users_id"
           ON "users" ("id");
