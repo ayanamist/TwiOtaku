@@ -82,6 +82,11 @@ class XMPPBot(sleekxmpp.ClientXMPP):
           del self.online_clients[bare_jid]
       self.global_lock.release()
 
+  def send_message(self, mto, mbody, msubject=None, mtype=None, mhtml=None, mfrom=None, mnick=None):
+    if mtype is None:
+      mtype = 'chat' # we must set this so messages can be saved into gmail.
+    return super(XMPPBot, self).send_message(mto, mbody, msubject, mtype, mhtml, mfrom, mnick)
+
   def add_online_user(self, bare_jid):
     if bare_jid in self.online_clients:
       self.start_worker(bare_jid)
