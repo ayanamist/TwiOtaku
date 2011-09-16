@@ -31,7 +31,7 @@ def worker(xmpp, q):
         result = util.parse_data(item.data, reverse=item.reverse)
         if result:
           if item.title:
-            msg = u'%s\n%s' % (item.title, ''.join(result) if isinstance(result, list) else result)
+            msg = u'%s\n%s' % (item.title, '\n'.join(result) if isinstance(result, list) else result)
             xmpp.send_message(item.jid, msg)
           else:
             for m in result:
