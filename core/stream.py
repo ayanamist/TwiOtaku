@@ -1,6 +1,7 @@
 import urllib2
 import threading
 import logging
+import socket
 from time import sleep, time
 from ssl import SSLError
 
@@ -192,7 +193,7 @@ class StreamThread(threading.Thread):
           data = read_data(user_stream_handler)
           check_user_changed()
           process(data)
-      except (urllib2.URLError, urllib2.HTTPError, SSLError), e:
+      except (urllib2.URLError, urllib2.HTTPError, SSLError, socket.error), e:
         stream_logger.warn('User Streaming connection failed.')
         if isinstance(e, urllib2.HTTPError):
           if e.code == 401:

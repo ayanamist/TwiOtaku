@@ -1,5 +1,6 @@
 import time
 import logging
+import operator
 from threading import Thread
 from Queue import Queue
 
@@ -13,7 +14,7 @@ logger = logging.getLogger('cron')
 
 def cron_start(queues):
   cron_queue = Queue()
-  max_idle_time = 180
+  max_idle_time = 300
   for user in db.get_all_users():
     if user['access_key'] and user['access_secret']:
       tl = user['timeline'] & ~db.MODE_EVENT # event only exists in user streaming api.
@@ -103,6 +104,15 @@ def cron_job(cron_queue):
     if data:
       all_data.extend(data)
 
+    if all_data:
+      all_data.sort(key=operator.itemgetter('id'))
+      last = all_data[-1]['id']
+      for i in range(len(all_data) - 2, -1, -1):
+        if last == all_data[i]['id']:
+          del all_data[i]
+        else:
+          last = all_data[i]['id']
+
     user_at_screen_name = '@%s' % user['screen_name']
     for data in all_data:
       if user_at_screen_name in data['text']:
@@ -115,7 +125,8 @@ def cron_job(cron_queue):
         except BaseException:
           pass
 
-    queue.put(Job(user_jid, data=all_data, allow_duplicate=False, always=False))
+    if all_data:
+      queue.put(Job(user_jid, data=all_data, allow_duplicate=False, always=False))
 
     cron_queue.task_done()
 

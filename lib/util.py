@@ -84,7 +84,9 @@ class Util(object):
     data['text'] = unescape(data['text'])
     return parse_entities(data).replace('\r\n', '\n').replace('\r', '\n')
 
-  def make_namespace(self, single):
+  def make_namespace(self, single, allow_duplicate=True):
+    old_allow_duplicate = self.allow_duplicate
+    self.allow_duplicate = allow_duplicate
     if single is None:
       return None
     short_id, short_id_alpha = self.generate_short_id(single)
@@ -110,13 +112,11 @@ class Util(object):
       del single['retweet']['retweeted_status']
     if 'in_reply_to_status' in single:
       single['in_reply_to_status'] = self.make_namespace(single['in_reply_to_status'])
+    self.allow_duplicate = old_allow_duplicate
     return single
 
-  def parse_status(self, single, allow_duplicate=True):
-    old_allow_duplicate = self.allow_duplicate
-    self.allow_duplicate = allow_duplicate
-    single = self.make_namespace(single)
-    self.allow_duplicate = old_allow_duplicate
+  def parse_status(self, single):
+    single = self.make_namespace(single, self.allow_duplicate)
     # TODO: implement cache
     # TODO: implement sandbox
     # TODO: implement user single template file
@@ -132,14 +132,14 @@ class Util(object):
           data.reverse()
         for single in data:
           try:
-            text = self.parse_status(single, self.allow_duplicate)
+            text = self.parse_status(single)
             if text:
               msgs.append(text)
           except DuplicateError:
             pass
       else:
         try:
-          text = self.parse_status(data, self.allow_duplicate)
+          text = self.parse_status(data)
           if text:
             msgs.append(text)
         except DuplicateError:
