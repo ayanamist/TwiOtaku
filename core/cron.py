@@ -106,7 +106,7 @@ def cron_job(cron_queue):
           in_reply_to_status_id_str = data['retweeted_status'].get('in_reply_to_status_id_str')
         if in_reply_to_status_id_str:
           try:
-            data['in_reply_to_status'] = self.api.get_status(in_reply_to_status_id_str)
+            data['in_reply_to_status'] = api.get_status(in_reply_to_status_id_str)
           except BaseException:
             pass
 

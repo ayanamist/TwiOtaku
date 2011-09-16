@@ -98,7 +98,7 @@ class StreamThread(threading.Thread):
       if self.is_user_changed():
         self.user = db.get_user_from_jid(self.bare_jid)
 
-    @debug('cron')
+    @debug()
     def verify_credentials():
       try:
         data = self.api.verify_credentials()
@@ -112,17 +112,76 @@ class StreamThread(threading.Thread):
           db.update_user(jid=self.bare_jid, screen_name=screen_name)
         self.twitter_user_id = data['id_str']
 
+    @debug()
+    def process(data):
+      if 'event' in data:
+        title = None
+        if self.user['timeline'] & db.MODE_EVENT:
+          if data['event'] == 'follow':
+            title = '@%s is now following @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
+          elif data['event'] == 'block':
+            refresh_blocked_ids()
+            title = '@%s has blocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
+          elif data['event'] == 'unblock':
+            refresh_blocked_ids()
+            title = '@%s has unblocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
+          elif data['event'] == 'list_member_added':
+            pass
+          elif data['event'] == 'list_member_removed':
+            pass
+        if title:
+          self.queue.put(Job(self.user['jid'], title=title, always=False))
+      elif 'delete' in data:
+        if 'status' in data['delete']:
+          db.delete_status(data['delete']['status']['id_str'])
+      else:
+        title = None
+        if 'direct_message' in data:
+          if self.user['timeline'] & db.MODE_DM:
+            data = twitter.DirectMessage(data['direct_message'])
+            title = 'Direct Message:'
+          else:
+            data = None
+        else:
+          # It should not save status here, because sqlite only accepts around 60 transactions per second,
+          # and for feature of user streaming, it's easy to overcome this limitation which makes the whole
+          # program more and more slowly, also cron threads will collect the same items at the same time.
+          user_at_screen_name = '@%s' % self.user['screen_name']
+          if data['user']['id_str'] not in self.blocked_ids:
+            if self.user['timeline'] & db.MODE_HOME\
+            or (self.user['timeline'] & db.MODE_MENTION and user_at_screen_name in data['text']):
+              data = twitter.Status(data)
+              if user_at_screen_name in data['text']:
+                in_reply_to_status_id_str = data.get('in_reply_to_status_id_str')
+                if not in_reply_to_status_id_str and 'retweeted_status' in data:
+                  in_reply_to_status_id_str = data['retweeted_status'].get('in_reply_to_status_id_str')
+                if in_reply_to_status_id_str:
+                  try:
+                    data['in_reply_to_status'] = self.api.get_status(in_reply_to_status_id_str)
+                  except BaseException:
+                    pass
+            else:
+              stream_logger.debug('Drop a status for timeline disallow.')
+              data = None
+          else:
+            stream_logger.debug('Drop a status for user %s is blocked.' % data['user']['screen_name'])
+            data = None
+        if data:
+          self.queue.put(Job(self.user['jid'], data=data, allow_duplicate=False, always=False, title=title))
+
+
+    stream_logger = logging.getLogger('user streaming')
     verify_credentials()
     wait_times = (0, 30, 60, 120, 240)
     wait_time_now_index = 0
+    refresh_blocked_ids()
     last_blocked_ids_update = time()
     refresh_blocked_ids_interval = 3600
-    refresh_blocked_ids()
-    stream_logger = logging.getLogger('user streaming')
     while True:
       try:
         check_stop()
         user_stream_handler = self.api.user_stream()
+        stream_logger.debug('%s: User Streaming connected.' % self.user['jid'])
         if wait_time_now_index:
           wait_time_now_index = 0
 
@@ -138,55 +197,7 @@ class StreamThread(threading.Thread):
             last_blocked_ids_update = time_now
           data = read_data(user_stream_handler)
           check_user_changed()
-          if 'event' in data:
-            title = None
-            if self.user['timeline'] & db.MODE_EVENT:
-              if data['event'] == 'follow':
-                title = '@%s is now following @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
-              elif data['event'] == 'block':
-                refresh_blocked_ids()
-                title = '@%s has blocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
-              elif data['event'] == 'unblock':
-                refresh_blocked_ids()
-                title = '@%s has unblocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
-              elif data['event'] == 'list_member_added':
-                pass
-              elif data['event'] == 'list_member_removed':
-                pass
-            if title:
-              self.queue.put(Job(self.user['jid'], title=title, always=False))
-          elif 'delete' in data:
-            if 'status' in data['delete']:
-              db.delete_status(data['delete']['status']['id_str'])
-          else:
-            title = None
-            if 'direct_message' in data:
-              if self.user['timeline'] & db.MODE_DM:
-                data = twitter.DirectMessage(data['direct_message'])
-                title = 'Direct Message:'
-              else:
-                data = None
-            else:
-              # It should not save status here, because sqlite only accepts around 60 transactions per second,
-              # and for feature of user streaming, it's easy to overcome this limitation which makes the whole
-              # program more and more slowly, also cron threads will collect the same items at the same time.
-              user_at_screen_name = '@%s' % self.user['screen_name']
-              if data['user']['id_str'] not in self.blocked_ids and self.user['timeline'] & db.MODE_HOME\
-              or (self.user['timeline'] & db.MODE_MENTION and user_at_screen_name in data['text']):
-                data = twitter.Status(data)
-                if user_at_screen_name in data['text']:
-                  in_reply_to_status_id_str = data.get('in_reply_to_status_id_str')
-                  if not in_reply_to_status_id_str and 'retweeted_status' in data:
-                    in_reply_to_status_id_str = data['retweeted_status'].get('in_reply_to_status_id_str')
-                  if in_reply_to_status_id_str:
-                    try:
-                      data['in_reply_to_status'] = self.api.get_status(in_reply_to_status_id_str)
-                    except BaseException:
-                      pass
-              else:
-                data = None
-            if data:
-              self.queue.put(Job(self.user['jid'], data=data, allow_duplicate=False, always=False, title=title))
+          process(data)
       except (urllib2.URLError, urllib2.HTTPError, SSLError), e:
         stream_logger.warn('User Streaming connection failed.')
         if isinstance(e, urllib2.HTTPError):
