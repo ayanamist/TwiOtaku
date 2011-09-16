@@ -563,22 +563,40 @@ class XMPPMessageHandler(object):
       db.update_user(id=self._user['id'], list_user=self._user['list_user'], list_name=self._user['list_name'],
         list_id=self._user['list_id'])
     if self._user['list_user'] and self._user['list_id'] and self._user['list_name']:
-      return 'List update is assigned for %s/%s.' % (self._user['list_user'], self._user['list_name'])
-    return 'Please specify a list as screen_name/list_name format first.'
+      return u'List update is assigned for %s/%s.' % (self._user['list_user'], self._user['list_name'])
+    return u'Please specify a list as screen_name/list_name format first.'
 
   def func_msgtpl(self, *content):
     content = ' '.join(content)
     if content:
       if content.lower() == 'reset':
         content = None
-        result = 'You have reset message template to default.'
-      self._user['msg_tpl'] = content
+        result = u'You have reset message template to default.'
+      else:
+        result = u'You have updated message template as following:\n%s' % content
       db.update_user(id=self._user['id'], msg_tpl=content)
-      result = u'You have updated message template as following:\n%s' % content
     else:
-      result = u'Your current message template is:\n%s' % content
+      if self._user['msg_tpl']:
+        result = u'Your current message template is:\n%s' % self._user['msg_tpl']
+      else:
+        result = u'Your current message template is default'
     return result
 
+  def func_datefmt(self, *content):
+    content = ' '.join(content)
+    if content:
+      if content.lower() == 'reset':
+        content = None
+        result = u'You have reset date format to default.'
+      else:
+        result = u'You have updated date format as following: %s' % content
+      db.update_user(id=self._user['id'], date_fmt=content)
+    else:
+      if self._user['date_fmt']:
+        result = u'Your current date format is:\n%s' % self._user['date_fmt']
+      else:
+        result = u'Your current date format is default'
+    return result
 
   def func_help(self):
-    return 'Please refer to following url to get more help.\nhttp://code.google.com/p/twiotaku/wiki/CommandsReferrence'
+    return u'Please refer to following url to get more help.\nhttp://code.google.com/p/twiotaku/wiki/CommandsReferrence'

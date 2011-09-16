@@ -9,7 +9,7 @@ import jinja2
 
 import db
 import twitter
-from config import MAX_ID_LIST_NUM, DEFAULT_MESSAGE_TEMPLATE
+from config import MAX_ID_LIST_NUM, DEFAULT_MESSAGE_TEMPLATE, DEFAULT_DATE_FORMAT
 
 class DuplicateError(Exception):
   pass
@@ -97,9 +97,10 @@ class Util(object):
     else:
       if single['user']['utc_offset']:
         t += single['user']['utc_offset']
-    single['created_at_fmt'] = strftime('%m-%d %H:%M:%S', localtime(t))
+    date_fmt = self._user['date_fmt'] if self._user['date_fmt'] else DEFAULT_DATE_FORMAT
+    single['created_at_fmt'] = strftime(date_fmt.encode('UTF8'), localtime(t)).decode('UTF8')
     if 'source' in single:
-      source = re.match(r'<a .*>(.*)</a>', single['source'])
+      source = re.match(ur'<a .*>(.*)</a>', single['source'])
       single['source'] = source.group(1) if source else single['source']
     single['short_id_str_num'] = short_id
     single['short_id_str_alpha'] = short_id_alpha
@@ -119,7 +120,6 @@ class Util(object):
     single = self.make_namespace(single, self.allow_duplicate)
     # TODO: implement cache
     # TODO: implement sandbox
-    # TODO: implement datefmt
     t = jinja2.Template(self._user['msg_tpl'] if self._user['msg_tpl'] else DEFAULT_MESSAGE_TEMPLATE)
     try:
       result = t.render(**single)
