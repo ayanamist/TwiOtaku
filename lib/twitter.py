@@ -205,7 +205,7 @@ class Api(object):
     if data and data[0]['id_str'] == str(id):
       return data[0]
     else:
-      raise TwitterNotFoundError('Not found.')
+      raise TwitterNotFoundError
 
   def post_direct_message(self, user, text):
     url = '%s/direct_messages/new.json' % self.base_url
