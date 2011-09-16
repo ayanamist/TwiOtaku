@@ -7,8 +7,6 @@ try:
 except ImportError:
   import json
 
-from lib import twitter
-
 _db_path = os.path.abspath('data' + os.sep + 'twiotaku.db')
 _conn_db = None
 
@@ -56,14 +54,6 @@ def init():
           CREATE UNIQUE INDEX "users_jid"
           ON "users" ("jid");
           """,
-    statuses="""CREATE TABLE "statuses" (
-            "id_str"  TEXT NOT NULL,
-            "json"  BLOB NOT NULL,
-            PRIMARY KEY ("id_str") ON CONFLICT REPLACE
-            );
-            CREATE UNIQUE INDEX "status_id"
-            ON "statuses" ("id_str");
-            """,
     invites="""CREATE TABLE "invites" (
           "id"  TEXT NOT NULL,
           "create_time"   INTEGER NOT NULL,
@@ -71,15 +61,6 @@ def init():
           );
           CREATE UNIQUE INDEX "invite_id"
           ON "invites" ("id");
-          """,
-    list_ids="""CREATE TABLE "list_ids" (
-              "uid"  INTEGER NOT NULL,
-              "value"   TEXT,
-              "modify_time"   INTEGER NOT NULL,
-              PRIMARY KEY ("uid") ON CONFLICT REPLACE
-              );
-              CREATE UNIQUE INDEX "list_ids_uid"
-              ON "list_ids" ("uid");
           """,
   )
   for t in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'"):
@@ -166,16 +147,6 @@ def delete_invite_code(invite_code):
   cursor.execute(sql, (invite_code,))
 
 
-def begin_transaction():
-  cursor = _conn_db.cursor()
-  cursor.execute('BEGIN TRANSACTION')
-
-
-def commit_transaction():
-  cursor = _conn_db.cursor()
-  cursor.execute('COMMIT')
-
-
 def get_short_id_from_long_id(uid, long_id, single_type):
   cursor = _conn_db.cursor()
   sql = 'SELECT short_id FROM id_lists WHERE uid=? AND long_id=? AND type=?'
@@ -197,23 +168,3 @@ def update_long_id_from_short_id(uid, short_id, long_id, single_type):
   cursor.execute(sql, (uid, short_id))
   sql = 'INSERT INTO id_lists (uid, short_id, long_id, type) VALUES(?, ?, ?, ?)'
   cursor.execute(sql, (uid, short_id, long_id, single_type))
-
-
-def add_status(id_str, data):
-  cursor = _conn_db.cursor()
-  sql = 'INSERT OR REPLACE INTO statuses (id_str, json) VALUES(?,?)'
-  cursor.execute(sql, (id_str, data))
-
-
-def delete_status(id_str):
-  cursor = _conn_db.cursor()
-  sql = 'DELETE FROM statuses WHERE id_str=?'
-  cursor.execute(sql, (id_str,))
-
-
-def get_status(id_str):
-  cursor = _conn_db.cursor()
-  sql = 'SELECT id_str, json FROM statuses WHERE id_str=?'
-  for _, data in cursor.execute(sql, (id_str,)):
-    return twitter.Status(json.loads(str(data)))
-  return None

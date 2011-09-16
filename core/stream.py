@@ -132,8 +132,7 @@ class StreamThread(threading.Thread):
         if title:
           self.queue.put(Job(self.user['jid'], title=title, always=False))
       elif 'delete' in data:
-        if 'status' in data['delete']:
-          db.delete_status(data['delete']['status']['id_str'])
+        pass
       else:
         title = None
         if 'direct_message' in data:
@@ -143,9 +142,6 @@ class StreamThread(threading.Thread):
           else:
             data = None
         else:
-          # It should not save status here, because sqlite only accepts around 60 transactions per second,
-          # and for feature of user streaming, it's easy to overcome this limitation which makes the whole
-          # program more and more slowly, also cron threads will collect the same items at the same time.
           user_at_screen_name = '@%s' % self.user['screen_name']
           if data['user']['id_str'] not in self.blocked_ids:
             if self.user['timeline'] & db.MODE_HOME\

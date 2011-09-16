@@ -10,10 +10,8 @@ try:
 except ImportError:
   import json
 
-import db
 import oauth
 from urlfetch import fetch
-from decorators import store_status
 
 CHARACTER_LIMIT = 140
 
@@ -123,7 +121,6 @@ class Api(object):
     self._access_token_secret = None
     self._oauth_consumer = None
 
-  @store_status
   def get_home_timeline(self, page=1, since_id=None, include_rts=True, include_entities=True):
     parameters = {'page': int(page), 'include_rts': int(bool(include_rts)),
                   'include_entities': int(bool(include_entities))}
@@ -132,7 +129,6 @@ class Api(object):
     url = '%s/statuses/home_timeline.json' % self.base_url
     return [Status(x) for x in self._fetch_url(url, parameters=parameters)]
 
-  @store_status
   def get_user_timeline(self, user_id=None, screen_name=None, since_id=None, max_id=None, count=None,
                         page=None, include_rts=True, include_entities=True):
     parameters = {'include_rts': int(bool(include_rts)), 'include_entities': int(bool(include_entities))}
@@ -151,17 +147,12 @@ class Api(object):
       parameters['page'] = int(page)
     return [Status(x) for x in self._fetch_url(url, parameters=parameters)]
 
-  @store_status
   def get_related_results(self, id, include_entities=True):
     url = '%s/related_results/show/%s.json' % (self.base_url, str(id))
     parameters = {'include_entities': int(bool(include_entities))}
     return Result(self._fetch_url(url, parameters=parameters))
 
-  @store_status
   def get_status(self, id, include_entities=True):
-    cache_status = db.get_status(str(id))
-    if cache_status:
-      return cache_status
     url = '%s/statuses/show/%s.json' % (self.base_url, str(id))
     parameters = {'include_entities': int(bool(include_entities))}
     return Status(self._fetch_url(url, parameters=parameters))
@@ -171,7 +162,6 @@ class Api(object):
     url = '%s/statuses/destroy/%s.json' % (self.base_url, str(id))
     return Status(self._fetch_url(url, post_data={'id': str(id)}, parameters=parameters))
 
-  @store_status
   def post_update(self, status, in_reply_to_status_id=None, include_entities=True):
     url = '%s/statuses/update.json' % self.base_url
     data = {'status': status, 'include_entities': int(bool(include_entities))}
@@ -247,7 +237,6 @@ class Api(object):
     url = '%s/favorites/destroy/%s.json' % (self.base_url, str(id))
     return Status(self._fetch_url(url, post_data={'id': id}))
 
-  @store_status
   def get_favorites(self, screen_name=None, page=None, include_entities=True):
     url = '%s/favorites.json' % self.base_url
     parameters = {'include_entities': int(bool(include_entities))}
@@ -257,7 +246,6 @@ class Api(object):
       parameters['id'] = screen_name
     return [Status(x) for x in self._fetch_url(url, parameters=parameters)]
 
-  @store_status
   def get_mentions(self, since_id=None, max_id=None, page=None, include_entities=True):
     url = '%s/statuses/mentions.json' % self.base_url
     parameters = {'include_entities': int(bool(include_entities))}
@@ -269,7 +257,6 @@ class Api(object):
       parameters['page'] = int(page)
     return [Status(x) for x in self._fetch_url(url, parameters=parameters)]
 
-  @store_status
   def create_retweet(self, id, include_entities=True):
     url = '%s/statuses/retweet/%s.json' % (self.base_url, id)
     parameters = {'include_entities': int(bool(include_entities))}
@@ -309,7 +296,6 @@ class Api(object):
     parameters = {'slug': slug, 'owner_screen_name': screen_name}
     return self._fetch_url(url, parameters=parameters)
 
-  @store_status
   def get_list_statuses(self, screen_name, slug, since_id=None, max_id=None, page=None, include_entities=True,
                         include_rts=True):
     url = '%s/lists/statuses.json' % self.base_url
