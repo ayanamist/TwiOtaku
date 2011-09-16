@@ -600,5 +600,21 @@ class XMPPMessageHandler(object):
         result = u'Your current date format is default'
     return result
 
+  def func_always(self, value=None):
+    if value is not None:
+      value = value.lower()
+      if value in ('true', '1', 'on'):
+        value = 1
+      elif value in ('false', '0', 'off'):
+        value = 0
+      else:
+        raise TypeError('Only accept true/false, 1/0, on/off.')
+      self._user['always'] = value
+      db.update_user(id=self._user['id'], always=value)
+    if self._user['always']:
+      return u'You will always receive updates no matter you are online or not.'
+    else:
+      return u'You will only receive updates when your status is available.'
+
   def func_help(self):
     return u'Please refer to following url to get more help.\nhttp://code.google.com/p/twiotaku/wiki/CommandsReferrence'

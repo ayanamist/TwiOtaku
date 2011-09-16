@@ -19,13 +19,13 @@ def worker(xmpp, q):
     if not isinstance(item, Job):
       raise TypeError(str(item))
     bare_jid = xmpp.getjidbare(item.jid).lower()
-    if bare_jid not in xmpp.online_clients and not item.always:
+    user = db.get_user_from_jid(bare_jid)
+    if bare_jid not in xmpp.online_clients and not item.always and not user['always']:
       pass
     else:
       if item.data is None:
         xmpp.send_message(item.jid, item.title)
       else:
-        user = db.get_user_from_jid(bare_jid)
         util = Util(user)
         util.allow_duplicate = item.allow_duplicate
         result = util.parse_data(item.data, reverse=item.reverse)
@@ -39,8 +39,6 @@ def worker(xmpp, q):
 
   while True:
     item = q.get()
-    if item is None:
-      q.task_done()
-      return
-    real_worker(item)
     q.task_done()
+    if item is not None:
+      real_worker(item)
