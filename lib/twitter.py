@@ -74,7 +74,10 @@ class TwitterNetworkError(TwitterError):
 
 
 class Status(dict):
-  pass
+  def __init__(self, *args, **kwargs):
+    dict.__init__(self, *args, **kwargs)
+    if 'retweeted_status' in self:
+      self['retweeted_status'] = Status(self['retweeted_status'])
 
 
 class DirectMessage(dict):

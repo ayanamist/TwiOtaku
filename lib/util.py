@@ -89,12 +89,12 @@ class Util(object):
       return None
     short_id, short_id_alpha = self.generate_short_id(single)
     t = mktime(parsedate(single['created_at']))
-    if isinstance(single, twitter.Status):
-      if single['user']['utc_offset']:
-        t += single['user']['utc_offset']
-    else:
+    if isinstance(single, twitter.DirectMessage):
       if single['sender']['utc_offset']:
         t += single['sender']['utc_offset']
+    else:
+      if single['user']['utc_offset']:
+        t += single['user']['utc_offset']
     single['created_at_fmt'] = strftime('%m-%d %H:%M:%S', localtime(t))
     if 'source' in single:
       source = re.match(r'<a .*>(.*)</a>', single['source'])
