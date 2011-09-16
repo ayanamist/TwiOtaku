@@ -148,14 +148,14 @@ class StreamThread(threading.Thread):
             or (self.user['timeline'] & db.MODE_MENTION and user_at_screen_name in data['text']):
               data = twitter.Status(data)
               if user_at_screen_name in data['text']:
-                in_reply_to_status_id_str = data.get('in_reply_to_status_id_str')
-                if not in_reply_to_status_id_str and 'retweeted_status' in data:
-                  in_reply_to_status_id_str = data['retweeted_status'].get('in_reply_to_status_id_str')
-                if in_reply_to_status_id_str:
-                  try:
-                    data['in_reply_to_status'] = self.api.get_status(in_reply_to_status_id_str)
-                  except BaseException:
-                    pass
+                try:
+                  if 'retweeted_status' in data and 'in_reply_to_status_id_str' in data['retweeted_status']:
+                    data['retweeted_status']['in_reply_to_status'] = self.api.get_status(
+                      data['retweeted_status']['in_reply_to_status_id_str'])
+                  elif 'in_reply_to_status_id_str' in data:
+                    data['in_reply_to_status'] = self.api.get_status(data['in_reply_to_status_id_str'])
+                except BaseException:
+                  pass
             else:
               data = None
           else:

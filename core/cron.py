@@ -1,4 +1,5 @@
 import time
+import logging
 from threading import Thread
 from Queue import Queue
 
@@ -8,17 +9,21 @@ from worker import Job
 from lib import twitter
 from lib.decorators import debug
 
+logger = logging.getLogger('cron')
+
 def cron_start(queues):
   cron_queue = Queue()
+  max_idle_time = 180
   for user in db.get_all_users():
     if user['access_key'] and user['access_secret']:
       tl = user['timeline'] & ~db.MODE_EVENT # event only exists in user streaming api.
       if tl:
-        if time.time() - user['last_update'] > 180:
+        if time.time() - user['last_update'] > max_idle_time:
           # if it's a long time since last update, we should abandon these old data.
+          logger.debug('Exceed %s seconds, all results won\'t be shown.' % max_idle_time)
           queue = Queue()
         else:
-          queue = queues.get(user['jid'], Queue())
+          queue = queues[user['jid']]
         cron_queue.put((queue, user))
   for _ in range(db.get_users_count() // 5 + 1):
     t = Thread(target=cron_job, args=(cron_queue, ))
@@ -101,14 +106,14 @@ def cron_job(cron_queue):
     user_at_screen_name = '@%s' % user['screen_name']
     for data in all_data:
       if user_at_screen_name in data['text']:
-        in_reply_to_status_id_str = data.get('in_reply_to_status_id_str')
-        if not in_reply_to_status_id_str and 'retweeted_status' in data:
-          in_reply_to_status_id_str = data['retweeted_status'].get('in_reply_to_status_id_str')
-        if in_reply_to_status_id_str:
-          try:
-            data['in_reply_to_status'] = api.get_status(in_reply_to_status_id_str)
-          except BaseException:
-            pass
+        try:
+          if 'retweeted_status' in data and 'in_reply_to_status_id_str' in data['retweeted_status']:
+            data['retweeted_status']['in_reply_to_status'] = api.get_status(
+              data['retweeted_status']['in_reply_to_status_id_str'])
+          elif 'in_reply_to_status_id_str' in data:
+            data['in_reply_to_status'] = api.get_status(data['in_reply_to_status_id_str'])
+        except BaseException:
+          pass
 
     queue.put(Job(user_jid, data=all_data, allow_duplicate=False, always=False))
 

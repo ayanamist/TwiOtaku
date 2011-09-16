@@ -102,14 +102,14 @@ class Util(object):
     single['short_id_str_num'] = short_id
     single['short_id_str_alpha'] = short_id_alpha
     single['text'] = self.parse_text(single)
-    if 'in_reply_to_status' in single:
-      single['in_reply_to_status'] = self.make_namespace(single['in_reply_to_status'])
     if 'retweeted_status' in single:
       single['retweeted_status'] = self.make_namespace(single['retweeted_status'])
       retweet = single
       single = single['retweeted_status']
       single['retweet'] = retweet
       del single['retweet']['retweeted_status']
+    if 'in_reply_to_status' in single:
+      single['in_reply_to_status'] = self.make_namespace(single['in_reply_to_status'])
     return single
 
   def parse_status(self, single, allow_duplicate=True):
