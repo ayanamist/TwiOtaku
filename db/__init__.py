@@ -10,6 +10,18 @@ MODE_EVENT = 16
 TYPE_STATUS = 0
 TYPE_DM = 1
 
+global add_invite_code
+global add_user
+global delete_invite_code
+global get_all_users
+global get_invite_code
+global get_long_id_from_short_id
+global get_short_id_from_long_id
+global get_user_from_jid
+global get_users_count
+global update_long_id_from_short_id
+global update_user
+
 _db_type = DATABASE_TYPE.lower()
 _vars = globals()
 if _db_type == 'sqlite':
@@ -24,7 +36,6 @@ if _db_type == 'sqlite':
   _vars['get_short_id_from_long_id'] = sqlite.get_short_id_from_long_id
   _vars['get_user_from_jid'] = sqlite.get_user_from_jid
   _vars['get_users_count'] = sqlite.get_users_count
-  _vars['init'] = sqlite.init
   _vars['update_long_id_from_short_id'] = sqlite.update_long_id_from_short_id
   _vars['update_user'] = sqlite.update_user
 elif _db_type == 'redis':

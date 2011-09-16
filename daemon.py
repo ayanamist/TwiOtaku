@@ -138,8 +138,6 @@ if __name__ == '__main__':
     print 'TwiOtaku needs Python 2.6 or later. Python 3.X is not supported yet.'
     exit(1)
 
-  db.init()
-
   bot = XMPPBot()
   signal.signal(signal.SIGTERM, bot.sigterm_handler)
   bot.start(block=True)

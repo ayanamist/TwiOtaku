@@ -168,3 +168,5 @@ def update_long_id_from_short_id(uid, short_id, long_id, single_type):
   cursor.execute(sql, (uid, short_id))
   sql = 'INSERT INTO id_lists (uid, short_id, long_id, type) VALUES(?, ?, ?, ?)'
   cursor.execute(sql, (uid, short_id, long_id, single_type))
+
+init()
