@@ -33,6 +33,7 @@ def worker(xmpp, q):
         except Exception, e:
           if item.always:
             xmpp.send_message(item.jid, unicode(e))
+          raise e
         else:
           if result:
             if item.title:
