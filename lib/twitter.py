@@ -30,7 +30,7 @@ BASE_URL = 'https://api.twitter.com/1'
 class TwitterError(Exception):
   message = ''
 
-  def __init__(self, messsage):
+  def __init__(self, messsage=None):
     if messsage is not None:
       super(TwitterError, self).__init__(messsage)
     else:
