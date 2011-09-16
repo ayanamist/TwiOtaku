@@ -334,7 +334,7 @@ class XMPPMessageHandler(object):
       if user_msg and ord(user_msg[-1]) < 128:
         user_msg += ' '
       message = u'%sRT @%s:%s' % (user_msg, status['user']['screen_name'], status['text'])
-      status = self._api.post_update(message.encode('UTF8'), long_id)
+      status = self._api.post_update(message.encode('UTF8'))
       self._queue.put(Job(self._jid, data=status, allow_duplicate=False))
 
   def func_del(self, short_id=None):
