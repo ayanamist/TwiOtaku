@@ -161,10 +161,8 @@ class StreamThread(threading.Thread):
                   except BaseException:
                     pass
             else:
-              stream_logger.debug('Drop a status for timeline disallow.')
               data = None
           else:
-            stream_logger.debug('Drop a status for user %s is blocked.' % data['user']['screen_name'])
             data = None
         if data:
           self.queue.put(Job(self.user['jid'], data=data, allow_duplicate=False, always=False, title=title))
