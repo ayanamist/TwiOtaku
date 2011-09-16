@@ -137,6 +137,7 @@ class StreamThread(threading.Thread):
             refresh_blocked_ids()
             last_blocked_ids_update = time_now
           data = read_data(user_stream_handler)
+          check_user_changed()
           if 'event' in data:
             title = None
             if self.user['timeline'] & db.MODE_EVENT:
