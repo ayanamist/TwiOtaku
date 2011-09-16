@@ -125,6 +125,10 @@ class Util(object):
     self.allow_duplicate = allow_duplicate
     single = self.make_namespace(single)
     self.allow_duplicate = old_allow_duplicate
+    # TODO: implement cache
+    # TODO: implement sandbox
+    # TODO: implement user single template file
+    # TODO: implement datefmt
     t = jinja2.Template(DEFAULT_MESSAGE_TEMPLATE)
     return t.render(**single)
 
