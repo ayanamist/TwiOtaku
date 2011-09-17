@@ -2,11 +2,6 @@ import logging
 import traceback
 from StringIO import StringIO
 
-try:
-  import ujson as json
-except ImportError:
-  import json
-
 # decorator for logging
 def debug(logger_name=__name__):
   def wrap(f):

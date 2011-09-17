@@ -11,7 +11,7 @@ except ImportError:
   import json
 
 import oauth
-from urlfetch import fetch
+import urlfetch
 
 CHARACTER_LIMIT = 140
 
@@ -431,9 +431,11 @@ class Api(object):
       url = self._build_url(url, extra_params=extra_params)
       encoded_post_data = self._encode_post_data(post_data)
     try:
-      response = fetch(method=http_method, url=url, body=encoded_post_data, headers=headers)
+      response = urlfetch.fetch(method=http_method, url=url, body=encoded_post_data, headers=headers)
     except SSLError:
       raise TwitterNetworkError
+    except urlfetch.Error, e:
+      raise TwitterNetworkError(str(e))
     else:
       return self._check_for_twitter_error(response)
 
