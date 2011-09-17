@@ -4,6 +4,7 @@ import operator
 from Queue import Queue
 from urlparse import parse_qsl
 from email.utils import parsedate
+from datetime import datetime
 
 import db
 from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, MAX_CONVERSATION_NUM, ADMIN_USERS
@@ -591,13 +592,15 @@ class XMPPMessageHandler(object):
         content = None
         result = u'You have reset date format to default.'
       else:
-        result = u'You have updated date format as following: %s' % content
+        now = datetime.now()
+        now_str = now.strftime(content.encode('UTF8')).decode('UTF8')
+        result = u'You have updated date format as following: %s\nPreview: %s' % (content, now_str)
       db.update_user(id=self._user['id'], date_fmt=content)
     else:
       if self._user['date_fmt']:
-        result = u'Your current date format is:\n%s' % self._user['date_fmt']
+        result = u'Your current date format is: %s.' % self._user['date_fmt']
       else:
-        result = u'Your current date format is default'
+        result = u'Your current date format is default.'
     return result
 
   def func_always(self, value=None):
