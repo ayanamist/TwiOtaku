@@ -8,7 +8,7 @@ from xml.sax.saxutils import unescape
 import db
 import twitter
 from template import Template
-from config import MAX_ID_LIST_NUM, DEFAULT_MESSAGE_TEMPLATE, DEFAULT_DATE_FORMAT
+from config import MAX_ID_LIST_NUM, DEFAULT_MESSAGE_TEMPLATE, DEFAULT_DATE_FORMAT, OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
 
 class DuplicateError(Exception):
   pass
@@ -63,6 +63,11 @@ class Util(object):
 
   def __init__(self, user):
     self._user = user
+    self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY,
+      consumer_secret=OAUTH_CONSUMER_SECRET,
+      access_token_key=self._user['access_key'],
+      access_token_secret=self._user['access_secret'])
+
 
   def parse_text(self, data):
     def parse_entities(data):
@@ -103,13 +108,19 @@ class Util(object):
     single['short_id_str_num'] = short_id
     single['short_id_str_alpha'] = short_id_alpha
     single['text'] = self.parse_text(single)
-    if 'retweeted_status' in single:
-      single['retweeted_status'] = self.make_namespace(single['retweeted_status'])
+    retweeted_status = single.get('retweeted_status')
+    if retweeted_status:
+      single['retweeted_status'] = self.make_namespace(retweeted_status)
       retweet = single
-      single = single['retweeted_status']
+      single = retweeted_status
       single['retweet'] = retweet
       del single['retweet']['retweeted_status']
     if 'in_reply_to_status' in single:
+      if single['in_reply_to_status'] is None:
+        try:
+          single['in_reply_to_status'] = self._api.get_status(single['in_reply_to_status_id_str'])
+        except BaseException:
+          pass
       single['in_reply_to_status'] = self.make_namespace(single['in_reply_to_status'])
     self.allow_duplicate = old_allow_duplicate
     return single

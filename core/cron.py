@@ -116,14 +116,11 @@ def cron_job(cron_queue):
     user_at_screen_name = '@%s' % user['screen_name']
     for data in all_data:
       if user_at_screen_name in data['text']:
-        try:
-          if 'retweeted_status' in data and 'in_reply_to_status_id_str' in data['retweeted_status']:
-            data['retweeted_status']['in_reply_to_status'] = api.get_status(
-              data['retweeted_status']['in_reply_to_status_id_str'])
-          elif 'in_reply_to_status_id_str' in data:
-            data['in_reply_to_status'] = api.get_status(data['in_reply_to_status_id_str'])
-        except BaseException:
-          pass
+        retweeted_status = data.get('retweeted_status')
+        if retweeted_status and retweeted_status.get('in_reply_to_status_id_str'):
+          data['retweeted_status']['in_reply_to_status'] = None
+        elif data.get('in_reply_to_status_id_str'):
+          data['in_reply_to_status'] = None
 
     if all_data:
       queue.put(Job(user_jid, data=all_data, allow_duplicate=False, always=False))
