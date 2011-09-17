@@ -7,7 +7,6 @@ from StringIO import StringIO
 from gzip import GzipFile
 
 log = logging.getLogger('urlfetch')
-
 class Error(Exception):
   pass
 
@@ -25,18 +24,10 @@ class GZipHandler(urllib2.BaseHandler):
 
 
 class Response(object):
-  status = httplib.OK
-
-  def __init__(self, fp):
-    try:
-      self.data = fp.read()
-      self.headers = fp.info()
-      self.final_url = fp.geturl()
-    except urllib2.HTTPError, e:
-      self.data = e.read()
-      self.status = e.code
-      self.headers = e.info()
-      self.final_url = e.geturl()
+  def __init__(self, status, data, headers):
+    self.status = status
+    self.data = data
+    self.headers = headers
 
 
 def fetch(url, method='GET', body=None, headers=None, block=True, timeout=None):
@@ -48,11 +39,13 @@ def fetch(url, method='GET', body=None, headers=None, block=True, timeout=None):
     timeout = socket._GLOBAL_DEFAULT_TIMEOUT
   try:
     r = urllib2.urlopen(req, timeout=timeout)
+  except urllib2.HTTPError, e:
+    return Response(e.code, e.read(), e.info())
   except urllib2.URLError, e:
-    raise Error(str(e))
+    raise Error(e.reason)
   else:
     if block:
-      return Response(r)
+      return Response(httplib.OK, r.read(), r.info())
     else:
       return r
 

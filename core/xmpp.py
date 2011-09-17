@@ -50,7 +50,7 @@ class XMPPMessageHandler(object):
     try:
       result = self.parse_command(msg['body'].rstrip())
     except Exception, e:
-      result = u'Error: %s' % unicode(e)
+      result = u'%s: %s' % (e.__class__.__name__, unicode(e))
     if result:
       msg.reply(result).send()
 

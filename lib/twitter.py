@@ -25,49 +25,43 @@ SIGNIN_URL = 'https://api.twitter.com/oauth/authenticate'
 BASE_URL = 'https://api.twitter.com/1'
 
 class TwitterError(Exception):
-  message = ''
-
-  def __init__(self, messsage=None):
-    if messsage is not None:
-      super(TwitterError, self).__init__(messsage)
-    else:
-      super(TwitterError, self).__init__(self.message)
+  pass
 
 
 class TwitterBadRequestError(Exception):
-  message = 'Bad Request.'
+  pass
 
 
 class TwitterUnauthorizedError(TwitterError):
-  message = 'Unauthorized.'
+  pass
 
 
 class TwitterForbiddenError(TwitterError):
-  message = 'Forbidden.'
+  pass
 
 
 class TwitterNotFoundError(TwitterError):
-  message = 'Not Found.'
+  pass
 
 
 class TwitterEnhanceYourCalmError(TwitterError):
-  message = 'Enhance Your Calm.'
+  pass
 
 
 class TwitterInternalServerError(TwitterError):
-  message = 'Internal Server Error.'
+  pass
 
 
 class TwitterBadGatewayError(TwitterError):
-  message = 'Bad Gateway.'
+  pass
 
 
 class TwitterServiceUnavailableError(TwitterError):
-  message = 'Service Unavailable.'
+  pass
 
 
 class TwitterNetworkError(TwitterError):
-  message = 'Network Error.'
+  pass
 
 
 class Status(dict):
@@ -432,9 +426,7 @@ class Api(object):
     if block:
       try:
         response = urlfetch.fetch(method=http_method, url=url, body=encoded_post_data, headers=headers, timeout=timeout)
-      except SSLError:
-        raise TwitterNetworkError
-      except urlfetch.Error, e:
+      except SSLError, e:
         raise TwitterNetworkError(str(e))
       else:
         return self._check_for_twitter_error(response)
