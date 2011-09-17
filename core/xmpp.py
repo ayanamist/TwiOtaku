@@ -43,9 +43,10 @@ class XMPPMessageHandler(object):
     self._bare_jid = self._xmpp.getjidbare(self._jid).lower()
     self._queue = self._xmpp.worker_queues.get(self._bare_jid, Queue())
     self._user = db.get_user_from_jid(self._bare_jid)
-    self._util = Util(self._user)
-    self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
-      access_token_key=self._user.get('access_key'), access_token_secret=self._user.get('access_secret'))
+    if self._user:
+      self._util = Util(self._user)
+      self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
+        access_token_key=self._user.get('access_key'), access_token_secret=self._user.get('access_secret'))
     try:
       result = self.parse_command(msg['body'].rstrip())
     except Exception, e:
@@ -574,10 +575,115 @@ class XMPPMessageHandler(object):
     if content:
       if content.lower() == 'reset':
         content = None
-        result = u'You have reset message template to default.'
+        result = u'You have reset message template to default. Preview:\n%s'
       else:
-        result = u'You have updated message template as following:\n%s' % content
+        result = u'You have updated message template. Preview:\n%s'
+      self._user['msg_tpl'] = content
       db.update_user(id=self._user['id'], msg_tpl=content)
+      test_single = twitter.Status({u'favorited': False, u'contributors': None, u'truncated': False,
+                                    u'text': u'RT @TwiOtaku: @gh05tw01f Welcome! Wish you enjoy!',
+                                    u'in_reply_to_status_id': None,
+                                    u'user': {u'utc_offset': 28800, u'id_str': u'8104012', u'statuses_count': 25890,
+                                              u'follow_request_sent': False, u'friends_count': 393,
+                                              u'profile_use_background_image': True, u'contributors_enabled': False,
+                                              u'profile_link_color': u'0099B9',
+                                              u'profile_image_url': u'http://a2.twimg.com/profile_images/1470742579/avatar_normal.PNG'
+                                      , u'notifications': False, u'show_all_inline_media': True,
+                                              u'profile_background_image_url_https': u'https://si0.twimg.com/images/themes/theme4/bg.gif'
+                                      , u'profile_background_color': u'0099B9', u'id': 8104012,
+                                              u'profile_background_image_url': u'http://a1.twimg.com/images/themes/theme4/bg.gif'
+                                      ,
+                                              u'description': u'\u5916\u8868\u5927\u53d4\u7684\u706b\u661f\u8179\u9ed1\u6b63\u592a\u3002\u80bf\u7624\u79d1\u533b\u5b66\u751f\u3002\u8bfa\u57fa\u4e9aE71\u4f7f\u7528\u8005\u3002\u7231\u751f\u6d3b\u7231\u5410\u69fd\u3002\u4eb2\u65e5\u6d3e\uff0c\u4eb2\u817e\u8baf\uff0c\u4e2d\u533b\u9ed1\uff0c\u4e0d\u559c\u52ff\u6270\u3002\u57fa\u7763\u5f92\u3002\u76ee\u524d\u4ee5\u751f\u6d3b\u63a8\u3001\u719f\u4eba\u63a8\u4e3a\u4e3b\uff0c\u6280\u672f\u63a8\u548c\u533b\u5b66\u63a8\u6781\u5c11\u6570\u3002'
+                                      , u'lang': u'en', u'default_profile': False, u'profile_background_tile': False,
+                                              u'profile_sidebar_border_color': u'5ED4DC', u'verified': False,
+                                              u'screen_name': u'gh05tw01f', u'url': u'http://www.cnblogs.com/ayanamist/'
+                                      , u'following': True,
+                                              u'profile_image_url_https': u'https://si0.twimg.com/profile_images/1470742579/avatar_normal.PNG'
+                                      , u'profile_sidebar_fill_color': u'95E8EC', u'time_zone': u'Beijing',
+                                              u'name': u'ayanamist', u'geo_enabled': True,
+                                              u'profile_text_color': u'3C3940', u'followers_count': 876,
+                                              u'protected': False, u'location': u'Wuhan, China',
+                                              u'default_profile_image': False, u'is_translator': False,
+                                              u'favourites_count': 47, u'created_at': u'Fri Aug 10 13:52:07 +0000 2007',
+                                              u'listed_count': 53}, u'geo': None, u'id': 115061633151279104L,
+                                    u'source': u'<a href="http://code.google.com/p/twiotaku/" rel="nofollow">TwiOtaku</a>'
+        , u'created_at': u'Sat Sep 17 13:56:45 +0000 2011', u'retweeted': False, u'coordinates': None,
+                                    u'in_reply_to_user_id_str': None, u'entities': {u'user_mentions': [
+            {u'indices': [3, 12], u'screen_name': u'TwiOtaku', u'id': 250488521, u'name': u'TwiOtaku',
+             u'id_str': u'250488521'},
+            {u'indices': [14, 24], u'screen_name': u'gh05tw01f', u'id': 8104012, u'name': u'ayanamist',
+             u'id_str': u'8104012'}], u'hashtags': [], u'urls': []}, u'in_reply_to_status_id_str': None,
+                                    u'in_reply_to_screen_name': None, u'in_reply_to_user_id': None, u'place': None,
+                                    u'retweet_count': 0, u'id_str': u'115061633151279104'})
+      test_single['retweeted_status'] = twitter.Status({u'favorited': False, u'contributors': None, u'truncated': False,
+                                                        u'text': u'@gh05tw01f Welcome! Wish you enjoy!',
+                                                        u'in_reply_to_status_id': 115061186621476864L,
+                                                        u'user': {u'utc_offset': 28800, u'id_str': u'250488521',
+                                                                  u'statuses_count': 3, u'follow_request_sent': False,
+                                                                  u'friends_count': 1,
+                                                                  u'profile_use_background_image': True,
+                                                                  u'contributors_enabled': False,
+                                                                  u'profile_link_color': u'0084B4',
+                                                                  u'profile_image_url': u'http://a3.twimg.com/profile_images/1240928412/otaku_normal.png'
+                                                          , u'notifications': False, u'show_all_inline_media': True,
+                                                                  u'profile_background_image_url_https': u'https://si0.twimg.com/images/themes/theme1/bg.png'
+                                                          , u'profile_background_color': u'C0DEED', u'id': 250488521,
+                                                                  u'profile_background_image_url': u'http://a0.twimg.com/images/themes/theme1/bg.png'
+                                                          ,
+                                                                  u'description': u'TwiOtaku is a GTalk based Twitter client using Twitter Streaming API written by @gh05tw01f .'
+                                                          , u'lang': u'en', u'default_profile': True,
+                                                                  u'profile_background_tile': False,
+                                                                  u'profile_sidebar_border_color': u'C0DEED',
+                                                                  u'verified': False, u'screen_name': u'TwiOtaku',
+                                                                  u'url': u'http://code.google.com/p/twiotaku/',
+                                                                  u'following': False,
+                                                                  u'profile_image_url_https': u'https://si0.twimg.com/profile_images/1240928412/otaku_normal.png'
+                                                          , u'profile_sidebar_fill_color': u'DDEEF6',
+                                                                  u'time_zone': u'Chongqing', u'name': u'TwiOtaku',
+                                                                  u'geo_enabled': False,
+                                                                  u'profile_text_color': u'333333',
+                                                                  u'followers_count': 13, u'protected': False,
+                                                                  u'location': u'China', u'default_profile_image': False
+                                                          , u'is_translator': False, u'favourites_count': 0,
+                                                                  u'created_at': u'Fri Feb 11 05:30:20 +0000 2011',
+                                                                  u'listed_count': 0}, u'geo': None,
+                                                        u'in_reply_to_user_id_str': u'8104012',
+                                                        u'source': u'<a href="http://code.google.com/p/twiotaku/" rel="nofollow">TwiOtaku</a>'
+        , u'created_at': u'Sat Sep 17 13:55:53 +0000 2011', u'retweeted': False, u'coordinates': None,
+                                                        u'id': 115061412182761472L, u'entities': {u'user_mentions': [
+            {u'indices': [0, 10], u'screen_name': u'gh05tw01f', u'id': 8104012, u'name': u'ayanamist',
+             u'id_str': u'8104012'}], u'hashtags': [], u'urls': []}, u'in_reply_to_status_id_str': u'115061186621476864'
+        , u'in_reply_to_screen_name': u'gh05tw01f', u'id_str': u'115061412182761472', u'place': None,
+                                                        u'retweet_count': 0, u'in_reply_to_user_id': 8104012})
+      test_single['retweeted_status']['in_reply_to_status'] = twitter.Status(
+          {u'favorited': False, u'entities': {u'user_mentions': [], u'hashtags': [], u'urls': []}, u'contributors': None
+          , u'truncated': False, u'text': u'Hello from TwiOtaku!', u'created_at': u'Sat Sep 17 13:54:59 +0000 2011',
+           u'retweeted': False, u'in_reply_to_status_id_str': None, u'coordinates': None,
+           u'in_reply_to_user_id_str': None,
+           u'source': u'<a href="http://code.google.com/p/twiotaku/" rel="nofollow">TwiOtaku</a>',
+           u'in_reply_to_status_id': None, u'id_str': u'115061186621476864', u'in_reply_to_screen_name': None,
+           u'user': {u'utc_offset': 28800, u'id_str': u'8104012', u'statuses_count': 25890,
+                     u'follow_request_sent': False, u'friends_count': 393, u'profile_use_background_image': True,
+                     u'contributors_enabled': False, u'profile_link_color': u'0099B9',
+                     u'profile_image_url': u'http://a2.twimg.com/profile_images/1470742579/avatar_normal.PNG',
+                     u'notifications': False, u'show_all_inline_media': True,
+                     u'profile_background_image_url_https': u'https://si0.twimg.com/images/themes/theme4/bg.gif',
+                     u'profile_background_color': u'0099B9', u'id': 8104012,
+                     u'profile_background_image_url': u'http://a1.twimg.com/images/themes/theme4/bg.gif',
+                     u'description': u'\u5916\u8868\u5927\u53d4\u7684\u706b\u661f\u8179\u9ed1\u6b63\u592a\u3002\u80bf\u7624\u79d1\u533b\u5b66\u751f\u3002\u8bfa\u57fa\u4e9aE71\u4f7f\u7528\u8005\u3002\u7231\u751f\u6d3b\u7231\u5410\u69fd\u3002\u4eb2\u65e5\u6d3e\uff0c\u4eb2\u817e\u8baf\uff0c\u4e2d\u533b\u9ed1\uff0c\u4e0d\u559c\u52ff\u6270\u3002\u57fa\u7763\u5f92\u3002\u76ee\u524d\u4ee5\u751f\u6d3b\u63a8\u3001\u719f\u4eba\u63a8\u4e3a\u4e3b\uff0c\u6280\u672f\u63a8\u548c\u533b\u5b66\u63a8\u6781\u5c11\u6570\u3002'
+             , u'lang': u'en', u'default_profile': False, u'profile_background_tile': False,
+                     u'profile_sidebar_border_color': u'5ED4DC', u'verified': False, u'screen_name': u'gh05tw01f',
+                     u'url': u'http://www.cnblogs.com/ayanamist/', u'following': True,
+                     u'profile_image_url_https': u'https://si0.twimg.com/profile_images/1470742579/avatar_normal.PNG',
+                     u'profile_sidebar_fill_color': u'95E8EC', u'time_zone': u'Beijing', u'name': u'ayanamist',
+                     u'geo_enabled': True, u'profile_text_color': u'3C3940', u'followers_count': 876,
+                     u'protected': False, u'location': u'Wuhan, China', u'default_profile_image': False,
+                     u'is_translator': False, u'favourites_count': 47, u'created_at': u'Fri Aug 10 13:52:07 +0000 2007',
+                     u'listed_count': 53}, u'place': None, u'retweet_count': 0, u'geo': None, u'id': 115061186621476864L
+          , u'in_reply_to_user_id': None})
+      self._util = Util(self._user)
+      preview = self._util.parse_status(test_single)
+      result %= preview
     else:
       if self._user['msg_tpl']:
         result = u'Your current message template is:\n%s' % self._user['msg_tpl']
