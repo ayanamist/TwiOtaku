@@ -1,7 +1,6 @@
 #!/usr/bin/python
 import httplib
 import urllib
-import urllib2
 import urlparse
 from ssl import SSLError
 
@@ -408,7 +407,7 @@ class Api(object):
     else:
       raise TwitterError('%d: %s' % (response.status, str(error_message)))
 
-  def _fetch_url(self, url, post_data=None, parameters=None, http_method='GET'):
+  def _fetch_url(self, url, post_data=None, parameters=None, http_method='GET', block=True, timeout=None):
     headers = {'Accept-Encoding': 'gzip'}
     extra_params = dict()
     if parameters is not None:
@@ -430,14 +429,17 @@ class Api(object):
     else:
       url = self._build_url(url, extra_params=extra_params)
       encoded_post_data = self._encode_post_data(post_data)
-    try:
-      response = urlfetch.fetch(method=http_method, url=url, body=encoded_post_data, headers=headers)
-    except SSLError:
-      raise TwitterNetworkError
-    except urlfetch.Error, e:
-      raise TwitterNetworkError(str(e))
+    if block:
+      try:
+        response = urlfetch.fetch(method=http_method, url=url, body=encoded_post_data, headers=headers, timeout=timeout)
+      except SSLError:
+        raise TwitterNetworkError
+      except urlfetch.Error, e:
+        raise TwitterNetworkError(str(e))
+      else:
+        return self._check_for_twitter_error(response)
     else:
-      return self._check_for_twitter_error(response)
+      return urlfetch.fetch(method=http_method, url=url, body=encoded_post_data, headers=headers, block=False)
 
   # return a file-like object
   def user_stream(self, timeout, reply_all=False):
@@ -445,14 +447,4 @@ class Api(object):
     parameters = dict(delimited='length')
     if reply_all:
       parameters['replies'] = 'all'
-    if self._oauth_consumer is not None:
-      req = oauth.Request.from_consumer_and_token(self._oauth_consumer, token=self._oauth_token,
-        http_method='GET', http_url=url,
-        parameters=parameters)
-      req.sign_request(self._signature_method_hmac_sha1, self._oauth_consumer, self._oauth_token)
-      url = req.to_url()
-    else:
-      url = self._build_url(url, extra_params=parameters)
-
-    opener = urllib2.build_opener()
-    return opener.open(url, timeout=timeout)
+    return self._fetch_url(url=url, parameters=parameters, block=False, timeout=timeout)

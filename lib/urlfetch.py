@@ -2,6 +2,7 @@ import urllib2
 import httplib
 import logging
 import cookielib
+import socket
 from StringIO import StringIO
 from gzip import GzipFile
 
@@ -38,17 +39,22 @@ class Response(object):
       self.final_url = e.geturl()
 
 
-def fetch(url, method='GET', body=None, headers=None):
+def fetch(url, method='GET', body=None, headers=None, block=True, timeout=None):
   log.debug('Fetching %s' % url)
   req = urllib2.Request(url, data=body, headers=headers)
   # dirty hack for PUT DELETE method http://stackoverflow.com/questions/111945/is-there-any-way-to-do-http-put-in-python
   req.get_method = lambda: method
+  if timeout is None:
+    timeout = socket._GLOBAL_DEFAULT_TIMEOUT
   try:
-    r = urllib2.urlopen(req)
+    r = urllib2.urlopen(req, timeout=timeout)
   except urllib2.URLError, e:
     raise Error(str(e))
   else:
-    return Response(r)
+    if block:
+      return Response(r)
+    else:
+      return r
 
 opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookielib.CookieJar()), GZipHandler())
 urllib2.install_opener(opener)

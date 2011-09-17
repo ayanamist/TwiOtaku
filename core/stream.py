@@ -17,7 +17,9 @@ from lib import twitter
 from lib.decorators import debug
 
 MAX_CONNECT_TIMEOUT = 5
-MAX_DATA_TIMEOUT = 180
+MAX_DATA_TIMEOUT = 90
+WAIT_TIMES = (0, 30, 60, 120, 240)
+REFRESH_BLOCKED_IDS_INTERVAL = 3600
 
 class ThreadStop(Exception):
   pass
@@ -28,11 +30,10 @@ class Timeout(Exception):
 
 
 class StreamThread(threading.Thread):
-  """Thread class with a stop() method. The thread itself has to check
-  regularly for the stopped() condition."""
-
   def __init__(self, xmpp, bare_jid):
     super(StreamThread, self).__init__()
+    self.last_blocked_ids_update = 0
+    self.stream_logger = logging.getLogger('user streaming')
     self._stop = threading.Event()
     self._user_changed = threading.Event()
     self.xmpp = xmpp
@@ -63,8 +64,20 @@ class StreamThread(threading.Thread):
   # TODO: implement track and follow (list) (possibly via select?)
 
   def run(self):
+    self.verify_credentials()
+    self.refresh_blocked_ids()
+    self.wait_time_now_index = 0
     try:
-      self.running()
+      while True:
+        self.running()
+        wait_time_now = WAIT_TIMES[self.wait_time_now_index]
+        if wait_time_now:
+          self.stream_logger.info('%s: Sleep %d seconds.' % (self.user['jid'], wait_time_now))
+          for _ in xrange(wait_time_now):
+            self.check_stop()
+            sleep(1)
+        if self.wait_time_now_index + 1 < len(WAIT_TIMES):
+          self.wait_time_now_index += 1
     except ThreadStop:
       self.xmpp.global_lock.acquire()
       del self.xmpp.stream_threads[self.bare_jid]
@@ -73,12 +86,12 @@ class StreamThread(threading.Thread):
 
   @debug('userstreaming')
   def running(self):
-    def read(fp, length):
+    def read(fp, size):
       tmp_list = []
       data_len = 0
       timeout_sum = 0
-      while data_len < length:
-        check_stop()
+      while data_len < size:
+        self.check_stop()
         try:
           c = fp.read(1)
         except SSLError:
@@ -106,128 +119,111 @@ class StreamThread(threading.Thread):
         if length:
           return json.loads(read(fp, int(length)))
 
-    def refresh_blocked_ids():
-      @debug('refresh_blocked_ids')
-      def wrap():
-        return self.api.get_blocking_ids()
+    try:
+      user_stream_handler = self.api.user_stream(timeout=MAX_CONNECT_TIMEOUT)
+      self.stream_logger.debug('%s: User Streaming connected.' % self.user['jid'])
+      # read out friends ids and eliminate them because they are useless.
+      read_data(user_stream_handler)
 
+      if self.wait_time_now_index:
+        self.wait_time_now_index = 0
+
+      while True:
+        self.refresh_blocked_ids()
+        data = read_data(user_stream_handler)
+        self.check_user_changed()
+        self.process(data)
+    except (urllib2.URLError, urllib2.HTTPError, SSLError, Timeout, socket.error), e:
+      self.stream_logger.warn('User Streaming connection failed.')
+      if isinstance(e, urllib2.HTTPError):
+        if e.code == 401:
+          self.stream_logger.error('User %s OAuth unauthorized, exiting.' % self.user['jid'])
+          raise ThreadStop
+        if e.code == 420:
+          self.stream_logger.warn('User %s Streaming connect too often!' % self.user['jid'])
+          if not self.wait_time_now_index:
+            self.wait_time_now_index = 1
+
+  def refresh_blocked_ids(self):
+    @debug('refresh_blocked_ids')
+    def wrap():
+      return self.api.get_blocking_ids()
+
+    time_now = time()
+    if time_now - self.last_blocked_ids_update >= REFRESH_BLOCKED_IDS_INTERVAL:
       result = wrap()
-      if result is not None:
+      self.last_blocked_ids_update = time_now
+      if result:
         self.blocked_ids = result
 
-    def check_stop():
-      if self.is_stopped():
-        raise ThreadStop
+  @debug()
+  def verify_credentials(self):
+    try:
+      data = self.api.verify_credentials()
+      screen_name = data['screen_name']
+    except twitter.TwitterUnauthorizedError:
+      db.update_user(jid=self.bare_jid, access_key=None, access_secret=None)
+      raise ThreadStop
+    else:
+      if screen_name != self.user['screen_name']:
+        self.user['screen_name'] = screen_name
+        db.update_user(jid=self.bare_jid, screen_name=screen_name)
+      self.twitter_user_id = data['id_str']
+    self.user_at_screen_name = '@%s' % self.user['screen_name']
 
-    def check_user_changed():
-      if self.is_user_changed():
-        self.user = db.get_user_from_jid(self.bare_jid)
-
-    @debug()
-    def verify_credentials():
-      try:
-        data = self.api.verify_credentials()
-        screen_name = data['screen_name']
-      except twitter.TwitterUnauthorizedError:
-        db.update_user(jid=self.bare_jid, access_key=None, access_secret=None)
-        raise ThreadStop
+  @debug()
+  def process(self, data):
+    if 'event' in data:
+      title = None
+      if self.user['timeline'] & db.MODE_EVENT:
+        if data['event'] == 'follow':
+          title = '@%s is now following @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
+        elif data['event'] == 'block':
+          if data['target']['id_str'] not in self.blocked_ids:
+            self.blocked_ids.append(data['target']['id_str'])
+          title = '@%s has blocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
+        elif data['event'] == 'unblock':
+          if data['target']['id_str'] in self.blocked_ids:
+            self.blocked_ids.remove(data['target']['id_str'])
+          title = '@%s has unblocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
+        elif data['event'] == 'list_member_added':
+          pass
+        elif data['event'] == 'list_member_removed':
+          pass
+      if title:
+        self.queue.put(Job(self.user['jid'], title=title, always=False))
+    elif 'delete' in data:
+      pass
+    else:
+      title = None
+      if 'direct_message' in data:
+        if self.user['timeline'] & db.MODE_DM:
+          data = twitter.DirectMessage(data['direct_message'])
+          title = 'Direct Message:'
+        else:
+          data = None
       else:
-        if screen_name != self.user['screen_name']:
-          self.user['screen_name'] = screen_name
-          db.update_user(jid=self.bare_jid, screen_name=screen_name)
-        self.twitter_user_id = data['id_str']
-
-    @debug()
-    def process(data):
-      if 'event' in data:
-        title = None
-        if self.user['timeline'] & db.MODE_EVENT:
-          if data['event'] == 'follow':
-            title = '@%s is now following @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
-          elif data['event'] == 'block':
-            refresh_blocked_ids()
-            title = '@%s has blocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
-          elif data['event'] == 'unblock':
-            refresh_blocked_ids()
-            title = '@%s has unblocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
-          elif data['event'] == 'list_member_added':
-            pass
-          elif data['event'] == 'list_member_removed':
-            pass
-        if title:
-          self.queue.put(Job(self.user['jid'], title=title, always=False))
-      elif 'delete' in data:
-        pass
-      else:
-        title = None
-        if 'direct_message' in data:
-          if self.user['timeline'] & db.MODE_DM:
-            data = twitter.DirectMessage(data['direct_message'])
-            title = 'Direct Message:'
+        if data['user']['id_str'] not in self.blocked_ids:
+          if self.user['timeline'] & db.MODE_HOME\
+          or (self.user['timeline'] & db.MODE_MENTION and self.user_at_screen_name in data['text']):
+            data = twitter.Status(data)
+            if self.user_at_screen_name in data['text']:
+              retweeted_status = data.get('retweeted_status')
+              if retweeted_status and retweeted_status.get('in_reply_to_status_id_str'):
+                data['retweeted_status']['in_reply_to_status'] = None
+              elif data.get('in_reply_to_status_id_str'):
+                data['in_reply_to_status'] = None
           else:
             data = None
         else:
-          user_at_screen_name = '@%s' % self.user['screen_name']
-          if data['user']['id_str'] not in self.blocked_ids:
-            if self.user['timeline'] & db.MODE_HOME\
-            or (self.user['timeline'] & db.MODE_MENTION and user_at_screen_name in data['text']):
-              data = twitter.Status(data)
-              if user_at_screen_name in data['text']:
-                retweeted_status = data.get('retweeted_status')
-                if retweeted_status and retweeted_status.get('in_reply_to_status_id_str'):
-                  data['retweeted_status']['in_reply_to_status'] = None
-                elif data.get('in_reply_to_status_id_str'):
-                  data['in_reply_to_status'] = None
-            else:
-              data = None
-          else:
-            data = None
-        if data:
-          self.queue.put(Job(self.user['jid'], data=data, allow_duplicate=False, always=False, title=title))
+          data = None
+      if data:
+        self.queue.put(Job(self.user['jid'], data=data, allow_duplicate=False, always=False, title=title))
 
+  def check_stop(self):
+    if self.is_stopped():
+      raise ThreadStop
 
-    stream_logger = logging.getLogger('user streaming')
-    verify_credentials()
-    wait_times = (0, 30, 60, 120, 240)
-    wait_time_now_index = 0
-    refresh_blocked_ids()
-    last_blocked_ids_update = time()
-    refresh_blocked_ids_interval = 3600
-    while True:
-      try:
-        user_stream_handler = self.api.user_stream(timeout=MAX_CONNECT_TIMEOUT)
-        stream_logger.debug('%s: User Streaming connected.' % self.user['jid'])
-        # read out friends ids and eliminate them because they are useless.
-        read_data(user_stream_handler)
-
-        if wait_time_now_index:
-          wait_time_now_index = 0
-
-        while True:
-          time_now = time()
-          if time_now - last_blocked_ids_update >= refresh_blocked_ids_interval:
-            check_stop()
-            refresh_blocked_ids()
-            last_blocked_ids_update = time_now
-          data = read_data(user_stream_handler)
-          check_user_changed()
-          process(data)
-      except (urllib2.URLError, urllib2.HTTPError, SSLError, Timeout, socket.error), e:
-        stream_logger.warn('User Streaming connection failed.')
-        if isinstance(e, urllib2.HTTPError):
-          if e.code == 401:
-            stream_logger.error('User %s OAuth unauthorized, exiting.' % self.user['jid'])
-            raise ThreadStop
-          if e.code == 420:
-            stream_logger.warn('User %s Streaming connect too often!' % self.user['jid'])
-            if not wait_time_now_index:
-              wait_time_now_index = 1
-        wait_time_now = wait_times[wait_time_now_index]
-        if wait_time_now:
-          stream_logger.info('%s: Sleep %d seconds.' % (self.user['jid'], wait_time_now))
-          for _ in xrange(wait_time_now):
-            check_stop()
-            sleep(1)
-        if wait_time_now_index + 1 < len(wait_times):
-          wait_time_now_index += 1
-
+  def check_user_changed(self):
+    if self.is_user_changed():
+      self.user = db.get_user_from_jid(self.bare_jid)
