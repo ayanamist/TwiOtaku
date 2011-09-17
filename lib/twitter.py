@@ -440,7 +440,7 @@ class Api(object):
       return self._check_for_twitter_error(response)
 
   # return a file-like object
-  def user_stream(self, reply_all=False):
+  def user_stream(self, timeout, reply_all=False):
     url = 'https://userstream.twitter.com/2/user.json'
     parameters = dict(delimited='length')
     if reply_all:
@@ -455,5 +455,4 @@ class Api(object):
       url = self._build_url(url, extra_params=parameters)
 
     opener = urllib2.build_opener()
-    # It seems there are no individual connect timeout, argument timeout here is of both connect and data.
-    return opener.open(url, timeout=180)
+    return opener.open(url, timeout=timeout)

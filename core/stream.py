@@ -16,7 +16,14 @@ from worker import Job
 from lib import twitter
 from lib.decorators import debug
 
+MAX_CONNECT_TIMEOUT = 5
+MAX_DATA_TIMEOUT = 180
+
 class ThreadStop(Exception):
+  pass
+
+
+class Timeout(Exception):
   pass
 
 
@@ -66,10 +73,27 @@ class StreamThread(threading.Thread):
 
   @debug('userstreaming')
   def running(self):
+    def read(fp, length):
+      tmp_list = []
+      data_len = 0
+      timeout_sum = 0
+      while data_len < length:
+        check_stop()
+        try:
+          c = fp.read(1)
+        except SSLError:
+          timeout_sum += MAX_CONNECT_TIMEOUT
+          if timeout_sum > MAX_DATA_TIMEOUT:
+            raise Timeout
+        else:
+          tmp_list.append(c)
+          data_len += 1
+      return ''.join(tmp_list)
+
     def read_line(fp):
       s = ''
       while True:
-        char = fp.read(1)
+        char = read(fp, 1)
         s += char
         if char == '\n':
           return s
@@ -80,7 +104,7 @@ class StreamThread(threading.Thread):
         # because it has buffer which will block unintentionally
         length = read_line(fp).strip(' \r\n')
         if length:
-          return json.loads(fp.read(int(length)))
+          return json.loads(read(fp, int(length)))
 
     def refresh_blocked_ids():
       @debug('refresh_blocked_ids')
@@ -171,26 +195,24 @@ class StreamThread(threading.Thread):
     refresh_blocked_ids_interval = 3600
     while True:
       try:
-        check_stop()
-        user_stream_handler = self.api.user_stream()
+        user_stream_handler = self.api.user_stream(timeout=MAX_CONNECT_TIMEOUT)
         stream_logger.debug('%s: User Streaming connected.' % self.user['jid'])
-        if wait_time_now_index:
-          wait_time_now_index = 0
-
         # read out friends ids and eliminate them because they are useless.
         read_data(user_stream_handler)
 
+        if wait_time_now_index:
+          wait_time_now_index = 0
+
         while True:
-          check_stop()
-          check_user_changed()
           time_now = time()
           if time_now - last_blocked_ids_update >= refresh_blocked_ids_interval:
+            check_stop()
             refresh_blocked_ids()
             last_blocked_ids_update = time_now
           data = read_data(user_stream_handler)
           check_user_changed()
           process(data)
-      except (urllib2.URLError, urllib2.HTTPError, SSLError, socket.error), e:
+      except (urllib2.URLError, urllib2.HTTPError, SSLError, Timeout, socket.error), e:
         stream_logger.warn('User Streaming connection failed.')
         if isinstance(e, urllib2.HTTPError):
           if e.code == 401:
