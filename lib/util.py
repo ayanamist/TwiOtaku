@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # -*- encoding: utf-8 -*-
 import re
+from bisect import bisect
+from array import array
 from time import mktime, localtime, strftime
 from email.utils import parsedate
 from xml.sax.saxutils import unescape
@@ -18,18 +20,15 @@ class ostring(object):
   def __init__(self, s):
     self.original_s = s
     self._str_list = list()
-    self._str_indices = list()
+    self._str_indices = array('H', [0])
 
   def __unicode__(self):
     if self._str_indices:
-      str_indices = list()
-      str_indices.append(0)
-      str_indices.extend(self._str_indices)
       result = list()
       for i, s in enumerate(self._str_list):
-        result.append(self.original_s[str_indices[i * 2]:str_indices[i * 2 + 1]])
+        result.append(self.original_s[self._str_indices[i * 2]:self._str_indices[i * 2 + 1]])
         result.append(s)
-      result.append(self.original_s[str_indices[-1]:-1])
+      result.append(self.original_s[self._str_indices[-1]:-1])
       return u''.join(result)
     else:
       return unicode(self.original_s)
@@ -38,23 +37,11 @@ class ostring(object):
     return unicode(self).encode('UTF8')
 
   def replace_indices(self, start, stop, replace_text):
-    if not self._str_indices:
-      self._str_indices.append(start)
-      self._str_indices.append(stop)
-      self._str_list.append(replace_text)
-      return self
-    else:
-      for i in range(len(self._str_list)):
-        if start < self._str_indices[i * 2]:
-          self._str_indices.insert(i * 2, start)
-          self._str_indices.insert(i * 2 + 1, stop)
-          self._str_list.insert(i, replace_text)
-          return self
-          # start is larger than any of pairs in the list, we should add them to the last.
-      self._str_indices.append(start)
-      self._str_indices.append(stop)
-      self._str_list.append(replace_text)
-      return self
+    i = bisect(self._str_indices, start)
+    self._str_indices.insert(i, start)
+    self._str_indices.insert(i + 1, stop)
+    self._str_list.insert(i // 2, replace_text)
+    return self
 
 
 class Util(object):
