@@ -2,6 +2,7 @@ import urllib2
 import threading
 import logging
 import socket
+from array import array
 from time import sleep, time
 from ssl import SSLError
 
@@ -87,7 +88,7 @@ class StreamThread(threading.Thread):
   @debug('userstreaming')
   def running(self):
     def read(fp, size):
-      tmp_list = []
+      tmp = array('c')
       data_len = 0
       timeout_sum = 0
       while data_len < size:
@@ -99,17 +100,17 @@ class StreamThread(threading.Thread):
           if timeout_sum > MAX_DATA_TIMEOUT:
             raise Timeout
         else:
-          tmp_list.append(c)
+          tmp.append(c)
           data_len += 1
-      return ''.join(tmp_list)
+      return ''.join(tmp)
 
     def read_line(fp):
-      s = ''
+      s = array('c')
       while True:
         char = read(fp, 1)
-        s += char
+        s.append(char)
         if char == '\n':
-          return s
+          return ''.join(s)
 
     def read_data(fp):
       while True:

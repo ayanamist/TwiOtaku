@@ -140,17 +140,17 @@ class XMPPMessageHandler(object):
       twitter_user = self._api.get_user(screen_name=screen_name)
     texts = [u'User @%s (%s):' % (twitter_user['screen_name'], twitter_user['name'])]
     if twitter_user['protected']:
-      follow_str = u'Protected user. '
+      follow_str = [u'Protected user. ']
     else:
-      follow_str = u''
+      follow_str = [u'']
     if twitter_user['following']:
-      follow_str += u'You are following.'
+      follow_str.append(u'You are following.')
     else:
       if twitter_user['follow_request_sent']:
-        follow_str += u'You have sent follow request.'
+        follow_str.append(u'You have sent follow request.')
       else:
-        follow_str += u'You are not following.'
-    texts.append(follow_str)
+        follow_str.append(u'You are not following.')
+    texts.append(''.join(follow_str))
     avatar_url = twitter_user['profile_image_url_https']
     i = avatar_url.rfind('_normal.')
     if i != -1:
