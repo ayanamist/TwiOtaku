@@ -23,7 +23,7 @@ MAX_CONNECT_TIMEOUT = 5
 MAX_DATA_TIMEOUT = 90
 WAIT_TIMES = (0, 30, 60, 120, 240)
 
-stream_logger = logging.getLogger('user streaming')
+logger = logging.getLogger('user streaming')
 contain = lambda strlist, str: reduce(operator.__or__, map(lambda a: a in str, strlist))
 
 class Timeout(Exception):
@@ -69,7 +69,7 @@ class StreamThread(StoppableThread):
       self.running()
       wait_time_now = WAIT_TIMES[self.wait_time_now_index]
       if wait_time_now:
-        stream_logger.info('%s: Sleep %d seconds.' % (self.user['jid'], wait_time_now))
+        logger.info('%s: Sleep %d seconds.' % (self.user['jid'], wait_time_now))
         self.sleep(wait_time_now)
       if self.wait_time_now_index + 1 < len(WAIT_TIMES):
         self.wait_time_now_index += 1
@@ -89,8 +89,12 @@ class StreamThread(StoppableThread):
           if timeout_sum > MAX_DATA_TIMEOUT:
             raise Timeout
         else:
-          tmp.append(c)
-          data_len += 1
+          try:
+            tmp.append(c)
+            data_len += 1
+          except TypeError:
+            logger.error('%s is not a valid char.' % str(c))
+            return
       return ''.join(tmp)
 
     def read_line(fp):
@@ -101,6 +105,7 @@ class StreamThread(StoppableThread):
         if char == '\n':
           return ''.join(s)
 
+    @debug()
     def read_data(fp):
       while True:
         # we should not directly use readline method of user_stream_handler,
@@ -112,7 +117,7 @@ class StreamThread(StoppableThread):
     try:
       user_stream_handler = self.api.user_stream(timeout=MAX_CONNECT_TIMEOUT, track=self.user['track_words'],
         follow=self.user['list_ids'])
-      stream_logger.debug('%s: connected.' % self.user['jid'])
+      logger.debug('%s: connected.' % self.user['jid'])
 
       self.friend_ids = array('L', read_data(user_stream_handler)['friends'])
 
@@ -122,15 +127,16 @@ class StreamThread(StoppableThread):
       while True:
         data = read_data(user_stream_handler)
         self.check_user_changed()
-        self.process(data)
+        if data:
+          self.process(data)
     except (urllib2.URLError, urllib2.HTTPError, SSLError, Timeout, socket.error), e:
-      stream_logger.warn('connection failed: %s' % unicode(e))
+      logger.warn('connection failed: %s' % unicode(e))
       if isinstance(e, urllib2.HTTPError):
         if e.code == 401:
-          stream_logger.error('User %s OAuth unauthorized, exiting.' % self.user['jid'])
+          logger.error('User %s OAuth unauthorized, exiting.' % self.user['jid'])
           raise ThreadStop
         if e.code == 420:
-          stream_logger.warn('User %s Streaming connect too often!' % self.user['jid'])
+          logger.warn('User %s Streaming connect too often!' % self.user['jid'])
           if not self.wait_time_now_index:
             self.wait_time_now_index = 1
 
