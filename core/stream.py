@@ -50,9 +50,9 @@ class StreamThread(StoppableThread):
 
   def refresh_user(self):
     self.user = db.get_user_from_jid(self.bare_jid)
-    self.blocked_ids = array('L', map(int, self.user['blocked_ids'].split(',')))
-    self.list_ids = array('L', map(int, self.user['list_ids']))
-    self.track_words = map(string.lower, self.user['track_words'].split(','))
+    self.blocked_ids = array('L', map(int, self.user['blocked_ids'].split(',')) if self.user['blocked_ids'] else ())
+    self.list_ids = array('L', map(int, self.user['list_ids'].split(',')) if self.user['list_ids'] else ())
+    self.track_words = map(string.lower, self.user['track_words'].split(',')) if self.user['track_words'] else ()
     self.user_at_screen_name = '@%s' % self.user['screen_name']
     self.api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
       access_token_key=self.user['access_key'], access_token_secret=self.user['access_secret'])
@@ -112,9 +112,9 @@ class StreamThread(StoppableThread):
     try:
       user_stream_handler = self.api.user_stream(timeout=MAX_CONNECT_TIMEOUT, track=self.user['track_words'],
         follow=self.user['list_ids'])
-      stream_logger.debug('%s: User Streaming connected.' % self.user['jid'])
+      stream_logger.debug('%s: connected.' % self.user['jid'])
 
-      self.friend_ids = read_data(user_stream_handler)
+      self.friend_ids = array('L', read_data(user_stream_handler)['friends'])
 
       if self.wait_time_now_index:
         self.wait_time_now_index = 0
