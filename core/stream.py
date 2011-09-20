@@ -22,6 +22,8 @@ MAX_DATA_TIMEOUT = 90
 WAIT_TIMES = (0, 30, 60, 120, 240)
 REFRESH_BLOCKED_IDS_INTERVAL = 3600
 
+stream_logger = logging.getLogger('user streaming')
+
 class ThreadStop(Exception):
   pass
 
@@ -34,7 +36,6 @@ class StreamThread(threading.Thread):
   def __init__(self, xmpp, bare_jid):
     super(StreamThread, self).__init__()
     self.last_blocked_ids_update = 0
-    self.stream_logger = logging.getLogger('user streaming')
     self._stop = threading.Event()
     self._user_changed = threading.Event()
     self.xmpp = xmpp
@@ -74,7 +75,7 @@ class StreamThread(threading.Thread):
         self.running()
         wait_time_now = WAIT_TIMES[self.wait_time_now_index]
         if wait_time_now:
-          self.stream_logger.info('%s: Sleep %d seconds.' % (self.user['jid'], wait_time_now))
+          stream_logger.info('%s: Sleep %d seconds.' % (self.user['jid'], wait_time_now))
           for _ in xrange(wait_time_now):
             self.check_stop()
             sleep(1)
@@ -123,7 +124,7 @@ class StreamThread(threading.Thread):
 
     try:
       user_stream_handler = self.api.user_stream(timeout=MAX_CONNECT_TIMEOUT)
-      self.stream_logger.debug('%s: User Streaming connected.' % self.user['jid'])
+      stream_logger.debug('%s: User Streaming connected.' % self.user['jid'])
       # read out friends ids and eliminate them because they are useless.
       read_data(user_stream_handler)
 
@@ -131,29 +132,26 @@ class StreamThread(threading.Thread):
         self.wait_time_now_index = 0
 
       while True:
-        self.refresh_blocked_ids()
         data = read_data(user_stream_handler)
+        self.refresh_blocked_ids()
         self.check_user_changed()
         self.process(data)
     except (urllib2.URLError, urllib2.HTTPError, SSLError, Timeout, socket.error), e:
-      self.stream_logger.warn('User Streaming connection failed.')
+      stream_logger.warn('User Streaming connection failed.')
       if isinstance(e, urllib2.HTTPError):
         if e.code == 401:
-          self.stream_logger.error('User %s OAuth unauthorized, exiting.' % self.user['jid'])
+          stream_logger.error('User %s OAuth unauthorized, exiting.' % self.user['jid'])
           raise ThreadStop
         if e.code == 420:
-          self.stream_logger.warn('User %s Streaming connect too often!' % self.user['jid'])
+          stream_logger.warn('User %s Streaming connect too often!' % self.user['jid'])
           if not self.wait_time_now_index:
             self.wait_time_now_index = 1
 
+  @debug()
   def refresh_blocked_ids(self):
-    @debug('refresh_blocked_ids')
-    def wrap():
-      return self.api.get_blocking_ids()
-
     time_now = time()
     if time_now - self.last_blocked_ids_update >= REFRESH_BLOCKED_IDS_INTERVAL:
-      result = wrap()
+      result = self.api.get_blocking_ids()
       self.last_blocked_ids_update = time_now
       if result:
         self.blocked_ids = result
