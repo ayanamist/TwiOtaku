@@ -731,5 +731,11 @@ class XMPPMessageHandler(object):
     else:
       return u'You will only receive updates when your status is available.'
 
+  def func_track(self, value=None):
+    if value is not None:
+      self._user['track_words'] = value
+      db.update_user(id=self._user['id'], track_word=value)
+    return u'You are tracking words: %s.' % self._user['track_words']
+
   def func_help(self):
     return u'Please refer to following url to get more help.\nhttp://code.google.com/p/twiotaku/wiki/CommandsReferrence'

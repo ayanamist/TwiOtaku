@@ -54,10 +54,8 @@ class StreamThread(StoppableThread):
     self.list_ids = array('L', map(int, self.user['list_ids']))
     self.track_words = map(string.lower, self.user['track_words'].split(','))
     self.user_at_screen_name = '@%s' % self.user['screen_name']
-    self.api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY,
-      consumer_secret=OAUTH_CONSUMER_SECRET,
-      access_token_key=self.user['access_key'],
-      access_token_secret=self.user['access_secret'])
+    self.api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
+      access_token_key=self.user['access_key'], access_token_secret=self.user['access_secret'])
 
   def restart(self):
     self.stop()
