@@ -178,7 +178,8 @@ class StreamThread(threading.Thread):
       title = None
       if self.user['timeline'] & db.MODE_EVENT:
         if data['event'] == 'follow':
-          title = '@%s is now following @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
+          if data['source']['screen_name'] != self.user['screen_name']:
+            title = '@%s is now following @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
         elif data['event'] == 'block':
           if data['target']['id'] not in self.blocked_ids:
             self.blocked_ids.append(data['target']['id'])
