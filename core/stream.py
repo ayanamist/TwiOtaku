@@ -30,18 +30,13 @@ class Timeout(Exception):
 class StreamThread(StoppableThread):
   def __init__(self, queue, bare_jid):
     super(StreamThread, self).__init__()
-    self.last_blocked_ids_update = 0
     self._user_changed = threading.Event()
     self.bare_jid = bare_jid
-    self.blocked_ids = array('L')
-    self.user = db.get_user_from_jid(self.bare_jid)
     self.queue = queue
-    self.api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY,
-      consumer_secret=OAUTH_CONSUMER_SECRET,
-      access_token_key=self.user['access_key'],
-      access_token_secret=self.user['access_secret'])
+    self.refresh_user()
 
   def user_changed(self):
+    self.refresh_user()
     self._user_changed.set()
 
   def is_user_changed(self):
@@ -50,12 +45,27 @@ class StreamThread(StoppableThread):
       self._user_changed = threading.Event()
     return result
 
+  def refresh_user(self):
+    self.user = db.get_user_from_jid(self.bare_jid)
+    self.blocked_ids = array('L', map(int, self.user['blocked_ids'].split(',')))
+    self.list_ids = array('L', map(int, self.user['list_ids']))
+    self.track_words = self.user['track_words']
+    self.user_at_screen_name = '@%s' % self.user['screen_name']
+    self.api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY,
+      consumer_secret=OAUTH_CONSUMER_SECRET,
+      access_token_key=self.user['access_key'],
+      access_token_secret=self.user['access_secret'])
+
+  def restart(self):
+    self.stop()
+    self.join()
+    self.start()
+
   # TODO: implement track and follow (list) (it's implemented in twitter lib)
   # TODO: use individual thread to update block and list ids
 
   @threadstop
   def run(self):
-    self.verify_credentials()
     self.wait_time_now_index = 0
     while True:
       self.running()
@@ -125,28 +135,14 @@ class StreamThread(StoppableThread):
           if not self.wait_time_now_index:
             self.wait_time_now_index = 1
 
-          #  @debug()
-          #  def refresh_blocked_ids(self):
-          #    time_now = time()
-          #    if time_now - self.last_blocked_ids_update >= REFRESH_BLOCKED_IDS_INTERVAL:
-          #      result = self.api.get_blocking_ids()
-          #      self.last_blocked_ids_update = time_now
-          #      if result:
-          #        self.blocked_ids = result
-
-  @debug()
-  def verify_credentials(self):
-    try:
-      data = self.api.verify_credentials()
-      screen_name = data['screen_name']
-    except twitter.TwitterUnauthorizedError:
-      db.update_user(jid=self.bare_jid, access_key=None, access_secret=None)
-      raise ThreadStop
-    else:
-      if screen_name != self.user['screen_name']:
-        self.user['screen_name'] = screen_name
-        db.update_user(jid=self.bare_jid, screen_name=screen_name)
-    self.user_at_screen_name = '@%s' % self.user['screen_name']
+            #  @debug()
+            #  def refresh_blocked_ids(self):
+            #    time_now = time()
+            #    if time_now - self.last_blocked_ids_update >= REFRESH_BLOCKED_IDS_INTERVAL:
+            #      result = self.api.get_blocking_ids()
+            #      self.last_blocked_ids_update = time_now
+            #      if result:
+            #        self.blocked_ids = result
 
   @debug()
   def process(self, data):
