@@ -23,12 +23,12 @@ class ostring(object):
     self._str_indices = array('H', [0])
 
   def __unicode__(self):
-    if self._str_indices:
+    if self._str_list:
       result = list()
       for i, s in enumerate(self._str_list):
         result.append(self.original_s[self._str_indices[i * 2]:self._str_indices[i * 2 + 1]])
         result.append(s)
-      result.append(self.original_s[self._str_indices[-1]:-1])
+      result.append(self.original_s[self._str_indices[-1]:None])
       return u''.join(result)
     else:
       return unicode(self.original_s)
