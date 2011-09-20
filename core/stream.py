@@ -62,7 +62,8 @@ class StreamThread(threading.Thread):
       self._user_changed = threading.Event()
     return result
 
-  # TODO: implement track and follow (list) (possibly via select?)
+  # TODO: implement track and follow (list) (it's implemented in twitter lib)
+  # TODO: use individual thread to update block and list ids
 
   def run(self):
     self.verify_credentials()

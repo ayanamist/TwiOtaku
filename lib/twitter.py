@@ -434,9 +434,13 @@ class Api(object):
       return urlfetch.fetch(method=http_method, url=url, body=encoded_post_data, headers=headers, block=False)
 
   # return a file-like object
-  def user_stream(self, timeout, reply_all=False):
+  def user_stream(self, timeout, reply_all=False, track=None, follow=None):
     url = 'https://userstream.twitter.com/2/user.json'
     parameters = dict(delimited='length')
     if reply_all:
       parameters['replies'] = 'all'
+    if track:
+      parameters['track'] = ','.join(track) if isinstance(track, list) else track
+    if follow:
+      parameters['follow'] = ','.join(follow) if isinstance(follow, list) else follow
     return self._fetch_url(url=url, parameters=parameters, block=False, timeout=timeout)

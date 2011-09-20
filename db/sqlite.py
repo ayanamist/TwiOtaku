@@ -50,7 +50,12 @@ def init():
           "id_list_ptr"  INTEGER NOT NULL DEFAULT 0,
           "msg_tpl"  BLOB,
           "date_fmt"  TEXT,
-          "always"  INTEGER NOT NULL DEFAULT 0
+          "always"  INTEGER NOT NULL DEFAULT 0,
+          "track_words"  TEXT,
+          "list_ids"  TEXT,
+          "list_ids_last_update"  INTEGER NOT NULL DEFAULT 0,
+          "blocked_ids" TEXT,
+          "blocked_ids_last_update" INTEGER NOT NULL DEFAULT 0
           );
           CREATE UNIQUE INDEX "users_id"
           ON "users" ("id");
