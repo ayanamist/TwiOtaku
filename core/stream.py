@@ -125,7 +125,7 @@ class StreamThread(StoppableThread):
         self.check_user_changed()
         self.process(data)
     except (urllib2.URLError, urllib2.HTTPError, SSLError, Timeout, socket.error), e:
-      stream_logger.warn('User Streaming connection failed.')
+      stream_logger.warn('connection failed: %s' % unicode(e))
       if isinstance(e, urllib2.HTTPError):
         if e.code == 401:
           stream_logger.error('User %s OAuth unauthorized, exiting.' % self.user['jid'])
