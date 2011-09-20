@@ -2,6 +2,8 @@ import urllib2
 import threading
 import logging
 import socket
+import operator
+import string
 from array import array
 from ssl import SSLError
 
@@ -22,6 +24,7 @@ MAX_DATA_TIMEOUT = 90
 WAIT_TIMES = (0, 30, 60, 120, 240)
 
 stream_logger = logging.getLogger('user streaming')
+contain = lambda strlist, str: reduce(operator.__or__, map(lambda a: a in str, strlist))
 
 class Timeout(Exception):
   pass
@@ -49,7 +52,7 @@ class StreamThread(StoppableThread):
     self.user = db.get_user_from_jid(self.bare_jid)
     self.blocked_ids = array('L', map(int, self.user['blocked_ids'].split(',')))
     self.list_ids = array('L', map(int, self.user['list_ids']))
-    self.track_words = self.user['track_words']
+    self.track_words = map(string.lower, self.user['track_words'].split(','))
     self.user_at_screen_name = '@%s' % self.user['screen_name']
     self.api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY,
       consumer_secret=OAUTH_CONSUMER_SECRET,
@@ -60,9 +63,6 @@ class StreamThread(StoppableThread):
     self.stop()
     self.join()
     self.start()
-
-  # TODO: implement track and follow (list) (it's implemented in twitter lib)
-  # TODO: use individual thread to update block and list ids
 
   @threadstop
   def run(self):
@@ -112,10 +112,11 @@ class StreamThread(StoppableThread):
           return json.loads(read(fp, int(length)))
 
     try:
-      user_stream_handler = self.api.user_stream(timeout=MAX_CONNECT_TIMEOUT)
+      user_stream_handler = self.api.user_stream(timeout=MAX_CONNECT_TIMEOUT, track=self.user['track_words'],
+        follow=self.user['list_ids'])
       stream_logger.debug('%s: User Streaming connected.' % self.user['jid'])
-      # read out friends ids and eliminate them because they are useless.
-      read_data(user_stream_handler)
+
+      self.friend_ids = read_data(user_stream_handler)
 
       if self.wait_time_now_index:
         self.wait_time_now_index = 0
@@ -135,15 +136,6 @@ class StreamThread(StoppableThread):
           if not self.wait_time_now_index:
             self.wait_time_now_index = 1
 
-            #  @debug()
-            #  def refresh_blocked_ids(self):
-            #    time_now = time()
-            #    if time_now - self.last_blocked_ids_update >= REFRESH_BLOCKED_IDS_INTERVAL:
-            #      result = self.api.get_blocking_ids()
-            #      self.last_blocked_ids_update = time_now
-            #      if result:
-            #        self.blocked_ids = result
-
   @debug()
   def process(self, data):
     if 'event' in data:
@@ -152,18 +144,25 @@ class StreamThread(StoppableThread):
         if data['event'] == 'follow':
           if data['source']['screen_name'] != self.user['screen_name']:
             title = '@%s is now following @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
+          else:
+            if data['target']['id'] not in self.friend_ids:
+              self.friend_ids.append(data['target']['id'])
         elif data['event'] == 'block':
           if data['target']['id'] not in self.blocked_ids:
             self.blocked_ids.append(data['target']['id'])
+          if data['target']['id'] in self.friend_ids:
+            self.friend_ids.remove(data['target']['id'])
           title = '@%s has blocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
         elif data['event'] == 'unblock':
           if data['target']['id'] in self.blocked_ids:
             self.blocked_ids.remove(data['target']['id'])
           title = '@%s has unblocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
         elif data['event'] == 'list_member_added':
-          pass
+          if data['target']['id'] not in self.list_ids:
+            self.list_ids.append(data['target']['id'])
         elif data['event'] == 'list_member_removed':
-          pass
+          if data['target']['id'] in self.list_ids:
+            self.list_ids.remove(data['target']['id'])
       if title:
         self.queue.put(Job(self.user['jid'], title=title, always=False))
     elif 'delete' in data:
@@ -177,9 +176,12 @@ class StreamThread(StoppableThread):
         else:
           data = None
       else:
-        if data['user']['id'] not in self.blocked_ids:
-          if self.user['timeline'] & db.MODE_HOME\
-          or (self.user['timeline'] & db.MODE_MENTION and self.user_at_screen_name in data['text']):
+        if data['user']['id'] not in self.blocked_ids and 'retweeted_status' in data\
+        and data['retweeted_status']['user']['id'] not in self.blocked_ids:
+          if (self.user['timeline'] & db.MODE_HOME and data['user']['id'] in self.friend_ids)\
+             or (self.user['timeline'] & db.MODE_MENTION and self.user_at_screen_name in data['text'])\
+             or (self.user['timeline'] & db.MODE_LIST and data['user']['id'] in self.list_ids)\
+          or (self.user['timeline'] & db.MODE_TRACK and contain(self.track_words, data['text'].lower())):
             data = twitter.Status(data)
             if self.user_at_screen_name in data['text']:
               retweeted_status = data.get('retweeted_status')
