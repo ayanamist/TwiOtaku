@@ -4,7 +4,7 @@ import platform
 import signal
 import logging
 from Queue import Queue
-from threading import Thread, Lock
+from threading import  Lock
 
 # we must write these code here because sleekxmpp will set its own logger during import!
 from lib import logger
@@ -14,7 +14,6 @@ logging.basicConfig(level=logging.DEBUG, format=logger.LOGGING_FORMAT, datefmt=l
 logging.setLoggerClass(logger.ErrorLogger)
 
 import sleekxmpp
-from apscheduler.scheduler import Scheduler
 
 try:
   import ujson as json
@@ -24,9 +23,11 @@ except ImportError:
 import db
 from config import XMPP_USERNAME, XMPP_PASSWORD
 from core.xmpp import XMPPMessageHandler
-from core.cron import cron_start
+from core.cron import CronStart
 from core.stream import StreamThread
-from core.worker import worker
+from core.worker import Worker
+
+logger = logging.getLogger('xmpp')
 
 # TODO: implement i18n support
 class XMPPBot(sleekxmpp.ClientXMPP):
@@ -36,9 +37,9 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
     self.stream_threads = dict()
 
+    self.cron_thread = CronStart(self.worker_queues)
+
     self.global_lock = Lock()
-    self.sched = Scheduler()
-    self.logger = logging.getLogger('xmpp')
     self.online_clients = dict() # this save online buddies no matter it's our users or not.
     sleekxmpp.ClientXMPP.__init__(self, XMPP_USERNAME, XMPP_PASSWORD)
     self.auto_authorize = True
@@ -62,11 +63,11 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     if msg['type'] == 'chat':
       XMPPMessageHandler(self).process(msg)
     elif msg['type'] == 'error':
-      if msg['error'][
-         'type'] == 'cancel': # If we send lots of stanzas at the same time, some of them will be returned as type "error", we must resend them.
+      # If we send lots of stanzas at the same time, some of them will be returned as type "error", we must resend them.
+      if msg['error']['type'] == 'cancel':
         msg.reply(msg['body']).send()
       else:
-        self.logger.info('%s -> %s: %s' % (msg['from'], msg['to'], str(msg['error'])))
+        logger.info('%s -> %s: %s' % (msg['from'], msg['to'], str(msg['error'])))
 
   def on_changed_status(self, presence):
     bare_jid = self.getjidbare(str(presence['from'])).lower()
@@ -93,49 +94,61 @@ class XMPPBot(sleekxmpp.ClientXMPP):
       self.start_stream(bare_jid)
 
   def sigterm_handler(self, *_):
-    logging.info('Shutdown stream.')
+    logger.info('shutdown stream.')
     for t in self.stream_threads:
       t.stop()
     for t in self.stream_threads:
       t.join()
-    logging.info('Shutdown cron scheduler.')
-    self.sched.shutdown()
-    logging.info('Shutdown workers.')
-    for q in self.worker_queues.itervalues():
-      q.put(None)
+
+    logger.info('shutdown cron scheduler.')
+    self.cron_thread.stop()
+    self.cron_thread.join()
+
+    logger.info('shutdown workers.')
+    for t in self.worker_threads.itervalues():
+      t.stop()
     for t in self.worker_threads.itervalues():
       t.join()
+
     self.disconnect(wait=True)
     sys.exit(0)
 
   def start_worker(self, bare_jid):
-    if bare_jid not in self.worker_queues:
+    w = self.worker_threads.get(bare_jid)
+    if w:
+      if not w.is_alive():
+        w.start()
+    else:
+      logger.debug('%s: start worker.' % bare_jid)
       q = self.worker_queues[bare_jid] = Queue()
-      w = self.worker_threads[bare_jid] = Thread(target=worker, args=(self, q))
-      w.setDaemon(True)
+      w = self.worker_threads[bare_jid] = Worker(self, q)
       w.start()
 
   def start_workers(self):
     for user in db.get_all_users():
-      self.start_worker(user['jid'])
+      if user['access_key'] and user['access_secret']:
+        self.start_worker(user['jid'])
 
   def start(self, *args, **kwargs):
-    logger = logging.getLogger('xmpp')
     if self.connect(('talk.google.com', 5222)):
       self.process(*args, **kwargs)
     else:
       logger.error('Can not connect to server.')
 
   def start_cron(self):
-    self.sched.add_interval_job(cron_start, minutes=1, args=(self.worker_queues,))
-    self.sched.start()
+    logger.debug('start cron.')
+    self.cron_thread.start()
 
   def start_stream(self, bare_jid):
-    if bare_jid not in self.stream_threads:
-      t = StreamThread(self, bare_jid)
-      self.stream_threads[bare_jid] = t
-      t.setDaemon(True)
+    t = self.stream_threads.get(bare_jid)
+    if t:
+      if not t.is_alive():
+        t.start()
+    else:
+      logger.debug('%s: start user streaming.' % bare_jid)
+      t = StreamThread(self.worker_queues[bare_jid], bare_jid)
       t.start()
+      self.stream_threads[bare_jid] = t
 
   def start_streams(self):
     for user in db.get_all_users():

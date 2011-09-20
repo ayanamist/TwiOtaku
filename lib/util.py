@@ -1,9 +1,10 @@
 #!/usr/bin/python
 # -*- encoding: utf-8 -*-
 import re
+from threading import Thread, Event
 from bisect import bisect
 from array import array
-from time import mktime, localtime, strftime
+from time import mktime, localtime, strftime, sleep
 from email.utils import parsedate
 from xml.sax.saxutils import unescape
 
@@ -11,6 +12,8 @@ import db
 import twitter
 from template import Template
 from config import MAX_ID_LIST_NUM, DEFAULT_MESSAGE_TEMPLATE, DEFAULT_DATE_FORMAT, OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
+
+_min_interval = 1
 
 class DuplicateError(Exception):
   pass
@@ -194,3 +197,34 @@ class Util(object):
       return db.get_long_id_from_short_id(self._user['id'], short_id)
     else:
       return short_id, db.TYPE_STATUS
+
+
+class ThreadStop(Exception):
+  pass
+
+
+class StoppableThread(Thread):
+  _stop = Event()
+
+  def __init__(self, group=None, target=None, name=None,
+               args=(), kwargs=None, verbose=None):
+    super(StoppableThread, self).__init__(group=group, target=target, name=name, args=args, kwargs=kwargs,
+      verbose=verbose)
+    self.setDaemon(True)
+
+  def stop(self):
+    self._stop.set()
+
+  def is_stopped(self):
+    return self._stop.is_set()
+
+  def sleep(self, secs):
+    i = 0
+    while i < secs:
+      self.check_stop()
+      sleep(_min_interval)
+      i += _min_interval
+
+  def check_stop(self):
+    if self.is_stopped():
+      raise ThreadStop

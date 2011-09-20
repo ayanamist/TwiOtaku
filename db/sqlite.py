@@ -45,6 +45,7 @@ def init():
           "last_mention_id"  TEXT,
           "last_dm_id"  TEXT,
           "last_list_id"  TEXT,
+          "last_search_id"  TEXT,
           "last_update"  INTEGER NOT NULL DEFAULT 0,
           "timeline"  INTEGER NOT NULL DEFAULT 3,
           "id_list_ptr"  INTEGER NOT NULL DEFAULT 0,

@@ -331,9 +331,20 @@ class Api(object):
     url = '%s/account/verify_credentials.json' % self.base_url
     return self._fetch_url(url)
 
-  def get_rate_limit_status(self):
-    url = '%s/account/rate_limit_status.json' % self.base_url
-    return self._fetch_url(url)
+  def get_search(self, q, page=None, since_id=None, rpp=None, count=None, include_entities=True):
+    url = 'http://search.twitter.com/search.json'
+    parameters = {'q': q}
+    if page:
+      parameters['page'] = int(page)
+    if since_id:
+      parameters['since_id'] = since_id
+    if rpp:
+      parameters['rpp'] = int(rpp)
+    if count:
+      parameters['count'] = int(count)
+    if include_entities:
+      parameters['include_entities'] = True
+    return [Status(x) for x in self._fetch_url(url, parameters=parameters)]
 
   def _build_url(self, url, path_elements=None, extra_params=None):
     (scheme, netloc, path, params, query, fragment) = urlparse.urlparse(url)

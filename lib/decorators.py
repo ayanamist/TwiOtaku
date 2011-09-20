@@ -2,6 +2,7 @@ import logging
 import traceback
 from StringIO import StringIO
 
+from util import ThreadStop
 # decorator for logging
 def debug(logger_name=__name__):
   def wrap(f):
@@ -15,5 +16,15 @@ def debug(logger_name=__name__):
         logger.error(err.getvalue())
 
     return newf
+
+  return wrap
+
+
+def threadstop(f):
+  def wrap(*args, **kwds):
+    try:
+      return f(*args, **kwds)
+    except ThreadStop:
+      return
 
   return wrap

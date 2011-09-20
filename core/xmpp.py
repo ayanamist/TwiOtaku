@@ -516,6 +516,8 @@ class XMPPMessageHandler(object):
           self._user['timeline'] |= db.MODE_LIST
         elif a == 'event':
           self._user['timeline'] |= db.MODE_EVENT
+        elif a == 'track':
+          self._user['timeline'] |= db.MODE_TRACK
       self._xmpp.stream_threads[self._bare_jid].user_changed()
       db.update_user(id=self._user['id'], timeline=self._user['timeline'])
     modes = []
@@ -529,6 +531,8 @@ class XMPPMessageHandler(object):
       modes.append('dm')
     if self._user['timeline'] & db.MODE_EVENT:
       modes.append('event')
+    if self._user['timeline'] & db.MODE_TRACK:
+      modes.append('track')
     modes_str = ', '.join(modes) if modes else 'nothing'
     return u'You have enabled update for %s.' % modes_str
 
@@ -546,6 +550,8 @@ class XMPPMessageHandler(object):
           self._user['timeline'] &= ~db.MODE_LIST
         elif a == 'event':
           self._user['timeline'] &= ~db.MODE_EVENT
+        elif a == 'track':
+          self._user['timeline'] &= ~db.MODE_TRACK
     else:
       self._user['timeline'] = db.MODE_NONE
     db.update_user(self._user['id'], timeline=self._user['timeline'])
