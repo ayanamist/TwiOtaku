@@ -39,7 +39,7 @@ class StreamThread(threading.Thread):
     self._user_changed = threading.Event()
     self.xmpp = xmpp
     self.bare_jid = bare_jid
-    self.blocked_ids = list()
+    self.blocked_ids = array('L')
     self.user = db.get_user_from_jid(self.bare_jid)
     self.queue = self.xmpp.worker_queues[self.bare_jid]
     self.api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY,
@@ -170,7 +170,6 @@ class StreamThread(threading.Thread):
       if screen_name != self.user['screen_name']:
         self.user['screen_name'] = screen_name
         db.update_user(jid=self.bare_jid, screen_name=screen_name)
-      self.twitter_user_id = data['id_str']
     self.user_at_screen_name = '@%s' % self.user['screen_name']
 
   @debug()
@@ -181,12 +180,12 @@ class StreamThread(threading.Thread):
         if data['event'] == 'follow':
           title = '@%s is now following @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
         elif data['event'] == 'block':
-          if data['target']['id_str'] not in self.blocked_ids:
-            self.blocked_ids.append(data['target']['id_str'])
+          if data['target']['id'] not in self.blocked_ids:
+            self.blocked_ids.append(data['target']['id'])
           title = '@%s has blocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
         elif data['event'] == 'unblock':
-          if data['target']['id_str'] in self.blocked_ids:
-            self.blocked_ids.remove(data['target']['id_str'])
+          if data['target']['id'] in self.blocked_ids:
+            self.blocked_ids.remove(data['target']['id'])
           title = '@%s has unblocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
         elif data['event'] == 'list_member_added':
           pass
@@ -205,7 +204,7 @@ class StreamThread(threading.Thread):
         else:
           data = None
       else:
-        if data['user']['id_str'] not in self.blocked_ids:
+        if data['user']['id'] not in self.blocked_ids:
           if self.user['timeline'] & db.MODE_HOME\
           or (self.user['timeline'] & db.MODE_MENTION and self.user_at_screen_name in data['text']):
             data = twitter.Status(data)

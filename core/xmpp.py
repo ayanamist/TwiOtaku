@@ -399,9 +399,9 @@ class XMPPMessageHandler(object):
             data.append(result['value'])
       if origin_status:
         data.append(origin_status)
-      one_short = data[0]['id_str'] == long_id
-      while len(data) <= MAX_CONVERSATION_NUM or one_short:
-        one_short = False
+      first_short = data[0]['id_str'] == long_id
+      while len(data) <= MAX_CONVERSATION_NUM or first_short:
+        first_short = False
         status = data[0]
         if status['in_reply_to_status_id_str']:
           long_id = status['in_reply_to_status_id_str']
