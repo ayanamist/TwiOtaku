@@ -37,17 +37,17 @@ def fetch(url, method='GET', body=None, headers=None, block=True, timeout=None):
   req.get_method = lambda: method
   if timeout is None:
     timeout = socket._GLOBAL_DEFAULT_TIMEOUT
-  try:
-    r = urllib2.urlopen(req, timeout=timeout)
-  except urllib2.HTTPError, e:
-    return Response(e.code, e.read(), e.info())
-  except urllib2.URLError, e:
-    raise Error(e.reason)
-  else:
-    if block:
-      return Response(httplib.OK, r.read(), r.info())
+  if block:
+    try:
+      r = urllib2.urlopen(req, timeout=timeout)
+    except urllib2.HTTPError, e:
+      return Response(e.code, e.read(), e.info())
+    except urllib2.URLError, e:
+      raise Error(e.reason)
     else:
-      return r
+      return Response(httplib.OK, r.read(), r.info())
+  else:
+    return urllib2.urlopen(req, timeout=timeout)
 
 opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookielib.CookieJar()), GZipHandler())
 urllib2.install_opener(opener)
