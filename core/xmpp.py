@@ -571,6 +571,7 @@ class XMPPMessageHandler(object):
       self._user['list_name'] = response['slug']
       db.update_user(id=self._user['id'], list_user=self._user['list_user'], list_name=self._user['list_name'],
         list_ids=None, list_ids_last_update=0)
+      self._xmpp.stream_threads[self._bare_jid].user_changed()
     if self._user['list_user'] and self._user['list_name']:
       return u'List update is assigned for %s/%s.' % (self._user['list_user'], self._user['list_name'])
     return u'Please specify a list as screen_name/list_name format first.'

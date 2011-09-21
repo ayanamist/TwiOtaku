@@ -50,6 +50,7 @@ class StreamThread(StoppableThread):
     return result
 
   def refresh_user(self):
+    logger.debug('%s: refresh user.' % self.bare_jid)
     self.user = db.get_user_from_jid(self.bare_jid)
     self.blocked_ids = array('L', imap(int, self.user['blocked_ids'].split(',')) if self.user['blocked_ids'] else ())
     self.list_ids = array('L', imap(int, self.user['list_ids'].split(',')) if self.user['list_ids'] else ())
