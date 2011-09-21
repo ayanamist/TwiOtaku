@@ -111,8 +111,7 @@ class StreamThread(StoppableThread):
           return json.loads(read(fp, int(length)))
 
     try:
-      user_stream_handler = self.api.user_stream(timeout=MAX_CONNECT_TIMEOUT, track=self.user['track_words'],
-        follow=self.user['list_ids'])
+      user_stream_handler = self.api.user_stream(timeout=MAX_CONNECT_TIMEOUT, track=self.user['track_words'])
       logger.debug('%s: connected.' % self.user['jid'])
 
       self.friend_ids = array('L', read_data(user_stream_handler)['friends'])

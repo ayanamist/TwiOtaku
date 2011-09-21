@@ -248,6 +248,4 @@ class CronMisc(StoppableThread):
       user = db.get_user_from_jid(user['jid'])
       if user['list_ids'] is None or list_ids - set(user['list_ids'].split(',')):
         db.update_user(id=user['id'], list_ids=','.join(list_ids), list_ids_last_update=self._now)
-        self._thread.stop()
-        self._thread.join()
-        self._thread.start()
+        self._thread.user_changed()
