@@ -176,8 +176,10 @@ class StreamThread(StoppableThread):
         else:
           data = None
       else:
-        if data['user']['id'] not in self.blocked_ids and 'retweeted_status' in data\
-        and data['retweeted_status']['user']['id'] not in self.blocked_ids:
+        if data['user']['id'] in self.blocked_ids or ('retweeted_status' in data
+                                                      and data['retweeted_status']['user']['id'] in self.blocked_ids):
+          data = None
+        else:
           if (self.user['timeline'] & db.MODE_HOME and data['user']['id'] in self.friend_ids)\
              or (self.user['timeline'] & db.MODE_MENTION and self.user_at_screen_name in data['text'])\
              or (self.user['timeline'] & db.MODE_LIST and data['user']['id'] in self.list_ids)\
@@ -191,8 +193,6 @@ class StreamThread(StoppableThread):
                 data['in_reply_to_status'] = None
           else:
             data = None
-        else:
-          data = None
       if data:
         self.queue.put(Job(self.user['jid'], data=data, allow_duplicate=False, always=False, title=title))
 
