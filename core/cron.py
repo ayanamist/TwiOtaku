@@ -98,9 +98,9 @@ class CronGetTimeline(StoppableThread):
     @debug()
     def fetch_list():
       if user_timeline & db.MODE_LIST:
-        if user['list_user'] and user['list_id']:
+        if user['list_user'] and user['list_name']:
           try:
-            data = api.get_list_statuses(screen_name=user['list_user'], slug=user['list_id'],
+            data = api.get_list_statuses(screen_name=user['list_user'], slug=user['list_name'],
               since_id=user['last_list_id'])
           except twitter.TwitterNotFoundError:
             user['timeline'] &= ~db.MODE_LIST

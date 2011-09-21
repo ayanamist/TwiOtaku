@@ -568,12 +568,11 @@ class XMPPMessageHandler(object):
         list_user, list_name = path
       response = self._api.get_list(list_user.encode('UTF8'), list_name.encode('UTF8'))
       self._user['list_user'] = response['user']['screen_name']
-      self._user['list_id'] = response['id']
       self._user['list_name'] = response['slug']
       db.update_user(id=self._user['id'], list_user=self._user['list_user'], list_name=self._user['list_name'],
-        list_id=self._user['list_id'], list_ids=None, list_ids_last_update=0)
+        list_ids=None, list_ids_last_update=0)
       self._xmpp.stream_threads[self._bare_jid].restart()
-    if self._user['list_user'] and self._user['list_id'] and self._user['list_name']:
+    if self._user['list_user'] and self._user['list_name']:
       return u'List update is assigned for %s/%s.' % (self._user['list_user'], self._user['list_name'])
     return u'Please specify a list as screen_name/list_name format first.'
 
