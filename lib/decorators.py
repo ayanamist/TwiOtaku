@@ -9,7 +9,7 @@ def debug(logger_name=__name__):
     def newf(*args, **kwds):
       try:
         return f(*args, **kwds)
-      except BaseException:
+      except Exception:
         err = StringIO()
         traceback.print_exc(file=err)
         logger = logging.getLogger(logger_name)

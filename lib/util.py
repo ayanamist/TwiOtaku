@@ -199,7 +199,7 @@ class Util(object):
       return short_id, db.TYPE_STATUS
 
 
-class ThreadStop(Exception):
+class ThreadStop(BaseException):
   pass
 
 

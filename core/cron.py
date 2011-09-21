@@ -232,7 +232,7 @@ class CronMisc(StoppableThread):
       logger.debug('%s: refresh blocked ids.' % user['jid'])
       blocked_ids = self._api.get_blocking_ids(stringify_ids=True)
       if user['blocked_ids'] is None or set(blocked_ids) - set(user['blocked_ids'].split(',')):
-        db.update_user(id=user['id'], blocked_id=','.join(blocked_ids), blocked_ids_last_update=self._now)
+        db.update_user(id=user['id'], blocked_ids=','.join(blocked_ids), blocked_ids_last_update=self._now)
         self._thread.user_changed()
 
   @debug()
