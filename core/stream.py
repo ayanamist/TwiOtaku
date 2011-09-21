@@ -58,11 +58,6 @@ class StreamThread(StoppableThread):
     self.api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
       access_token_key=self.user['access_key'], access_token_secret=self.user['access_secret'])
 
-  def restart(self):
-    self.stop()
-    self.join()
-    self.start()
-
   @threadstop
   def run(self):
     self.wait_time_now_index = 0
