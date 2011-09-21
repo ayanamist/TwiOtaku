@@ -84,12 +84,7 @@ class Util(object):
       return None
     short_id, short_id_alpha = self.generate_short_id(single)
     t = mktime(parsedate(single['created_at']))
-    if isinstance(single, twitter.DirectMessage):
-      if single['sender']['utc_offset']:
-        t += single['sender']['utc_offset']
-    else:
-      if single['user']['utc_offset']:
-        t += single['user']['utc_offset']
+    t += 28800 # GMT+8
     date_fmt = self._user['date_fmt'] if self._user['date_fmt'] else DEFAULT_DATE_FORMAT
     single['created_at_fmt'] = strftime(date_fmt.encode('UTF8'), localtime(t)).decode('UTF8')
     if 'source' in single:

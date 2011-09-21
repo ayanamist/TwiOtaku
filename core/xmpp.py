@@ -164,8 +164,7 @@ class XMPPMessageHandler(object):
     texts.append(u'Followers: %d' % twitter_user['followers_count'])
     texts.append(u'Tweets: %d' % twitter_user['statuses_count'])
     join_time = time.mktime(parsedate(twitter_user['created_at']))
-    if twitter_user['utc_offset']:
-      join_time += twitter_user['utc_offset']
+    join_time += 28800
     join_time = time.strftime(u'%Y-%m-%d %H:%M:%S', time.localtime(join_time))
     texts.append(u'Joined at: %s' % join_time)
     texts.append(u'Tweets per day: %.2f' % (twitter_user['statuses_count'] * 86400 /
