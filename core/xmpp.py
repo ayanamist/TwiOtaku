@@ -571,7 +571,8 @@ class XMPPMessageHandler(object):
       self._user['list_id'] = response['id']
       self._user['list_name'] = response['slug']
       db.update_user(id=self._user['id'], list_user=self._user['list_user'], list_name=self._user['list_name'],
-        list_id=self._user['list_id'])
+        list_id=self._user['list_id'], list_ids=None, list_ids_last_update=0)
+      self._xmpp.stream_threads[self._bare_jid].restart()
     if self._user['list_user'] and self._user['list_id'] and self._user['list_name']:
       return u'List update is assigned for %s/%s.' % (self._user['list_user'], self._user['list_name'])
     return u'Please specify a list as screen_name/list_name format first.'
@@ -731,11 +732,12 @@ class XMPPMessageHandler(object):
     else:
       return u'You will only receive updates when your status is available.'
 
-  def func_track(self, value=None):
-    if value is not None:
-      self._user['track_words'] = value
-      db.update_user(id=self._user['id'], track_word=value)
-    return u'You are tracking words: %s.' % self._user['track_words']
+  def func_track(self, *values):
+    if values:
+      self._user['track_words'] = ','.join(values)
+      db.update_user(id=self._user['id'], track_word=self._user['track_words'])
+      self._xmpp.stream_threads[self._bare_jid].restart()
+    return u'You are tracking words: %s. (comma seprated)' % self._user['track_words']
 
   def func_help(self):
     return u'Please refer to following url to get more help.\nhttp://code.google.com/p/twiotaku/wiki/CommandsReferrence'

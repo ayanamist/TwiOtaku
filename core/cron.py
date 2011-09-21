@@ -12,6 +12,9 @@ from lib.decorators import debug, threadstop
 
 MAX_IDLE_TIME = 300
 CRON_INTERVAL = 60
+CRON_BLOCKED_IDS_INTERVAL = 3600
+CRON_LIST_IDS_INTERVAL = 3600
+CRON_VERIFY_CREDENTIAL_INTERVAL = 3600
 
 logger = logging.getLogger('cron')
 
@@ -169,3 +172,79 @@ class CronGetTimeline(StoppableThread):
 
       self.queue.task_done()
 
+
+class CronMisc(StoppableThread):
+  # this cron check credentials, list ids, blocked_ids
+  def __init__(self, xmpp):
+    super(CronMisc, self).__init__()
+    self._xmpp = xmpp
+
+  @threadstop
+  def run(self):
+    while True:
+      last = time.time()
+      self.running()
+      now = time.time()
+      if now - last < CRON_INTERVAL:
+        remain = CRON_INTERVAL - (now - last)
+        logger.debug('Sleep %.2f seconds.' % remain)
+        self.sleep(remain)
+      self.check_stop()
+
+  def running(self):
+    for user in db.get_all_users():
+      if user['access_key'] and user['access_secret']:
+        self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
+          access_token_key=user['access_key'], access_token_secret=user['access_secret'])
+        self._now = time.time()
+        self._thread = self._xmpp.stream_threads.get(user['jid'])
+        if self.verify_credential(user):
+          self.refresh_blocked_ids(user)
+          self.refresh_list_ids(user)
+
+  @debug()
+  def verify_credential(self, user):
+    if self._now - user['last_verified'] > CRON_VERIFY_CREDENTIAL_INTERVAL:
+      logger.debug('%s: check credential.' % user['jid'])
+      try:
+        twitter_user = self._api.verify_credentials()
+      except twitter.TwitterUnauthorizedError:
+        logger.debug('%s: credential is invalid.' % user['jid'])
+        db.update_user(access_key=None, access_secret=None)
+        if self._thread:
+          self._thread.stop()
+          return False
+      else:
+        if user['screen_name'] != twitter_user['screen_name']:
+          logger.debug('%s: screen_name has been changed from %s to %s.' %
+                       (user['jid'], user['screen_name'], twitter_user['screen_name']))
+          db.update_user(id=user['id'], screen_name=twitter_user['screen_name'])
+        return True
+      finally:
+        db.update_user(id=user['id'], last_verified=int(self._now))
+    else:
+      return True
+
+  @debug()
+  def refresh_blocked_ids(self, user):
+    if self._now - user['blocked_ids_last_update'] > CRON_BLOCKED_IDS_INTERVAL:
+      logger.debug('%s: refresh blocked ids.' % user['jid'])
+      blocked_ids = self._api.get_blocking_ids(stringify_ids=True)
+      if user['blocked_ids'] is None or set(blocked_ids) - set(user['blocked_ids'].split(',')):
+        db.update_user(id=user['id'], blocked_id=','.join(blocked_ids), blocked_ids_last_update=self._now)
+        self._thread.user_changed()
+
+  @debug()
+  def refresh_list_ids(self, user):
+    if self._now - user['list_ids_last_update'] > CRON_LIST_IDS_INTERVAL:
+      logger.debug('%s: refresh list ids.' % user['jid'])
+      cursor = -1
+      list_ids = set()
+      while cursor:
+        result = self._api.get_list_members(user['list_user'], user['list_name'], cursor=cursor)
+        list_ids.update(map(operator.itemgetter('id_str'), result['users']))
+        cursor = result['next_cursor']
+      user = db.get_user_from_jid(user['jid'])
+      if user['list_ids'] is None or list_ids - set(user['list_ids'].split(',')):
+        db.update_user(id=user['id'], list_ids=list_ids, list_ids_last_update=self._now)
+        self._thread.restart()

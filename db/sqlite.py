@@ -38,6 +38,7 @@ def init():
           "screen_name"  TEXT,
           "access_key"  TEXT,
           "access_secret"  TEXT,
+          "last_verified"  INTEGER NOT NULL DEFAULT 0,
           "list_user"  TEXT,
           "list_id"  TEXT,
           "list_name"  TEXT,

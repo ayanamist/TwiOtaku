@@ -23,7 +23,7 @@ except ImportError:
 import db
 from config import XMPP_USERNAME, XMPP_PASSWORD
 from core.xmpp import XMPPMessageHandler
-from core.cron import CronStart
+from core.cron import CronStart, CronMisc
 from core.stream import StreamThread
 from core.worker import Worker
 
@@ -36,8 +36,6 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     self.worker_threads = dict()
 
     self.stream_threads = dict()
-
-    self.cron_thread = CronStart(self.worker_queues)
 
     self.global_lock = Lock()
     self.online_clients = dict() # this save online buddies no matter it's our users or not.
@@ -93,23 +91,16 @@ class XMPPBot(sleekxmpp.ClientXMPP):
       self.start_worker(bare_jid)
       self.start_stream(bare_jid)
 
+  def start(self, *args, **kwargs):
+    if self.connect(('talk.google.com', 5222)):
+      self.process(*args, **kwargs)
+    else:
+      logger.error('Can not connect to server.')
+
   def sigterm_handler(self, *_):
-    logger.info('shutdown stream.')
-    for t in self.stream_threads:
-      t.stop()
-    for t in self.stream_threads:
-      t.join()
-
-    logger.info('shutdown cron scheduler.')
-    self.cron_thread.stop()
-    self.cron_thread.join()
-
-    logger.info('shutdown workers.')
-    for t in self.worker_threads.itervalues():
-      t.stop()
-    for t in self.worker_threads.itervalues():
-      t.join()
-
+    self.stop_streams()
+    self.stop_cron()
+    self.stop_workers()
     self.disconnect(wait=True)
     sys.exit(0)
 
@@ -129,15 +120,26 @@ class XMPPBot(sleekxmpp.ClientXMPP):
       if user['access_key'] and user['access_secret']:
         self.start_worker(user['jid'])
 
-  def start(self, *args, **kwargs):
-    if self.connect(('talk.google.com', 5222)):
-      self.process(*args, **kwargs)
-    else:
-      logger.error('Can not connect to server.')
+  def stop_workers(self):
+    logger.info('shutdown workers.')
+    for t in self.worker_threads.itervalues():
+      t.stop()
+    for t in self.worker_threads.itervalues():
+      t.join()
 
   def start_cron(self):
     logger.debug('start cron.')
+    self.cron_thread = CronStart(self.worker_queues)
     self.cron_thread.start()
+    self.cron_misc_thread = CronMisc(self)
+    self.cron_misc_thread.start()
+
+  def stop_cron(self):
+    logger.info('shutdown cron scheduler.')
+    self.cron_thread.stop()
+    self.cron_misc_thread.stop()
+    self.cron_thread.join()
+    self.cron_misc_thread.join()
 
   def start_stream(self, bare_jid):
     t = self.stream_threads.get(bare_jid)
@@ -154,6 +156,14 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     for user in db.get_all_users():
       if user['access_key'] and user['access_secret']:
         self.start_stream(user['jid'])
+
+  def stop_streams(self):
+    logger.info('shutdown stream.')
+    for t in self.stream_threads:
+      t.stop()
+    for t in self.stream_threads:
+      t.join()
+
 
 if __name__ == '__main__':
   major, minor, _ = platform.python_version_tuple()

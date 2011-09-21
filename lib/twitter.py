@@ -310,6 +310,15 @@ class Api(object):
       parameters['page'] = int(page)
     return [Status(x) for x in self._fetch_url(url, parameters=parameters)]
 
+  def get_list_members(self, screen_name, slug, cursor=-1, skip_status=False, include_entities=False):
+    url = '%s/lists/members.json' % self.base_url
+    parameters = {'slug': slug, 'owner_screen_name': screen_name, 'cursor': int(cursor)}
+    if skip_status:
+      parameters['skip_status'] = 1
+    if include_entities:
+      parameters['include_entities'] = 1
+    return self._fetch_url(url, parameters=parameters)
+
   def create_block(self, screen_name):
     url = '%s/blocks/create.json' % self.base_url
     return self._fetch_url(url, parameters={'screen_name': screen_name}, http_method='POST')
