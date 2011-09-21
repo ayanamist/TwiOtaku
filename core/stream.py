@@ -5,6 +5,7 @@ import socket
 import operator
 import string
 from array import array
+from itertools import imap
 from ssl import SSLError
 
 try:
@@ -24,7 +25,7 @@ MAX_DATA_TIMEOUT = 90
 WAIT_TIMES = (0, 30, 60, 120, 240)
 
 logger = logging.getLogger('user streaming')
-contain = lambda strlist, str: reduce(operator.__or__, map(lambda a: a in str, strlist))
+contain = lambda strlist, str: reduce(operator.__or__, imap(lambda a: a in str, strlist))
 
 class Timeout(Exception):
   pass
@@ -50,9 +51,9 @@ class StreamThread(StoppableThread):
 
   def refresh_user(self):
     self.user = db.get_user_from_jid(self.bare_jid)
-    self.blocked_ids = array('L', map(int, self.user['blocked_ids'].split(',')) if self.user['blocked_ids'] else ())
-    self.list_ids = array('L', map(int, self.user['list_ids'].split(',')) if self.user['list_ids'] else ())
-    self.track_words = map(string.lower, self.user['track_words'].split(',')) if self.user['track_words'] else ()
+    self.blocked_ids = array('L', imap(int, self.user['blocked_ids'].split(',')) if self.user['blocked_ids'] else ())
+    self.list_ids = array('L', imap(int, self.user['list_ids'].split(',')) if self.user['list_ids'] else ())
+    self.track_words = imap(string.lower, self.user['track_words'].split(',')) if self.user['track_words'] else ()
     self.user_at_screen_name = '@%s' % self.user['screen_name']
     self.api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
       access_token_key=self.user['access_key'], access_token_secret=self.user['access_secret'])

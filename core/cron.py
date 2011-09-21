@@ -1,6 +1,7 @@
 import time
 import logging
 import operator
+from itertools import imap
 from Queue import Queue
 
 import db
@@ -242,7 +243,7 @@ class CronMisc(StoppableThread):
       list_ids = set()
       while cursor:
         result = self._api.get_list_members(user['list_user'], user['list_name'], cursor=cursor)
-        list_ids.update(map(operator.itemgetter('id_str'), result['users']))
+        list_ids.update(imap(operator.itemgetter('id_str'), result['users']))
         cursor = result['next_cursor']
       user = db.get_user_from_jid(user['jid'])
       if user['list_ids'] is None or list_ids - set(user['list_ids'].split(',')):
