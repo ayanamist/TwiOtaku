@@ -90,7 +90,7 @@ class StreamThread(StoppableThread):
             tmp.append(c)
             data_len += 1
           except TypeError:
-            logger.error('%s is not a valid char.' % str(c))
+            logger.error('chr(%d) is not a valid char.' % ord(c))
             return
       return ''.join(tmp)
 
