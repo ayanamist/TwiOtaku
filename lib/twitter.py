@@ -333,7 +333,7 @@ class Api(object):
     return self._fetch_url(url, parameters={'screen_name': screen_name}, http_method='POST')
 
   def get_blocking_ids(self, stringify_ids=False):
-    parameters = {'since_id': int(bool(stringify_ids))}
+    parameters = {'stringify_ids': int(bool(stringify_ids))}
     url = '%s/blocks/blocking/ids.json' % self.base_url
     return self._fetch_url(url, parameters=parameters)
 

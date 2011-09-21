@@ -237,7 +237,7 @@ class CronMisc(StoppableThread):
 
   @debug()
   def refresh_list_ids(self, user):
-    if self._now - user['list_ids_last_update'] > CRON_LIST_IDS_INTERVAL:
+    if user['list_user'] and user['list_name'] and self._now - user['list_ids_last_update'] > CRON_LIST_IDS_INTERVAL:
       logger.debug('%s: refresh list ids.' % user['jid'])
       cursor = -1
       list_ids = set()
