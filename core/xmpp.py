@@ -571,7 +571,6 @@ class XMPPMessageHandler(object):
       self._user['list_name'] = response['slug']
       db.update_user(id=self._user['id'], list_user=self._user['list_user'], list_name=self._user['list_name'],
         list_ids=None, list_ids_last_update=0)
-      self._xmpp.stream_threads[self._bare_jid].restart()
     if self._user['list_user'] and self._user['list_name']:
       return u'List update is assigned for %s/%s.' % (self._user['list_user'], self._user['list_name'])
     return u'Please specify a list as screen_name/list_name format first.'
@@ -735,7 +734,9 @@ class XMPPMessageHandler(object):
     if values:
       self._user['track_words'] = ','.join(values)
       db.update_user(id=self._user['id'], track_word=self._user['track_words'])
-      self._xmpp.stream_threads[self._bare_jid].restart()
+      self._xmpp.stream_threads[self._bare_jid].stop()
+      self._xmpp.stream_threads[self._bare_jid].join()
+      self._xmpp.stream_threads[self._bare_jid].start()
     return u'You are tracking words: %s. (comma seprated)' % self._user['track_words']
 
   def func_help(self):

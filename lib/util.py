@@ -228,9 +228,3 @@ class StoppableThread(Thread):
   def check_stop(self):
     if self.is_stopped():
       raise ThreadStop
-
-  def restart(self):
-    self.stop()
-    self.join()
-    self.run()
-
