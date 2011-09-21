@@ -147,11 +147,16 @@ class Util(object):
       if not isinstance(digit, int):
         raise TypeError('Only accept digit argument.')
       nums = list()
-      while digit >= 26:
-        nums.insert(0, digit % 26)
-        digit //= 26
+      digit += 1
+      while digit > 26:
+        t = digit % 26
+        if t > 0:
+          nums.insert(0, t)
+          digit //= 26
+        else:
+          nums.insert(0, 26)
+          digit = digit // 26 - 1
       nums.insert(0, digit)
-      nums[-1] += 1
       return ''.join([chr(x + 64) for x in nums])
 
     if isinstance(single, twitter.Status):
