@@ -4,7 +4,6 @@ import platform
 import signal
 import logging
 from Queue import Queue
-from threading import  Lock
 
 # we must write these code here because sleekxmpp will set its own logger during import!
 from lib import logger
@@ -37,7 +36,6 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
     self.stream_threads = dict()
 
-    self.global_lock = Lock()
     self.online_clients = dict() # this save online buddies no matter it's our users or not.
     sleekxmpp.ClientXMPP.__init__(self, XMPP_USERNAME, XMPP_PASSWORD)
     self.auto_authorize = True
@@ -71,7 +69,6 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     bare_jid = self.getjidbare(str(presence['from'])).lower()
     n = self.online_clients.get(bare_jid, 0)
     if presence['type'] in presence.types:
-      self.global_lock.acquire()
       if presence['type'] == 'available':
         self.online_clients[bare_jid] = n + 1
       else:
@@ -79,7 +76,6 @@ class XMPPBot(sleekxmpp.ClientXMPP):
           self.online_clients[bare_jid] = n - 1
         elif n == 1:
           del self.online_clients[bare_jid]
-      self.global_lock.release()
 
   def send_message(self, mto, mbody, msubject=None, mtype=None, mhtml=None, mfrom=None, mnick=None):
     if mtype is None:
@@ -106,9 +102,8 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
   def start_worker(self, bare_jid):
     w = self.worker_threads.get(bare_jid)
-    if w:
-      if not w.is_alive():
-        w.start()
+    if w and w.is_alive():
+      pass
     else:
       logger.debug('%s: start worker.' % bare_jid)
       q = self.worker_queues[bare_jid] = Queue()
@@ -143,9 +138,8 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
   def start_stream(self, bare_jid):
     t = self.stream_threads.get(bare_jid)
-    if t:
-      if not t.is_alive():
-        t.start()
+    if t and t.is_alive():
+      pass
     else:
       logger.debug('%s: start user streaming.' % bare_jid)
       t = StreamThread(self.worker_queues[bare_jid], bare_jid)
