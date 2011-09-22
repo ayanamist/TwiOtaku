@@ -475,7 +475,7 @@ class Client():
 
     self.method = method
 
-  def request(self, uri, method="GET", parameters=dict(), body=None, headers=None):
+  def request(self, uri, method="GET", parameters=None, body=None, headers=None):
     DEFAULT_CONTENT_TYPE = 'application/x-www-form-urlencoded'
 
     if not isinstance(headers, dict):
@@ -483,6 +483,8 @@ class Client():
     headers['Accept-Encoding'] = 'gzip'
     is_multipart = method == 'POST' and headers.get('Content-Type', DEFAULT_CONTENT_TYPE) != DEFAULT_CONTENT_TYPE
 
+    if parameters is None:
+      parameters = dict()
     if body and method == "POST" and not is_multipart:
       parameters.update(dict(parse_qsl(body)))
 

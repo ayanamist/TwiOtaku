@@ -24,43 +24,43 @@ SIGNIN_URL = 'https://api.twitter.com/oauth/authenticate'
 
 BASE_URL = 'https://api.twitter.com/1'
 
-class TwitterError(Exception):
+class Error(Exception):
   pass
 
 
-class TwitterBadRequestError(Exception):
+class BadRequestError(Exception):
   pass
 
 
-class TwitterUnauthorizedError(TwitterError):
+class UnauthorizedError(Error):
   pass
 
 
-class TwitterForbiddenError(TwitterError):
+class ForbiddenError(Error):
   pass
 
 
-class TwitterNotFoundError(TwitterError):
+class NotFoundError(Error):
   pass
 
 
-class TwitterEnhanceYourCalmError(TwitterError):
+class EnhanceYourCalmError(Error):
   pass
 
 
-class TwitterInternalServerError(TwitterError):
+class InternalServerError(Error):
   pass
 
 
-class TwitterBadGatewayError(TwitterError):
+class BadGatewayError(Error):
   pass
 
 
-class TwitterServiceUnavailableError(TwitterError):
+class ServiceUnavailableError(Error):
   pass
 
 
-class TwitterNetworkError(TwitterError):
+class NetworkError(Error):
   pass
 
 
@@ -206,7 +206,7 @@ class Api(object):
     if data and data[0]['id_str'] == str(id):
       return data[0]
     else:
-      raise TwitterNotFoundError
+      raise NotFoundError
 
   def post_direct_message(self, user, text):
     url = '%s/direct_messages/new.json' % self.base_url
@@ -403,23 +403,23 @@ class Api(object):
     if response.status == httplib.OK and not error_message:
       return data
     elif response.status == httplib.BAD_REQUEST:
-      raise TwitterBadRequestError(error_message)
+      raise BadRequestError(error_message)
     elif response.status == httplib.UNAUTHORIZED:
-      raise TwitterUnauthorizedError(error_message)
+      raise UnauthorizedError(error_message)
     elif response.status == httplib.FORBIDDEN:
-      raise TwitterForbiddenError(error_message)
+      raise ForbiddenError(error_message)
     elif response.status == httplib.NOT_FOUND:
-      raise TwitterNotFoundError(error_message)
+      raise NotFoundError(error_message)
     elif response.status == 420:
-      raise TwitterEnhanceYourCalmError(error_message)
+      raise EnhanceYourCalmError(error_message)
     elif response.status == httplib.INTERNAL_SERVER_ERROR:
-      raise TwitterInternalServerError(error_message)
+      raise InternalServerError(error_message)
     elif response.status == httplib.BAD_GATEWAY:
-      raise TwitterBadGatewayError(error_message)
+      raise BadGatewayError(error_message)
     elif response.status == httplib.SERVICE_UNAVAILABLE:
-      raise TwitterServiceUnavailableError(error_message)
+      raise ServiceUnavailableError(error_message)
     else:
-      raise TwitterError('%d: %s' % (response.status, str(error_message)))
+      raise Error('%d: %s' % (response.status, str(error_message)))
 
   def _fetch_url(self, url, post_data=None, parameters=None, http_method='GET', block=True, timeout=None):
     headers = {'Accept-Encoding': 'gzip'}
@@ -447,7 +447,7 @@ class Api(object):
       try:
         response = urlfetch.fetch(method=http_method, url=url, body=encoded_post_data, headers=headers, timeout=timeout)
       except SSLError, e:
-        raise TwitterNetworkError(str(e))
+        raise NetworkError(str(e))
       else:
         return self._check_for_twitter_error(response)
     else:

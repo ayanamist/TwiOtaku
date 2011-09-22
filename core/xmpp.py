@@ -317,10 +317,10 @@ class XMPPMessageHandler(object):
         if 'entities' in data and 'user_mentions' in data['entities']:
           for x in data['entities']['user_mentions']:
             add_mention_user(x['screen_name'])
-      except twitter.TwitterNotFoundError:
+      except twitter.NotFoundError:
         pass
     if not mention_users:
-      raise twitter.TwitterNotFoundError
+      raise twitter.NotFoundError
     message = u'%s %s' % (' '.join(['@' + x for x in mention_users]), ' '.join(content))
     status = self._api.post_update(message.encode('UTF8'), first_long_id)
     self._queue.put(Job(self._jid, data=status, allow_duplicate=False))
@@ -348,7 +348,7 @@ class XMPPMessageHandler(object):
         long_id = statuses[0]['id_str']
         long_id_type = db.TYPE_STATUS
       else:
-        raise twitter.TwitterNotFoundError
+        raise twitter.NotFoundError
     else:
       long_id, long_id_type = self._util.restore_short_id(short_id)
     if long_id_type == db.TYPE_STATUS:
@@ -409,7 +409,7 @@ class XMPPMessageHandler(object):
           long_id = status['in_reply_to_status_id_str']
           try:
             status = self._api.get_status(long_id)
-          except (twitter.TwitterNotFoundError, twitter.TwitterForbiddenError):
+          except (twitter.NotFoundError, twitter.ForbiddenError):
             break
         else:
           break
@@ -429,7 +429,7 @@ class XMPPMessageHandler(object):
             if len(data) >= MAX_CONVERSATION_NUM:
               break
       else:
-        raise twitter.TwitterNotFoundError
+        raise twitter.NotFoundError
     self._queue.put(Job(self._jid, data=data, title='Conversation: %s' % long_id_str, reverse=False))
 
   def func_block(self, screen_name):

@@ -102,7 +102,7 @@ class CronGetTimeline(StoppableThread):
           try:
             data = api.get_list_statuses(screen_name=user['list_user'], slug=user['list_name'],
               since_id=user['last_list_id'])
-          except twitter.TwitterNotFoundError:
+          except twitter.NotFoundError:
             user['timeline'] &= ~db.MODE_LIST
             db.update_user(id=user['id'], timeline=user['timeline'])
             queue.put(Job(user['jid'],
@@ -209,7 +209,7 @@ class CronMisc(StoppableThread):
       logger.debug('%s: check credential.' % user['jid'])
       try:
         twitter_user = self._api.verify_credentials()
-      except twitter.TwitterUnauthorizedError:
+      except twitter.UnauthorizedError:
         logger.debug('%s: credential is invalid.' % user['jid'])
         db.update_user(access_key=None, access_secret=None)
         if self._thread:
