@@ -392,7 +392,7 @@ class Api(object):
       return urllib.urlencode(dict([(k, self._encode(v)) for k, v in post_data.items()]))
 
   def _check_for_twitter_error(self, response):
-    error_message = None
+    error_message = ''
     try:
       data = json.loads(response.data)
     except ValueError:
