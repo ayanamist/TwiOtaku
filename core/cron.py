@@ -197,7 +197,7 @@ class CronMisc(StoppableThread):
       if user['access_key'] and user['access_secret']:
         self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
           access_token_key=user['access_key'], access_token_secret=user['access_secret'])
-        self._now = time.time()
+        self._now = int(time.time())
         self._thread = self._xmpp.stream_threads.get(user['jid'])
         if self.verify_credential(user):
           self.refresh_blocked_ids(user)
@@ -222,7 +222,7 @@ class CronMisc(StoppableThread):
           db.update_user(id=user['id'], screen_name=twitter_user['screen_name'])
         return True
       finally:
-        db.update_user(id=user['id'], last_verified=int(self._now))
+        db.update_user(id=user['id'], last_verified=self._now)
     else:
       return True
 
@@ -234,6 +234,8 @@ class CronMisc(StoppableThread):
       if user['blocked_ids'] is None or set(blocked_ids) - set(user['blocked_ids'].split(',')):
         db.update_user(id=user['id'], blocked_ids=','.join(blocked_ids), blocked_ids_last_update=self._now)
         self._thread.user_changed()
+      else:
+        db.update_user(id=user['id'], blocked_ids_last_update=self._now)
 
   @debug()
   def refresh_list_ids(self, user):
@@ -249,3 +251,5 @@ class CronMisc(StoppableThread):
       if user['list_ids'] is None or list_ids - set(user['list_ids'].split(',')):
         db.update_user(id=user['id'], list_ids=','.join(list_ids), list_ids_last_update=self._now)
         self._thread.user_changed()
+      else:
+        db.update_user(id=user['id'], list_ids_last_update=self._now)
