@@ -224,10 +224,13 @@ class XMPPMessageHandler(object):
         else:
           if list_command == 'add':
             self._api.create_list_member(self._user['screen_name'], args[1], args[2])
-            return u'Added %s to list %s.' % (args[2], args[1])
+            result = u'Added %s to list %s.' % (args[2], args[1])
           else:
             self._api.destroy_list_member(self._user['screen_name'], args[1], args[2])
-            return u'Removed %s from list %s.' % (args[2], args[1])
+            result = u'Removed %s from list %s.' % (args[2], args[1])
+          if self._user['screen_name'] == self._user['list_user'] and args[1] == self._user['list_name']:
+            db.update_user(id=self._user['id'], list_ids_last_update=0)
+          return result
       else:
         raise TypeError('Not supported list command.')
 
