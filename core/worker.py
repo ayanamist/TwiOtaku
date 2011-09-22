@@ -28,7 +28,7 @@ class Worker(StoppableThread):
       if item is not None:
         self.real_worker(item)
 
-  @debug()
+  @debug
   def real_worker(self, item):
     if not isinstance(item, Job):
       raise TypeError(str(item))

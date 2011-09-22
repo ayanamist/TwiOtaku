@@ -71,7 +71,7 @@ class StreamThread(StoppableThread):
       if self.wait_time_now_index + 1 < len(WAIT_TIMES):
         self.wait_time_now_index += 1
 
-  @debug()
+  @debug
   def running(self):
     def read(fp, size):
       tmp = array('c')
@@ -102,7 +102,7 @@ class StreamThread(StoppableThread):
         if char == '\n':
           return ''.join(s)
 
-    @debug()
+    @debug
     def read_data(fp):
       while True:
         # we should not directly use readline method of user_stream_handler,
@@ -136,7 +136,7 @@ class StreamThread(StoppableThread):
           if not self.wait_time_now_index:
             self.wait_time_now_index = 1
 
-  @debug()
+  @debug
   def process(self, data):
     if 'event' in data:
       title = None

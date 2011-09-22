@@ -37,7 +37,7 @@ class XMPPMessageHandler(object):
   def __init__(self, xmpp):
     self._xmpp = xmpp
 
-  @debug('xmpp')
+  @debug
   def process(self, msg):
     self._jid = str(msg['from'])
     self._bare_jid = self._xmpp.getjidbare(self._jid).lower()
