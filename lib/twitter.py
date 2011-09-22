@@ -208,9 +208,9 @@ class Api(object):
     else:
       raise NotFoundError
 
-  def post_direct_message(self, user, text):
+  def post_direct_message(self, user, text, include_entities=True):
     url = '%s/direct_messages/new.json' % self.base_url
-    data = {'text': text, 'user': user}
+    data = {'text': text, 'user': user, 'include_entities': int(bool(include_entities))}
     return DirectMessage(self._fetch_url(url, post_data=data))
 
   def destroy_direct_message(self, id, include_entities=True):

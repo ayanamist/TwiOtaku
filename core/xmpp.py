@@ -379,7 +379,7 @@ class XMPPMessageHandler(object):
         screen_name = screen_name_or_short_id_or_page
       message = ' '.join(content)
       dm = self._api.post_direct_message(screen_name.encode('UTF8'), message.encode('UTF8'))
-      self._queue.put(Job(self._jid, data=dm, allow_duplicate=False))
+      self._queue.put(Job(self._jid, title='Direct Message sent:', data=dm, allow_duplicate=False))
 
 
   def func_msg(self, short_id_or_long_id):
