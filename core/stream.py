@@ -86,12 +86,11 @@ class StreamThread(StoppableThread):
           if timeout_sum > MAX_DATA_TIMEOUT:
             raise Timeout
         else:
-          try:
+          if c:
             tmp.append(c)
             data_len += 1
-          except TypeError:
-            logger.error('chr(%d) is not a valid char.' % ord(c))
-            return
+          else:
+            raise Timeout
       return ''.join(tmp)
 
     def read_line(fp):
