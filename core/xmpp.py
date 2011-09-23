@@ -337,7 +337,14 @@ class XMPPMessageHandler(object):
       user_msg = ' '.join(content)
       if user_msg and ord(user_msg[-1]) < 128:
         user_msg += ' '
-      message = u'%sRT @%s:%s' % (user_msg, status['user']['screen_name'], status['text'])
+      if 'retweeted_status' in status:
+        status = status['retweeted_status']
+      message = u'%sRT @%s' % (user_msg, status['user']['screen_name'])
+      if len(message) > twitter.CHARACTER_LIMIT:
+        raise ValueError('Content is too long to be RT.')
+      else:
+        message = '%s: %s' % (message, status['text'])
+        message = message[None:140]
       status = self._api.post_update(message.encode('UTF8'))
       self._queue.put(Job(self._jid, data=status, allow_duplicate=False))
 
