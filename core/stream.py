@@ -44,17 +44,19 @@ class StreamThread(StoppableThread):
     self._user_changed.set()
 
   def is_user_changed(self):
-    result = self._user_changed.is_set()
-    if result:
+    return self._user_changed.is_set()
+
+  def check_user_changed(self):
+    if self.is_user_changed():
       self._user_changed = threading.Event()
-    return result
+      self.user = db.get_user_from_jid(self.bare_jid)
 
   def refresh_user(self):
     logger.debug('%s: refresh user.' % self.bare_jid)
     self.user = db.get_user_from_jid(self.bare_jid)
     self.blocked_ids = array('L', imap(int, self.user['blocked_ids'].split(',')) if self.user['blocked_ids'] else ())
     self.list_ids = array('L', imap(int, self.user['list_ids'].split(',')) if self.user['list_ids'] else ())
-    self.track_words = imap(string.lower, self.user['track_words'].split(',')) if self.user['track_words'] else ()
+    self.track_words = map(string.lower, self.user['track_words'].split(',')) if self.user['track_words'] else ()
     self.user_at_screen_name = '@%s' % self.user['screen_name']
     self.api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
       access_token_key=self.user['access_key'], access_token_secret=self.user['access_secret'])
@@ -71,69 +73,70 @@ class StreamThread(StoppableThread):
       if self.wait_time_now_index + 1 < len(WAIT_TIMES):
         self.wait_time_now_index += 1
 
+  def read(self, fp, size):
+    tmp = array('c')
+    data_len = 0
+    timeout_sum = 0
+    while data_len < size:
+      self.check_stop()
+      try:
+        c = fp.read(1)
+      except SSLError:
+        timeout_sum += MAX_CONNECT_TIMEOUT
+        if timeout_sum > MAX_DATA_TIMEOUT:
+          raise Timeout
+      else:
+        if c:
+          tmp.append(c)
+          data_len += 1
+        else:
+          raise Timeout
+    return tmp.tostring()
+
+  def read_line(self, fp):
+    s = array('c')
+    while True:
+      char = self.read(fp, 1)
+      s.append(char)
+      if char == '\n':
+        return s.tostring()
+
+  @debug
+  def read_data(self, fp):
+    while True:
+      # we should not directly use readline method of user_stream_handler,
+      # because it has its own buffer which will cause block unintentionally
+      length = self.read_line(fp).strip(' \r\n')
+      if length:
+        return json.loads(self.read(fp, int(length)))
+
+
   @debug
   def running(self):
-    def read(fp, size):
-      tmp = array('c')
-      data_len = 0
-      timeout_sum = 0
-      while data_len < size:
-        self.check_stop()
-        try:
-          c = fp.read(1)
-        except SSLError:
-          timeout_sum += MAX_CONNECT_TIMEOUT
-          if timeout_sum > MAX_DATA_TIMEOUT:
-            raise Timeout
-        else:
-          if c:
-            tmp.append(c)
-            data_len += 1
-          else:
-            raise Timeout
-      return ''.join(tmp)
-
-    def read_line(fp):
-      s = array('c')
-      while True:
-        char = read(fp, 1)
-        s.append(char)
-        if char == '\n':
-          return ''.join(s)
-
-    @debug
-    def read_data(fp):
-      while True:
-        # we should not directly use readline method of user_stream_handler,
-        # because it has buffer which will block unintentionally
-        length = read_line(fp).strip(' \r\n')
-        if length:
-          return json.loads(read(fp, int(length)))
-
     try:
       user_stream_handler = self.api.user_stream(timeout=MAX_CONNECT_TIMEOUT, track=self.user['track_words'])
       logger.debug('%s: connected.' % self.user['jid'])
 
-      self.friend_ids = array('L', read_data(user_stream_handler)['friends'])
+      self.friend_ids = array('L', self.read_data(user_stream_handler)['friends'])
 
       if self.wait_time_now_index:
         self.wait_time_now_index = 0
 
       while True:
-        data = read_data(user_stream_handler)
+        data = self.read_data(user_stream_handler)
         self.check_user_changed()
         if data:
           self.process(data)
-    except (urllib2.URLError, urllib2.HTTPError, SSLError, Timeout, socket.error), e:
+    except urllib2.HTTPError, e:
+      if e.code == 401:
+        logger.error('User %s OAuth unauthorized, exiting.' % self.user['jid'])
+        raise ThreadStop
+      if e.code == 420:
+        logger.warn('User %s Streaming connect too often!' % self.user['jid'])
+        if not self.wait_time_now_index:
+          self.wait_time_now_index = 1
+    except (urllib2.URLError, SSLError, Timeout, socket.error), e:
       logger.warn('connection failed: %s' % unicode(e))
-      if isinstance(e, urllib2.HTTPError):
-        if e.code == 401:
-          logger.error('User %s OAuth unauthorized, exiting.' % self.user['jid'])
-          raise ThreadStop
-        if e.code == 420:
-          logger.warn('User %s Streaming connect too often!' % self.user['jid'])
-          if not self.wait_time_now_index:
-            self.wait_time_now_index = 1
 
   @debug
   def process(self, data):
@@ -175,14 +178,14 @@ class StreamThread(StoppableThread):
         else:
           data = None
       else:
-        if data['user']['id'] in self.blocked_ids or ('retweeted_status' in data
-                                                      and data['retweeted_status']['user']['id'] in self.blocked_ids):
+        if data['user']['id'] in self.blocked_ids or\
+           ('retweeted_status' in data and data['retweeted_status']['user']['id'] in self.blocked_ids):
           data = None
         else:
-          if (self.user['timeline'] & db.MODE_HOME and data['user']['id'] in self.friend_ids)\
-             or (self.user['timeline'] & db.MODE_MENTION and self.user_at_screen_name in data['text'])\
-             or (self.user['timeline'] & db.MODE_LIST and data['user']['id'] in self.list_ids)\
-          or (self.user['timeline'] & db.MODE_TRACK and contain(self.track_words, data['text'].lower())):
+          if (self.user['timeline'] & db.MODE_HOME and data['user']['id'] in self.friend_ids) or\
+             (self.user['timeline'] & db.MODE_MENTION and self.user_at_screen_name in data['text']) or\
+             (self.user['timeline'] & db.MODE_LIST and data['user']['id'] in self.list_ids) or\
+             (self.user['timeline'] & db.MODE_TRACK and contain(self.track_words, data['text'].lower())):
             data = twitter.Status(data)
             if self.user_at_screen_name in data['text']:
               retweeted_status = data.get('retweeted_status')
@@ -194,7 +197,3 @@ class StreamThread(StoppableThread):
             data = None
       if data:
         self.queue.put(Job(self.user['jid'], data=data, allow_duplicate=False, always=False, title=title))
-
-  def check_user_changed(self):
-    if self.is_user_changed():
-      self.user = db.get_user_from_jid(self.bare_jid)
