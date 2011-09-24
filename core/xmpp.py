@@ -1,6 +1,7 @@
 import random
 import time
 import operator
+from itertools import ifilter
 from Queue import Queue
 from urlparse import parse_qsl
 from email.utils import parsedate
@@ -48,7 +49,7 @@ class XMPPMessageHandler(object):
       self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
         access_token_key=self._user.get('access_key'), access_token_secret=self._user.get('access_secret'))
     try:
-      result = self.parse_command(msg['body'].rstrip())
+      result = self.parse_command(msg['body'])
     except Exception, e:
       result = u'%s: %s' % (e.__class__.__name__, unicode(e))
     if result:
@@ -62,10 +63,7 @@ class XMPPMessageHandler(object):
       if not self._user and args[0] != 'invite':
         return
       func_name = 'func_' + args[0]
-      if func_name in dir(self):
-        func = getattr(self, func_name)
-      else:
-        return u'Invalid command.'
+      func = getattr(self, func_name)
       return func(*args[1:])
     else:
       status = self._api.post_update(cmd.encode('UTF8'))
@@ -93,10 +91,11 @@ class XMPPMessageHandler(object):
       consumer = oauth.Consumer(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET)
       client = oauth.Client(consumer, token)
       resp = client.request(twitter.ACCESS_TOKEN_URL, "POST")
+      if not resp:
+        return u'Network error.'
       access_token = dict(parse_qsl(resp))
       if 'oauth_token' in access_token:
-        db.update_user(self._user['id'], access_key=access_token['oauth_token'],
-          access_secret=access_token['oauth_token_secret'],
+        db.update_user(self._user['id'], access_key=access_token['oauth_token'], access_secret=access_token['oauth_token_secret'],
           screen_name=access_token['screen_name'])
         self._xmpp.add_online_user(self._bare_jid)
         return u'Associated you with @%s.' % access_token['screen_name']
@@ -105,7 +104,7 @@ class XMPPMessageHandler(object):
   def func_invite(self, invite_code=None):
     def generate_invite_code():
       valid_chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
-      return ''.join(random.choice(valid_chars) for _ in range(8))
+      return ''.join(random.choice(valid_chars) for _ in xrange(8))
 
     expire_days = 3
 
@@ -118,16 +117,15 @@ class XMPPMessageHandler(object):
         return u'Your account %s has been added, enjoy using TwiOtaku.' % self._bare_jid
       else:
         return u'Invite code is invalid or expired.'
-
     elif self._bare_jid in ADMIN_USERS:
       invite_code = generate_invite_code()
       create_time = int(time.time())
       db.add_invite_code(invite_code, create_time)
       return u'You have generated a new invite code which is available for %d days: %s' % (expire_days, invite_code)
 
-  def func_user(self, screen_name=None):
-    if screen_name and screen_name[0] == '#':
-      long_id, long_id_type = self._util.restore_short_id(screen_name)
+  def func_user(self, short_id_or_screen_name=None):
+    if short_id_or_screen_name and short_id_or_screen_name[0] == '#':
+      long_id, long_id_type = self._util.restore_short_id(short_id_or_screen_name)
       if long_id_type == db.TYPE_STATUS:
         status = self._api.get_status(long_id)
         twitter_user = status['user']
@@ -135,9 +133,9 @@ class XMPPMessageHandler(object):
         direct_message = self._api.get_direct_message(long_id)
         twitter_user = direct_message['sender']
     else:
-      if screen_name is None:
-        screen_name = self._user['screen_name']
-      twitter_user = self._api.get_user(screen_name=screen_name)
+      if short_id_or_screen_name is None:
+        short_id_or_screen_name = self._user['screen_name']
+      twitter_user = self._api.get_user(screen_name=short_id_or_screen_name)
     texts = [u'User @%s (%s):' % (twitter_user['screen_name'], twitter_user['name'])]
     if twitter_user['protected']:
       follow_str = [u'Protected user. ']
@@ -179,11 +177,15 @@ class XMPPMessageHandler(object):
       lists = self._api.get_all_lists()
       texts = list()
       for l in lists:
-        texts.append(u'%s %s: %s' % (l['slug'] if l['user']['screen_name'] == self._user['screen_name']
-                                     else u'%s/%s' % (l['user']['screen_name'], l['slug']), l['mode'],
-                                     l['description']))
+        texts.append(u'%s %s: %s' %
+                     (l['slug'] if l['user']['screen_name'] == self._user['screen_name'] else u'%s/%s' % (l['user']['screen_name'],
+                                                                                                          l['slug']), l['mode'], l['description']))
       return u'Subscribing Lists:\n' + '\n'.join(texts)
     elif length == 1 or (length == 2 and args[1].isdigit()):
+      try:
+        page = int(args[1]) if length == 2 else 1
+      except ValueError:
+        return u'Unknown page number: %s.' % args[1]
       list_user_name = args[0]
       path = list_user_name.split('/', 1)
       if len(path) == 1:
@@ -191,10 +193,6 @@ class XMPPMessageHandler(object):
         list_name = path[0]
       else:
         list_user, list_name = path
-      try:
-        page = int(args[1]) if length == 2 else 1
-      except ValueError:
-        return u'Unknown page number: %s.' % args[1]
       statuses = self._api.get_list_statuses(list_user, list_name, page=page)
       self._queue.put(Job(self._jid, data=statuses, title='List %s Statuses: Page %d' % (list_user_name, page)))
     else:
@@ -208,10 +206,10 @@ class XMPPMessageHandler(object):
         else:
           list_user, list_name = path
         l = self._api.get_list(screen_name=list_user, slug=list_name)
-        texts = [u'List %s/%s %s: %s' % (l['user']['screen_name'], l['slug'], l['mode'],
-                                         u'You are following.' if l['following'] else u''),
+        texts = (u'List %s/%s %s: %s' %
+                 (l['user']['screen_name'], l['slug'], l['mode'], u'You are following.' if l['following'] else u''),
                  u'Member Count: %d' % l['member_count'], u'Subscriber Count: %d' % l['subscriber_count'],
-                 u'Description: %s' % l['description']]
+                 u'Description: %s' % l['description'])
         return '\n'.join(texts)
       elif list_command in ('add', 'del') and 2 <= length <= 3:
         if length == 2:
@@ -242,16 +240,26 @@ class XMPPMessageHandler(object):
     statuses = self._api.get_home_timeline(page=page)
     self._queue.put(Job(self._jid, data=statuses, title='Home Timeline: Page %d' % page))
 
-  def func_timeline(self, screen_name, page=1):
+  def func_timeline(self, screen_name_or_short_id=None, page=1):
     try:
       page = int(page)
     except ValueError:
       return u'Unknown page number: %s.' % page
-    statuses = self._api.get_user_timeline(screen_name=screen_name, page=page)
-    self._queue.put(Job(self._jid, data=statuses, title='User @%s Timeline: Page %d' % (screen_name, page)))
+    if not screen_name_or_short_id:
+      screen_name_or_short_id = self._user['screen_name']
+    elif screen_name_or_short_id[0] == '#':
+      long_id, long_id_type = self._util.restore_short_id(screen_name_or_short_id)
+      if long_id_type == db.TYPE_STATUS:
+        status = self._api.get_status(long_id)
+        screen_name_or_short_id = status['user']['screen_name']
+      else:
+        direct_message = self._api.get_direct_message(long_id)
+        screen_name_or_short_id = direct_message['sender_screen_name']
+    statuses = self._api.get_user_timeline(screen_name=screen_name_or_short_id, page=page)
+    self._queue.put(Job(self._jid, data=statuses, title='User @%s Timeline: Page %d' % (screen_name_or_short_id, page)))
 
   def func_me(self, page=1):
-    self.func_timeline(self._user['screen_name'], page)
+    self.func_timeline(page=page)
 
   def func_fav(self, short_id_or_page=1):
     if short_id_or_page and short_id_or_page[0] == '#':
@@ -275,7 +283,7 @@ class XMPPMessageHandler(object):
     self._api.destroy_favorite(long_id)
     return u'Deleted %s from favourites.' % str(short_id)
 
-  def func_reply(self, short_id_or_page='', *content):
+  def func_reply(self, short_id_or_page=None, *content):
     if not content:
       try:
         page = int(short_id_or_page) if short_id_or_page else 1
@@ -320,8 +328,8 @@ class XMPPMessageHandler(object):
       except twitter.NotFoundError:
         pass
     if not mention_users:
-      raise twitter.NotFoundError
-    message = u'%s %s' % (' '.join(['@' + x for x in mention_users]), ' '.join(content))
+      raise twitter.NotFoundError('Not found.')
+    message = u'%s %s' % (' '.join('@' + x for x in mention_users), ' '.join(content))
     status = self._api.post_update(message.encode('UTF8'), first_long_id)
     self._queue.put(Job(self._jid, data=status, allow_duplicate=False))
 
@@ -344,7 +352,7 @@ class XMPPMessageHandler(object):
         raise ValueError('Content is too long to be RT.')
       else:
         message = '%s: %s' % (message, status['text'])
-        message = message[None:140]
+        message = message[:140]
       status = self._api.post_update(message.encode('UTF8'))
       self._queue.put(Job(self._jid, data=status, allow_duplicate=False))
 
@@ -416,7 +424,7 @@ class XMPPMessageHandler(object):
           long_id = status['in_reply_to_status_id_str']
           try:
             status = self._api.get_status(long_id)
-          except (twitter.NotFoundError, twitter.ForbiddenError):
+          except twitter.Error:
             break
         else:
           break
@@ -429,12 +437,11 @@ class XMPPMessageHandler(object):
       all_dms = self._api.get_direct_messages(max_id=long_id, count=50)
       if all_dms and all_dms[0]['id_str'] == str(long_id):
         all_dms.extend(self._api.get_sent_direct_messages(max_id=long_id, count=50))
-        for dm in sorted(all_dms, key=operator.itemgetter('id'), reverse=True):
-          if dm['recipient_screen_name'] == self._user['screen_name']\
-          or dm['sender_screen_name'] == self._user['screen_name']:
-            data.insert(0, dm)
-            if len(data) >= MAX_CONVERSATION_NUM:
-              break
+        for dm in ifilter(lambda dm: dm['recipient_screen_name'] == self._user['screen_name'] or
+                                     dm['sender_screen_name'] == self._user['screen_name'], sorted(all_dms, key=operator.itemgetter('id'), reverse=True)):
+          data.insert(0, dm)
+          if len(data) >= MAX_CONVERSATION_NUM:
+            break
       else:
         raise twitter.NotFoundError
     self._queue.put(Job(self._jid, data=data, title='Conversation: %s' % long_id_str, reverse=False))
@@ -746,7 +753,7 @@ class XMPPMessageHandler(object):
       db.update_user(id=self._user['id'], track_word=self._user['track_words'])
       self._xmpp.stream_threads[self._bare_jid].stop()
       self._xmpp.stream_threads[self._bare_jid].join()
-      self._xmpp.stream_threads[self._bare_jid].start()
+      self._xmpp.start_stream(self._bare_jid)
     return u'You are tracking words: %s. (comma seprated)' % self._user['track_words']
 
   def func_help(self):

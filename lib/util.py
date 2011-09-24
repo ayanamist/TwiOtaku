@@ -55,7 +55,7 @@ class ostring(object):
       for i, s in enumerate(self._str_list):
         result.append(self.original_s[self._str_indices[i * 2]:self._str_indices[i * 2 + 1]])
         result.append(s)
-      result.append(self.original_s[self._str_indices[-1]:None])
+      result.append(self.original_s[self._str_indices[-1]:])
       return u''.join(result)
     else:
       return unicode(self.original_s)
@@ -124,7 +124,7 @@ class Util(object):
       single['retweet'] = retweet
       del single['retweet']['retweeted_status']
     if 'in_reply_to_status' in single:
-      if single['in_reply_to_status'] is None:
+      if not single['in_reply_to_status']:
         try:
           single['in_reply_to_status'] = self._api.get_status(single['in_reply_to_status_id_str'])
         except BaseException:

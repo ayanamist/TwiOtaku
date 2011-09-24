@@ -139,7 +139,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
   def start_stream(self, bare_jid):
     t = self.stream_threads.get(bare_jid)
     if t and t.is_alive():
-      pass
+      t.user_changed()
     else:
       logger.debug('%s: start user streaming.' % bare_jid)
       t = StreamThread(self.worker_queues[bare_jid], bare_jid)
