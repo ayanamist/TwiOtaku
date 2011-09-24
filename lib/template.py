@@ -21,7 +21,7 @@ class Environment(ImmutableSandboxedEnvironment):
   def is_safe_callable(self, obj):
     return False
 
-env = Environment(bytecode_cache=MemoryBytecodeCache(), cache_size=500)
+env = Environment(bytecode_cache=MemoryBytecodeCache())
 env.globals = dict()
 
 class Template(jinja2.Template):

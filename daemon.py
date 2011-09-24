@@ -4,6 +4,7 @@ import platform
 import signal
 import logging
 from Queue import Queue
+from itertools import ifilter
 
 # we must write these code here because sleekxmpp will set its own logger during import!
 from lib import logger
@@ -14,11 +15,6 @@ logging.setLoggerClass(logger.ErrorLogger)
 
 import sleekxmpp
 
-try:
-  import ujson as json
-except ImportError:
-  import json
-
 import db
 from config import XMPP_USERNAME, XMPP_PASSWORD
 from core.xmpp import XMPPMessageHandler
@@ -28,16 +24,13 @@ from core.worker import Worker
 
 logger = logging.getLogger('xmpp')
 
-# TODO: implement i18n support
 class XMPPBot(sleekxmpp.ClientXMPP):
   def __init__(self):
+    sleekxmpp.ClientXMPP.__init__(self, XMPP_USERNAME, XMPP_PASSWORD)
     self.worker_queues = dict()
     self.worker_threads = dict()
-
     self.stream_threads = dict()
-
     self.online_clients = dict() # this save online buddies no matter it's our users or not.
-    sleekxmpp.ClientXMPP.__init__(self, XMPP_USERNAME, XMPP_PASSWORD)
     self.auto_authorize = True
     self.auto_subscribe = True
     self.first_run = True
@@ -79,7 +72,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
   def send_message(self, mto, mbody, msubject=None, mtype=None, mhtml=None, mfrom=None, mnick=None):
     if mtype is None:
-      mtype = 'chat' # we must set this so messages can be saved into gmail.
+      mtype = 'chat' # we must set this so that messages can be saved into gmail.
     return super(XMPPBot, self).send_message(mto, mbody, msubject, mtype, mhtml, mfrom, mnick)
 
   def add_online_user(self, bare_jid):
@@ -111,9 +104,8 @@ class XMPPBot(sleekxmpp.ClientXMPP):
       w.start()
 
   def start_workers(self):
-    for user in db.get_all_users():
-      if user['access_key'] and user['access_secret']:
-        self.start_worker(user['jid'])
+    for user in ifilter(lambda user: user['access_key'] and user['access_secret'], db.get_all_users()):
+      self.start_worker(user['jid'])
 
   def stop_workers(self):
     logger.info('shutdown workers.')
@@ -147,9 +139,8 @@ class XMPPBot(sleekxmpp.ClientXMPP):
       self.stream_threads[bare_jid] = t
 
   def start_streams(self):
-    for user in db.get_all_users():
-      if user['access_key'] and user['access_secret']:
-        self.start_stream(user['jid'])
+    for user in ifilter(lambda user: user['access_key'] and user['access_secret'], db.get_all_users()):
+      self.start_stream(user['jid'])
 
   def stop_streams(self):
     logger.info('shutdown stream.')

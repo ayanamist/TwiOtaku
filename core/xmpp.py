@@ -322,9 +322,9 @@ class XMPPMessageHandler(object):
         else:
           data = self._api.get_direct_message(long_id)
           add_mention_user(data['sender_screen_name'])
-        if 'entities' in data and 'user_mentions' in data['entities']:
-          for x in data['entities']['user_mentions']:
-            add_mention_user(x['screen_name'])
+        user_mentions = data.get('entities', dict()).get('user_mentions', ())
+        for x in user_mentions:
+          add_mention_user(x['screen_name'])
       except twitter.NotFoundError:
         pass
     if not mention_users:

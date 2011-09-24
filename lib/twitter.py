@@ -66,15 +66,7 @@ class NetworkError(Error):
 
 class Status(dict):
   def __init__(self, *args, **kwargs):
-    try:
-      dict.__init__(self, *args, **kwargs)
-    except ValueError:
-      message = ''
-      if args:
-        message += unicode(args)
-      if kwargs:
-        message += unicode(kwargs)
-      raise TypeError('Sequence expect, string accepted: %s' % message)
+    dict.__init__(self, *args, **kwargs)
     if 'retweeted_status' in self:
       self['retweeted_status'] = Status(self['retweeted_status'])
 

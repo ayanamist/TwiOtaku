@@ -38,14 +38,15 @@ def fetch(url, method='GET', body=None, headers=None, block=True, timeout=None):
   if timeout is None:
     timeout = socket._GLOBAL_DEFAULT_TIMEOUT
   if block:
+    code = httplib.OK
     try:
       r = urllib2.urlopen(req, timeout=timeout)
     except urllib2.HTTPError, e:
-      return Response(e.code, e.read(), e.info())
+      code = e.code
+      r = e
     except urllib2.URLError, e:
       raise Error(e.reason)
-    else:
-      return Response(httplib.OK, r.read(), r.info())
+    return Response(code, r.read(), r.info())
   else:
     return urllib2.urlopen(req, timeout=timeout)
 

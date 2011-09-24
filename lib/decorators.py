@@ -24,6 +24,6 @@ def threadstop(f):
     try:
       return f(*args, **kwds)
     except ThreadStop:
-      return
+      pass
 
   return wrap
