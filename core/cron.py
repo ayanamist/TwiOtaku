@@ -1,7 +1,6 @@
 import time
 import logging
 import operator
-from array import array
 from itertools import imap, ifilter
 from Queue import Queue
 
@@ -143,7 +142,7 @@ class CronGetTimeline(StoppableThread):
       if data:
         queue.put(Job(user_jid, data=data, title='Direct Message:', allow_duplicate=False, always=False))
       all_data = list()
-      all_data_ids = array('L')
+      all_data_ids = list()
       all_data_add(fetch_list())
       all_data_add(fetch_mention())
       all_data_add(fetch_home())

@@ -1,19 +1,43 @@
 #!/usr/bin/python
 # -*- encoding: utf-8 -*-
-import re
+from operator import itemgetter
+from itertools import ifilter, imap
 from threading import Thread, Event
 from bisect import bisect
 from array import array
 from time import mktime, localtime, strftime, sleep
 from email.utils import parsedate
-from xml.sax.saxutils import unescape
 
 import db
 import twitter
 from template import Template
 from config import MAX_ID_LIST_NUM, DEFAULT_MESSAGE_TEMPLATE, DEFAULT_DATE_FORMAT, OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
 
-_min_interval = 1
+_sleep_interval_seconds = 1
+short_id_pattern = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+
+def digit_to_alpha(digit):
+  if not isinstance(digit, int):
+    raise TypeError('Only accept digit argument.')
+  nums = list()
+  digit += 1
+  while digit > 26:
+    t = digit % 26
+    if t > 0:
+      nums.insert(0, t)
+      digit //= 26
+    else:
+      nums.insert(0, 26)
+      digit = digit // 26 - 1
+  nums.insert(0, digit)
+  return ''.join([chr(x + 64) for x in nums])
+
+
+def alpha_to_digit(alpha):
+  if not (isinstance(alpha, str) and alpha.isalpha()):
+    raise TypeError('Only accept alpha argument.')
+  return reduce(lambda x, y: x * 26 + y, [ord(x) - 64 for x in alpha]) - 1
+
 
 class DuplicateError(Exception):
   pass
@@ -50,46 +74,45 @@ class ostring(object):
 class Util(object):
   allow_duplicate = True
 
-
   def __init__(self, user):
     self._user = user
-    self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY,
-      consumer_secret=OAUTH_CONSUMER_SECRET,
-      access_token_key=self._user['access_key'],
-      access_token_secret=self._user['access_secret'])
-
+    self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
+      access_token_key=self._user['access_key'], access_token_secret=self._user['access_secret'])
 
   def parse_text(self, data):
     def parse_entities(data):
       if 'entities' in data:
         tmp = ostring(data['text'])
-        if 'urls' in data['entities']:
-          for url in data['entities']['urls']:
-            if url['expanded_url']:
-              tmp.replace_indices(url['indices'][0], url['indices'][1], url['expanded_url'])
-        if 'media' in data['entities']:
-          for media in data['entities']['media']:
-            if media['media_url']:
-              tmp.replace_indices(media['indices'][0], media['indices'][1], media['media_url'])
+        for url in ifilter(itemgetter('expanded_url'), data['entities'].get('urls', tuple())):
+          tmp.replace_indices(url['indices'][0], url['indices'][1], url['expanded_url'])
+        for media in ifilter(itemgetter('media_url'), data['entities'].get('media', tuple())):
+          tmp.replace_indices(media['indices'][0], media['indices'][1], media['media_url'])
         return unicode(tmp)
       else:
         return data['text']
 
-    return unescape(parse_entities(data)).replace('\r\n', '\n').replace('\r', '\n')
+    return parse_entities(data).replace('\r\n', '\n').replace('\r', '\n').replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
 
   def make_namespace(self, single, allow_duplicate=True):
-    old_allow_duplicate = self.allow_duplicate
-    self.allow_duplicate = allow_duplicate
     if single is None:
       return None
-    short_id, short_id_alpha = self.generate_short_id(single)
+    old_allow_duplicate = self.allow_duplicate
+    self.allow_duplicate = allow_duplicate
+    if isinstance(single, twitter.DirectMessage):
+      single_type = db.TYPE_DM
+    else:
+      single_type = db.TYPE_STATUS
+    short_id, short_id_alpha = self.generate_short_id(single['id_str'], single_type)
     t = mktime(parsedate(single['created_at']))
     t += 28800 # GMT+8
     date_fmt = self._user['date_fmt'] if self._user['date_fmt'] else DEFAULT_DATE_FORMAT
     single['created_at_fmt'] = strftime(date_fmt.encode('UTF8'), localtime(t)).decode('UTF8')
-    if 'source' in single:
-      source = re.match(ur'<a .*>(.*)</a>', single['source'])
-      single['source'] = source.group(1) if source else single['source']
+    single_source = single.get('source')
+    if single_source:
+      gt_index = single_source.find('>')
+      lt_index = single_source.rfind('<')
+      if gt_index != -1 and lt_index != -1:
+        single['source'] = single_source[gt_index + 1:lt_index]
     single['short_id_str_num'] = short_id
     single['short_id_str_alpha'] = short_id_alpha
     single['text'] = self.parse_text(single)
@@ -124,7 +147,7 @@ class Util(object):
       msgs = list()
       if isinstance(data, list):
         if reverse:
-          data.reverse()
+          data = reversed(data)
         for single in data:
           try:
             text = self.parse_status(single)
@@ -142,28 +165,7 @@ class Util(object):
       return msgs
 
 
-  def generate_short_id(self, single):
-    def digit_to_alpha(digit):
-      if not isinstance(digit, int):
-        raise TypeError('Only accept digit argument.')
-      nums = list()
-      digit += 1
-      while digit > 26:
-        t = digit % 26
-        if t > 0:
-          nums.insert(0, t)
-          digit //= 26
-        else:
-          nums.insert(0, 26)
-          digit = digit // 26 - 1
-      nums.insert(0, digit)
-      return ''.join([chr(x + 64) for x in nums])
-
-    if isinstance(single, twitter.Status):
-      single_type = db.TYPE_STATUS
-    else:
-      single_type = db.TYPE_DM
-    long_id = single['id_str']
+  def generate_short_id(self, long_id, single_type):
     short_id = db.get_short_id_from_long_id(self._user['id'], long_id, single_type)
     if short_id is not None:
       if not self.allow_duplicate:
@@ -178,17 +180,13 @@ class Util(object):
     return short_id, digit_to_alpha(short_id)
 
   def restore_short_id(self, short_id):
-    def alpha_to_digit(alpha):
-      if not (isinstance(alpha, str) and alpha.isalpha):
-        raise TypeError('Only accept alpha argument.')
-      return reduce(lambda x, y: x * 26 + y, [ord(x) - 64 for x in alpha]) - 1
-
-    short_id_regex = r'^(?:#)?([A-Z]+|\d+)$'
     short_id = str(short_id).upper()
-    m = re.match(short_id_regex, short_id)
-    if m is None:
-      raise ValueError
-    g = m.group(1)
+    if short_id[0] == '#':
+      g = short_id[1:]
+    else:
+      g = short_id
+    if any(imap(lambda x: x not in short_id_pattern, g)):
+      raise TypeError('Incorrect short id %s.' % short_id)
     try:
       short_id = int(g)
     except ValueError:
@@ -206,10 +204,8 @@ class ThreadStop(BaseException):
 class StoppableThread(Thread):
   _stop = Event()
 
-  def __init__(self, group=None, target=None, name=None,
-               args=(), kwargs=None, verbose=None):
-    super(StoppableThread, self).__init__(group=group, target=target, name=name, args=args, kwargs=kwargs,
-      verbose=verbose)
+  def __init__(self, group=None, target=None, name=None, args=(), kwargs=None, verbose=None):
+    Thread.__init__(self, group=group, target=target, name=name, args=args, kwargs=kwargs, verbose=verbose)
     self.setDaemon(True)
 
   def stop(self):
@@ -222,8 +218,8 @@ class StoppableThread(Thread):
     i = 0
     while i < secs:
       self.check_stop()
-      sleep(_min_interval)
-      i += _min_interval
+      sleep(_sleep_interval_seconds)
+      i += _sleep_interval_seconds
 
   def check_stop(self):
     if self.is_stopped():

@@ -23,20 +23,18 @@ class Worker(StoppableThread):
   def run(self):
     while True:
       item = self.queue.get()
-      self.check_stop()
       self.queue.task_done()
+      self.check_stop()
       if item is not None:
-        self.real_worker(item)
+        self.running(item)
 
   @debug
-  def real_worker(self, item):
+  def running(self, item):
     if not isinstance(item, Job):
       raise TypeError(str(item))
     bare_jid = self.xmpp.getjidbare(item.jid).lower()
     user = db.get_user_from_jid(bare_jid)
-    if bare_jid not in self.xmpp.online_clients and not item.always and not user['always']:
-      pass
-    else:
+    if bare_jid in self.xmpp.online_clients or item.always or user['always']:
       if item.data is None:
         self.xmpp.send_message(item.jid, item.title)
       else:
@@ -45,12 +43,8 @@ class Worker(StoppableThread):
         result = util.parse_data(item.data, reverse=item.reverse)
         if result:
           if item.title:
-            msg = u'%s\n%s' % (item.title, '\n'.join(result) if isinstance(result, list) else result)
+            msg = u'%s\n%s' % (item.title, '\n'.join(result) if type(result) is list else result)
             self.xmpp.send_message(item.jid, msg)
           else:
             for m in result:
               self.xmpp.send_message(item.jid, m)
-
-  def stop(self):
-    super(Worker, self).stop()
-    self.queue.put(None)
