@@ -34,7 +34,7 @@ class Worker(StoppableThread):
       raise TypeError(str(item))
     bare_jid = self.xmpp.getjidbare(item.jid).lower()
     user = db.get_user_from_jid(bare_jid)
-    if bare_jid in self.xmpp.online_clients or item.always or user['always']:
+    if self.xmpp.get_presence(bare_jid) or item.always or user['always']:
       if item.data is None:
         self.xmpp.send_message(item.jid, item.title)
       else:

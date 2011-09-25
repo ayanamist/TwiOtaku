@@ -25,15 +25,16 @@ from core.worker import Worker
 logger = logging.getLogger('xmpp')
 
 class XMPPBot(sleekxmpp.ClientXMPP):
+  worker_queues = dict()
+  worker_threads = dict()
+  stream_threads = dict()
+  online_clients = dict() # this save available roster using ref count
+  auto_authorize = True
+  auto_subscribe = True
+  first_run = True
+
   def __init__(self):
     sleekxmpp.ClientXMPP.__init__(self, XMPP_USERNAME, XMPP_PASSWORD)
-    self.worker_queues = dict()
-    self.worker_threads = dict()
-    self.stream_threads = dict()
-    self.online_clients = dict() # this save online buddies no matter it's our users or not.
-    self.auto_authorize = True
-    self.auto_subscribe = True
-    self.first_run = True
     self.add_event_handler('session_start', self.on_start)
     self.add_event_handler('message', self.on_message)
     self.add_event_handler('changed_status', self.on_changed_status)
@@ -65,10 +66,15 @@ class XMPPBot(sleekxmpp.ClientXMPP):
       if presence['type'] == 'available':
         self.online_clients[bare_jid] = n + 1
       else:
-        if n > 1:
-          self.online_clients[bare_jid] = n - 1
-        elif n == 1:
-          del self.online_clients[bare_jid]
+        self.online_clients[bare_jid] = n - 1
+
+  def get_presence(self, jid):
+    bare_jid = self.getjidbare(jid).lower()
+    n = self.online_clients.get(bare_jid, 0)
+    if n > 0:
+      return True
+    else:
+      return False
 
   def send_message(self, mto, mbody, msubject=None, mtype=None, mhtml=None, mfrom=None, mnick=None):
     if mtype is None:
@@ -76,9 +82,8 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     return super(XMPPBot, self).send_message(mto, mbody, msubject, mtype, mhtml, mfrom, mnick)
 
   def add_online_user(self, bare_jid):
-    if bare_jid in self.online_clients:
-      self.start_worker(bare_jid)
-      self.start_stream(bare_jid)
+    self.start_worker(bare_jid)
+    self.start_stream(bare_jid)
 
   def start(self, *args, **kwargs):
     if self.connect(('talk.google.com', 5222)):
