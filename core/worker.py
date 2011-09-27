@@ -1,6 +1,7 @@
 import db
-from lib.util import Util, StoppableThread
-from lib.decorators import debug, threadstop
+from lib.util import Util
+from lib.logger import debug
+from lib.thread import StoppableThread, threadstop
 
 class Job(object):
   def __init__(self, jid, data=None, title=None, reverse=True, allow_duplicate=True, include_reply=False, always=True):

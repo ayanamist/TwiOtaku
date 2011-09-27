@@ -8,8 +8,8 @@ import db
 from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
 from worker import Job
 from lib import twitter
-from lib.util import StoppableThread
-from lib.decorators import debug, threadstop
+from lib.thread import StoppableThread, threadstop
+from lib.logger import debug
 
 MAX_IDLE_TIME = 300
 CRON_INTERVAL = 60

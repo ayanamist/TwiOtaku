@@ -17,8 +17,8 @@ import db
 from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
 from worker import Job
 from lib import twitter
-from lib.util import StoppableThread, ThreadStop
-from lib.decorators import debug, threadstop
+from lib.thread import StoppableThread, ThreadStop, threadstop
+from lib.logger import debug
 
 MAX_CONNECT_TIMEOUT = 5
 MAX_DATA_TIMEOUT = 90

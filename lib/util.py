@@ -1,11 +1,9 @@
-#!/usr/bin/python
 # -*- encoding: utf-8 -*-
 from operator import itemgetter
 from itertools import ifilter, imap
-from threading import Thread, Event
 from bisect import bisect
 from array import array
-from time import mktime, localtime, strftime, sleep
+from time import mktime, localtime, strftime
 from email.utils import parsedate
 
 import db
@@ -13,7 +11,6 @@ import twitter
 from template import Template
 from config import MAX_ID_LIST_NUM, DEFAULT_MESSAGE_TEMPLATE, DEFAULT_DATE_FORMAT, OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
 
-_sleep_interval_seconds = 1
 short_id_pattern = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
 def digit_to_alpha(digit):
@@ -197,30 +194,3 @@ class Util(object):
       return short_id, db.TYPE_STATUS
 
 
-class ThreadStop(BaseException):
-  pass
-
-
-class StoppableThread(Thread):
-  _stop = Event()
-
-  def __init__(self, group=None, target=None, name=None, args=(), kwargs=None, verbose=None):
-    Thread.__init__(self, group=group, target=target, name=name, args=args, kwargs=kwargs, verbose=verbose)
-    self.setDaemon(True)
-
-  def stop(self):
-    self._stop.set()
-
-  def is_stopped(self):
-    return self._stop.is_set()
-
-  def sleep(self, secs):
-    i = 0
-    while i < secs:
-      self.check_stop()
-      sleep(_sleep_interval_seconds)
-      i += _sleep_interval_seconds
-
-  def check_stop(self):
-    if self.is_stopped():
-      raise ThreadStop

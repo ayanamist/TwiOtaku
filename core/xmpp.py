@@ -12,7 +12,7 @@ from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, MAX_CONVERSATION_N
 from worker import Job
 from lib import oauth, twitter
 from lib.util import Util
-from lib.decorators import debug
+from lib.logger import debug
 
 SHORT_COMMANDS = {
   '@': 'reply',
