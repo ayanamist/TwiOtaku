@@ -7,79 +7,14 @@ try:
 except ImportError:
   import json
 
-_db_path = os.path.abspath('data' + os.sep + 'twiotaku.db')
+from config import DATABASE_DIR
+
+database_dir = os.path.abspath(DATABASE_DIR)
+_db_path = os.path.abspath(database_dir + os.sep + 'twiotaku.db')
+_status_path = os.path.abspath(database_dir + os.sep + 'status.db')
 _conn_db = None
-
-def init():
-  global _conn_db
-  if _conn_db:
-    return _conn_db
-  if not os.path.exists(os.path.dirname(_db_path)):
-    os.makedirs(os.path.dirname(_db_path))
-
-  _conn_db = apsw.Connection(_db_path)
-  _conn_db.setbusytimeout(3000) # add a retry timeout 3 seconds for busy handling
-  cursor = _conn_db.cursor()
-  sql = dict(
-    id_lists="""CREATE TABLE "id_lists" (
-              "uid"  INTEGER NOT NULL,
-              "short_id"  INTEGER NOT NULL,
-              "long_id"  TEXT NOT NULL,
-              "type"  INTEGER NOT NULL DEFAULT 0
-              );
-              CREATE INDEX "id_lists_uid_longid_type"
-              ON "id_lists" ("uid", "long_id", "type");
-              CREATE INDEX "is_lists_uid_shortid_type"
-              ON "id_lists" ("uid", "short_id");
-              """,
-    users="""CREATE TABLE "users" (
-          "id"  INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-          "jid"  TEXT NOT NULL,
-          "screen_name"  TEXT,
-          "access_key"  TEXT,
-          "access_secret"  TEXT,
-          "last_verified"  INTEGER NOT NULL DEFAULT 0,
-          "list_user"  TEXT,
-          "list_name"  TEXT,
-          "last_home_id"  TEXT,
-          "last_mention_id"  TEXT,
-          "last_dm_id"  TEXT,
-          "last_list_id"  TEXT,
-          "last_search_id"  TEXT,
-          "last_update"  INTEGER NOT NULL DEFAULT 0,
-          "timeline"  INTEGER NOT NULL DEFAULT 3,
-          "id_list_ptr"  INTEGER NOT NULL DEFAULT 0,
-          "msg_tpl"  BLOB,
-          "date_fmt"  TEXT,
-          "always"  INTEGER NOT NULL DEFAULT 0,
-          "track_words"  TEXT,
-          "list_ids"  TEXT,
-          "list_ids_last_update"  INTEGER NOT NULL DEFAULT 0,
-          "blocked_ids" TEXT,
-          "blocked_ids_last_update" INTEGER NOT NULL DEFAULT 0
-          );
-          CREATE UNIQUE INDEX "users_id"
-          ON "users" ("id");
-          CREATE UNIQUE INDEX "users_jid"
-          ON "users" ("jid");
-          """,
-    invites="""CREATE TABLE "invites" (
-          "id"  TEXT NOT NULL,
-          "create_time"   INTEGER NOT NULL,
-          PRIMARY KEY ("id") ON CONFLICT FAIL
-          );
-          CREATE UNIQUE INDEX "invite_id"
-          ON "invites" ("id");
-          """,
-  )
-  for t in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'"):
-    t = t[0]
-    if t in sql:
-      del(sql[t])
-  for v in sql.itervalues():
-    cursor.execute(v)
-  return _conn_db
-
+_conn_status = None
+_status_queue = list()
 
 def get_user_from_jid(jid):
   cursor = _conn_db.cursor()
@@ -178,4 +113,111 @@ def update_long_id_from_short_id(uid, short_id, long_id, single_type):
   sql = 'INSERT INTO id_lists (uid, short_id, long_id, type) VALUES(?, ?, ?, ?)'
   cursor.execute(sql, (uid, short_id, long_id, single_type))
 
-init()
+
+def get_status(id_str):
+  flush_status(force=True)
+  cursor = _conn_status.cursor()
+  sql = 'SELECT data FROM statuses WHERE id_str=?'
+  for data, in cursor.execute(sql, (id_str,)):
+    return data
+
+
+def add_status(id_str, data):
+  global _status_queue
+  _status_queue.append((id_str, data))
+  flush_status()
+
+
+def flush_status(force=False):
+  global _status_queue
+  if len(_status_queue) > 500 or force:
+    cursor = _conn_status.cursor()
+    cursor.execute('BEGIN')
+    try:
+      while _status_queue:
+        id_str, data = _status_queue.pop()
+        cursor.execute('INSERT OR REPLACE INTO statuses (id_str, data) VALUES(?,?)', (id_str, data))
+    finally:
+      cursor.execute('COMMIT')
+
+if not os.path.exists(database_dir):
+  os.makedirs(database_dir)
+
+_conn_db = apsw.Connection(_db_path)
+_conn_db.setbusytimeout(3000) # add a retry timeout 3 seconds for busy handling
+cursor = _conn_db.cursor()
+sql = dict(
+  id_lists="""CREATE TABLE "id_lists" (
+            "uid"  INTEGER NOT NULL,
+            "short_id"  INTEGER NOT NULL,
+            "long_id"  TEXT NOT NULL,
+            "type"  INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE INDEX "id_lists_uid_longid_type"
+            ON "id_lists" ("uid", "long_id", "type");
+            CREATE INDEX "is_lists_uid_shortid_type"
+            ON "id_lists" ("uid", "short_id");
+            """,
+  users="""CREATE TABLE "users" (
+        "id"  INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        "jid"  TEXT NOT NULL,
+        "screen_name"  TEXT,
+        "access_key"  TEXT,
+        "access_secret"  TEXT,
+        "last_verified"  INTEGER NOT NULL DEFAULT 0,
+        "list_user"  TEXT,
+        "list_name"  TEXT,
+        "last_home_id"  TEXT,
+        "last_mention_id"  TEXT,
+        "last_dm_id"  TEXT,
+        "last_list_id"  TEXT,
+        "last_search_id"  TEXT,
+        "last_update"  INTEGER NOT NULL DEFAULT 0,
+        "timeline"  INTEGER NOT NULL DEFAULT 3,
+        "id_list_ptr"  INTEGER NOT NULL DEFAULT 0,
+        "msg_tpl"  BLOB,
+        "date_fmt"  TEXT,
+        "always"  INTEGER NOT NULL DEFAULT 0,
+        "track_words"  TEXT,
+        "list_ids"  TEXT,
+        "list_ids_last_update"  INTEGER NOT NULL DEFAULT 0,
+        "blocked_ids" TEXT,
+        "blocked_ids_last_update" INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE UNIQUE INDEX "users_id"
+        ON "users" ("id");
+        CREATE UNIQUE INDEX "users_jid"
+        ON "users" ("jid");
+        """,
+  invites="""CREATE TABLE "invites" (
+        "id"  TEXT NOT NULL,
+        "create_time"   INTEGER NOT NULL,
+        PRIMARY KEY ("id") ON CONFLICT FAIL
+        );
+        CREATE UNIQUE INDEX "invite_id"
+        ON "invites" ("id");
+        """,
+)
+for t in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'"):
+  t = t[0]
+  if t in sql:
+    del(sql[t])
+for v in sql.itervalues():
+  cursor.execute(v)
+_conn_status = apsw.Connection(_status_path)
+_conn_status.setbusytimeout(3000) # add a retry timeout 3 seconds for busy handling
+cursor = _conn_status.cursor()
+sql = """CREATE TABLE "statuses" (
+            "id_str"  TEXT NOT NULL,
+            "data"  BLOB NOT NULL,
+            PRIMARY KEY ("id_str") ON CONFLICT REPLACE
+            );
+            CREATE UNIQUE INDEX "status_id"
+            ON "statuses" ("id_str");
+            """
+for t in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'"):
+  t = t[0]
+  if t == 'statuses':
+    sql = None
+if sql:
+  cursor.execute(sql)

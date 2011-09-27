@@ -6,6 +6,7 @@ OAUTH_CONSUMER_SECRET = 'yoursecret'
 MAX_ID_LIST_NUM = 702
 MAX_CONVERSATION_NUM = 4
 DATABASE_TYPE = 'sqlite' # only sqlite now.
+DATABASE_DIR = '/home/dotcloud/data'
 ADMIN_USERS = (
   'yourown1@domain.com',
   'yourown2@domail.com',

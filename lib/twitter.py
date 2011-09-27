@@ -11,6 +11,7 @@ except ImportError:
 
 import oauth
 import urlfetch
+import db
 
 CHARACTER_LIMIT = 140
 
@@ -68,7 +69,13 @@ class Status(dict):
   def __init__(self, *args, **kwargs):
     dict.__init__(self, *args, **kwargs)
     if 'retweeted_status' in self:
-      self['retweeted_status'] = Status(self['retweeted_status'])
+      self['retweeted_status'] = CachedStatus(self['retweeted_status'])
+
+
+class CachedStatus(Status):
+  def __init__(self, *args, **kwargs):
+    Status.__init__(self, *args, **kwargs)
+    db.add_status(self['id_str'], json.dumps(self))
 
 
 class DirectMessage(dict):
@@ -80,7 +87,7 @@ class Result(list):
     list.__init__(self, seq)
     if self:
       for result in self[0]['results']:
-        result['value'] = Status(result['value'])
+        result['value'] = CachedStatus(result['value'])
 
 
 class Api(object):
@@ -120,7 +127,7 @@ class Api(object):
     if since_id:
       parameters['since_id'] = since_id
     url = '%s/statuses/home_timeline.json' % self.base_url
-    return map(Status, self._fetch_url(url, parameters=parameters))
+    return map(CachedStatus, self._fetch_url(url, parameters=parameters))
 
   def get_user_timeline(self, user_id=None, screen_name=None, since_id=None, max_id=None, count=None,
                         page=None, include_rts=True, include_entities=True):
@@ -138,7 +145,7 @@ class Api(object):
       parameters['count'] = int(count)
     if page:
       parameters['page'] = int(page)
-    return map(Status, self._fetch_url(url, parameters=parameters))
+    return map(CachedStatus, self._fetch_url(url, parameters=parameters))
 
   def get_related_results(self, id, include_entities=True):
     url = '%s/related_results/show/%s.json' % (self.base_url, str(id))
@@ -146,9 +153,14 @@ class Api(object):
     return Result(self._fetch_url(url, parameters=parameters))
 
   def get_status(self, id, include_entities=True):
+    data = db.get_status(id_str=id)
+    if data:
+      if isinstance(data, unicode):
+        data = data.encode('UTF8')
+      return CachedStatus(json.loads(data))
     url = '%s/statuses/show/%s.json' % (self.base_url, str(id))
     parameters = {'include_entities': int(bool(include_entities))}
-    return Status(self._fetch_url(url, parameters=parameters))
+    return CachedStatus(self._fetch_url(url, parameters=parameters))
 
   def destroy_status(self, id, include_entities=True):
     parameters = {'include_entities': int(bool(include_entities))}
@@ -160,7 +172,7 @@ class Api(object):
     data = {'status': status, 'include_entities': int(bool(include_entities))}
     if in_reply_to_status_id:
       data['in_reply_to_status_id'] = in_reply_to_status_id
-    return Status(self._fetch_url(url, post_data=data))
+    return CachedStatus(self._fetch_url(url, post_data=data))
 
   def get_user(self, screen_name, include_entities=True):
     url = '%s/users/show.json' % self.base_url
@@ -224,11 +236,11 @@ class Api(object):
 
   def create_favorite(self, id):
     url = '%s/favorites/create/%s.json' % (self.base_url, str(id))
-    return Status(self._fetch_url(url, post_data={'id': id}))
+    return CachedStatus(self._fetch_url(url, post_data={'id': id}))
 
   def destroy_favorite(self, id):
     url = '%s/favorites/destroy/%s.json' % (self.base_url, str(id))
-    return Status(self._fetch_url(url, post_data={'id': id}))
+    return CachedStatus(self._fetch_url(url, post_data={'id': id}))
 
   def get_favorites(self, screen_name=None, page=None, include_entities=True):
     url = '%s/favorites.json' % self.base_url
@@ -237,7 +249,7 @@ class Api(object):
       parameters['page'] = int(page)
     if screen_name:
       parameters['id'] = screen_name
-    return map(Status, self._fetch_url(url, parameters=parameters))
+    return map(CachedStatus, self._fetch_url(url, parameters=parameters))
 
   def get_mentions(self, since_id=None, max_id=None, page=None, include_entities=True):
     url = '%s/statuses/mentions.json' % self.base_url
@@ -248,12 +260,12 @@ class Api(object):
       parameters['max_id'] = max_id
     if page:
       parameters['page'] = int(page)
-    return map(Status, self._fetch_url(url, parameters=parameters))
+    return map(CachedStatus, self._fetch_url(url, parameters=parameters))
 
   def create_retweet(self, id, include_entities=True):
     url = '%s/statuses/retweet/%s.json' % (self.base_url, id)
     parameters = {'include_entities': int(bool(include_entities))}
-    return Status(self._fetch_url(url, post_data={'id': id}, parameters=parameters))
+    return CachedStatus(self._fetch_url(url, post_data={'id': id}, parameters=parameters))
 
   def create_list(self, name, public=True):
     url = '%s/lists/create.json' % self.base_url
@@ -300,7 +312,7 @@ class Api(object):
       parameters['max_id'] = max_id
     if page:
       parameters['page'] = int(page)
-    return map(Status, self._fetch_url(url, parameters=parameters))
+    return map(CachedStatus, self._fetch_url(url, parameters=parameters))
 
   def get_list_members(self, screen_name, slug, cursor=-1, skip_status=False, include_entities=False):
     url = '%s/lists/members.json' % self.base_url
@@ -345,7 +357,7 @@ class Api(object):
       parameters['count'] = int(count)
     if include_entities:
       parameters['include_entities'] = True
-    return map(Status, self._fetch_url(url, parameters=parameters))
+    return map(CachedStatus, self._fetch_url(url, parameters=parameters))
 
   def _build_url(self, url, path_elements=None, extra_params=None):
     (scheme, netloc, path, params, query, fragment) = urlparse.urlparse(url)

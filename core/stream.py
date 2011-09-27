@@ -182,11 +182,11 @@ class StreamThread(StoppableThread):
            ('retweeted_status' in data and data['retweeted_status']['user']['id'] in self.blocked_ids):
           data = None
         else:
+          data = twitter.CachedStatus(data)
           if (self.user['timeline'] & db.MODE_HOME and data['user']['id'] in self.friend_ids) or\
              (self.user['timeline'] & db.MODE_MENTION and self.user_at_screen_name in data['text']) or\
              (self.user['timeline'] & db.MODE_LIST and data['user']['id'] in self.list_ids) or\
              (self.user['timeline'] & db.MODE_TRACK and contain(self.track_words, data['text'].lower())):
-            data = twitter.Status(data)
             if self.user_at_screen_name in data['text']:
               retweeted_status = data.get('retweeted_status')
               if retweeted_status and retweeted_status.get('in_reply_to_status_id_str'):
