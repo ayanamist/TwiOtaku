@@ -42,7 +42,7 @@ class Worker(StoppableThread):
         util = Util(user)
         util.allow_duplicate = item.allow_duplicate
         result = util.parse_data(item.data, reverse=item.reverse)
-        if result:
+        if result is not None:
           if item.title:
             msg = u'%s\n%s' % (item.title, '\n'.join(result) if type(result) is list else result)
             self.xmpp.send_message(item.jid, msg)

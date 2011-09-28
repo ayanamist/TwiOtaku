@@ -140,26 +140,27 @@ class Util(object):
     return result
 
   def parse_data(self, data, reverse=True):
-    if data:
-      msgs = list()
-      if isinstance(data, list):
-        if reverse:
-          data = reversed(data)
-        for single in data:
-          try:
-            text = self.parse_status(single)
-            if text:
-              msgs.append(text)
-          except DuplicateError:
-            pass
-      else:
+    msgs = list()
+    if isinstance(data, list):
+      if reverse:
+        data = reversed(data)
+      for single in data:
         try:
-          text = self.parse_status(data)
+          text = self.parse_status(single)
           if text:
             msgs.append(text)
         except DuplicateError:
           pass
-      return msgs
+    elif isinstance(data, dict):
+      try:
+        text = self.parse_status(data)
+        if text:
+          msgs.append(text)
+      except DuplicateError:
+        pass
+    else:
+      raise TypeError('Unknown data type: %s' % str(data))
+    return msgs
 
 
   def generate_short_id(self, long_id, single_type):
