@@ -261,20 +261,22 @@ class XMPPMessageHandler(object):
   def func_me(self, page=1):
     self.func_timeline(page=page)
 
-  def func_fav(self, short_id_or_page=1):
-    if short_id_or_page and short_id_or_page[0] == '#':
-      long_id, long_id_type = self._util.restore_short_id(short_id_or_page)
-      if long_id_type == db.TYPE_DM:
-        raise TypeError('Can not create a direct message as favourite.')
-      self._api.create_favorite(long_id)
-      return u'Created %s to favourites.' % str(short_id_or_page)
-    else:
+  def func_fav(self, short_id_or_page=None):
+    if not short_id_or_page:
+      short_id_or_page = '1'
+    if short_id_or_page.isdigit():
       try:
         page = int(short_id_or_page)
       except ValueError:
         return u'Unknown page number: %s.' % short_id_or_page
       statuses = self._api.get_favorites(page=page)
       self._queue.put(Job(self._jid, data=statuses, title='Favourite: Page %d' % page))
+    else:
+      long_id, long_id_type = self._util.restore_short_id(short_id_or_page)
+      if long_id_type == db.TYPE_DM:
+        raise TypeError('Can not create a direct message as favourite.')
+      self._api.create_favorite(long_id)
+      return u'Created %s to favourites.' % str(short_id_or_page)
 
   def func_unfav(self, short_id):
     long_id, long_id_type = self._util.restore_short_id(short_id)
@@ -447,7 +449,7 @@ class XMPPMessageHandler(object):
     self._queue.put(Job(self._jid, data=data, title='Conversation: %s' % long_id_str, reverse=False))
 
   def func_block(self, screen_name):
-    if screen_name and screen_name[0] == '#':
+    if screen_name[0] == '#':
       long_id, long_id_type = self._util.restore_short_id(screen_name)
       if long_id_type == db.TYPE_STATUS:
         status = self._api.get_status(long_id)
@@ -459,7 +461,7 @@ class XMPPMessageHandler(object):
     return u'Blocked %s.' % screen_name
 
   def func_unblock(self, screen_name):
-    if screen_name and screen_name[0] == '#':
+    if screen_name[0] == '#':
       long_id, long_id_type = self._util.restore_short_id(screen_name)
       if long_id_type == db.TYPE_STATUS:
         status = self._api.get_status(long_id)
@@ -471,7 +473,7 @@ class XMPPMessageHandler(object):
     return u'Delete %s from blocked.' % screen_name
 
   def func_spam(self, screen_name):
-    if screen_name and screen_name[0] == '#':
+    if screen_name[0] == '#':
       long_id, long_id_type = self._util.restore_short_id(screen_name)
       if long_id_type == db.TYPE_STATUS:
         status = self._api.get_status(long_id)
@@ -483,7 +485,7 @@ class XMPPMessageHandler(object):
     return u'Reported %s as spam.' % screen_name
 
   def func_follow(self, screen_name):
-    if screen_name and screen_name[0] == '#':
+    if screen_name[0] == '#':
       long_id, long_id_type = self._util.restore_short_id(screen_name)
       if long_id_type == db.TYPE_STATUS:
         status = self._api.get_status(long_id)
@@ -498,7 +500,7 @@ class XMPPMessageHandler(object):
       return u'Following %s.' % screen_name
 
   def func_unfollow(self, screen_name):
-    if screen_name and screen_name[0] == '#':
+    if screen_name[0] == '#':
       long_id, long_id_type = self._util.restore_short_id(screen_name)
       if long_id_type == db.TYPE_STATUS:
         status = self._api.get_status(long_id)
