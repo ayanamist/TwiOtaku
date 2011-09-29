@@ -43,7 +43,8 @@ class CronStart(StoppableThread):
 
   def running(self):
     cron_queue = Queue()
-    for user in ifilter(lambda x: x['access_key'] and x['access_secret'] and (x['timeline'] & ~db.MODE_EVENT), db.get_all_users()):
+    for user in ifilter(lambda x: x['access_key'] and x['access_secret'] and (x['timeline'] & ~db.MODE_EVENT),
+                        db.get_all_users()):
       if time.time() - user['last_update'] > MAX_IDLE_TIME:
         # if it's a long time since last update, we should abandon these old data.
         logger.debug('%s: Exceed %s seconds, all results won\'t be shown.' % (user['jid'], MAX_IDLE_TIME))
@@ -96,12 +97,12 @@ class CronGetTimeline(StoppableThread):
         if user['list_user'] and user['list_name']:
           try:
             data = api.get_list_statuses(screen_name=user['list_user'], slug=user['list_name'],
-              since_id=user['last_list_id'])
+                                         since_id=user['last_list_id'])
           except twitter.NotFoundError:
             user['timeline'] &= ~db.MODE_LIST
             db.update_user(id=user['id'], timeline=user['timeline'])
             queue.put(Job(user['jid'],
-              title='List %s/%s not exists, disable List update.' % (user['list_user'], user['list_name'])))
+                          title='List %s/%s not exists, disable List update.' % (user['list_user'], user['list_name'])))
           else:
             if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
               db.update_user(jid=user_jid, last_list_id=data[0]['id_str'])
@@ -133,9 +134,9 @@ class CronGetTimeline(StoppableThread):
       db.update_user(id=user['id'], last_update=int(time.time()))
 
       api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY,
-        consumer_secret=OAUTH_CONSUMER_SECRET,
-        access_token_key=user['access_key'],
-        access_token_secret=user['access_secret'])
+                        consumer_secret=OAUTH_CONSUMER_SECRET,
+                        access_token_key=user['access_key'],
+                        access_token_secret=user['access_secret'])
       user_at_screen_name = '@%s' % user['screen_name']
 
       data = fetch_dm()
@@ -148,7 +149,8 @@ class CronGetTimeline(StoppableThread):
       all_data_add(fetch_home())
       all_data_add(fetch_search())
 
-      for data in ifilter(lambda x: user_at_screen_name in x['text'] and x['user']['screen_name'] != user['screen_name'], all_data):
+      for data in ifilter(lambda x: user_at_screen_name in x['text'] and x['user']['screen_name'] != user['screen_name']
+                          , all_data):
         retweeted_status = data.get('retweeted_status')
         if retweeted_status and retweeted_status.get('in_reply_to_status_id_str'):
           data['retweeted_status']['in_reply_to_status'] = None
@@ -182,7 +184,7 @@ class CronMisc(StoppableThread):
   def running(self):
     for user in ifilter(lambda x: x['access_key'] and x['access_secret'], db.get_all_users()):
       self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
-        access_token_key=user['access_key'], access_token_secret=user['access_secret'])
+                              access_token_key=user['access_key'], access_token_secret=user['access_secret'])
       self._now = int(time.time())
       self._thread = self._xmpp.stream_threads.get(user['jid'])
       if self.verify_credential(user):
@@ -217,7 +219,8 @@ class CronMisc(StoppableThread):
     if self._now - user['blocked_ids_last_update'] > CRON_BLOCKED_IDS_INTERVAL:
       logger.debug('%s: refresh blocked ids.' % user['jid'])
       blocked_ids = self._api.get_blocking_ids(stringify_ids=True)
-      if (blocked_ids and user['blocked_ids'] is None) or set(blocked_ids) - set(user['blocked_ids'].split(',')):
+      if (blocked_ids and user['blocked_ids'] is None) or\
+         (set(blocked_ids) - set(user['blocked_ids'].split(',') if user['blocked_ids'] else tuple())):
         db.update_user(id=user['id'], blocked_ids=','.join(blocked_ids), blocked_ids_last_update=self._now)
         self._thread.user_changed()
       else:
