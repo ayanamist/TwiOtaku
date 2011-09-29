@@ -47,13 +47,14 @@ class XMPPMessageHandler(object):
     if self._user:
       self._util = Util(self._user)
       self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
-        access_token_key=self._user.get('access_key'), access_token_secret=self._user.get('access_secret'))
+                              access_token_key=self._user.get('access_key'),
+                              access_token_secret=self._user.get('access_secret'))
     try:
       result = self.parse_command(msg['body'])
     except Exception, e:
       result = u'%s: %s' % (e.__class__.__name__, unicode(e))
     if result:
-      msg.reply(result).send()
+      self._xmpp.send_message(msg['from'], result)
 
   def parse_command(self, cmd):
     if cmd[0] == '-' or cmd[0] == ' ':
@@ -95,8 +96,9 @@ class XMPPMessageHandler(object):
         return u'Network error.'
       access_token = dict(parse_qsl(resp))
       if 'oauth_token' in access_token:
-        db.update_user(self._user['id'], access_key=access_token['oauth_token'], access_secret=access_token['oauth_token_secret'],
-          screen_name=access_token['screen_name'])
+        db.update_user(self._user['id'], access_key=access_token['oauth_token'],
+                       access_secret=access_token['oauth_token_secret'],
+                       screen_name=access_token['screen_name'])
         self._xmpp.add_online_user(self._bare_jid)
         return u'Associated you with @%s.' % access_token['screen_name']
     return u'Invalid PIN code.'
@@ -178,8 +180,9 @@ class XMPPMessageHandler(object):
       texts = list()
       for l in lists:
         texts.append(u'%s %s: %s' %
-                     (l['slug'] if l['user']['screen_name'] == self._user['screen_name'] else u'%s/%s' % (l['user']['screen_name'],
-                                                                                                          l['slug']), l['mode'], l['description']))
+                     (l['slug'] if l['user']['screen_name'] == self._user['screen_name'] else u'%s/%s' % (
+                     l['user']['screen_name'],
+                     l['slug']), l['mode'], l['description']))
       return u'Subscribing Lists:\n' + '\n'.join(texts)
     elif length == 1 or (length == 2 and args[1].isdigit()):
       try:
@@ -440,7 +443,8 @@ class XMPPMessageHandler(object):
       if all_dms and all_dms[0]['id_str'] == str(long_id):
         all_dms.extend(self._api.get_sent_direct_messages(max_id=long_id, count=50))
         for dm in ifilter(lambda dm: dm['recipient_screen_name'] == self._user['screen_name'] or
-                                     dm['sender_screen_name'] == self._user['screen_name'], sorted(all_dms, key=operator.itemgetter('id'), reverse=True)):
+                                     dm['sender_screen_name'] == self._user['screen_name'],
+                          sorted(all_dms, key=operator.itemgetter('id'), reverse=True)):
           data.insert(0, dm)
           if len(data) >= MAX_CONVERSATION_NUM:
             break
@@ -588,7 +592,7 @@ class XMPPMessageHandler(object):
       self._user['list_user'] = response['user']['screen_name']
       self._user['list_name'] = response['slug']
       db.update_user(id=self._user['id'], list_user=self._user['list_user'], list_name=self._user['list_name'],
-        list_ids=None, list_ids_last_update=0)
+                     list_ids=None, list_ids_last_update=0)
       self._xmpp.stream_threads[self._bare_jid].user_changed()
     if self._user['list_user'] and self._user['list_name']:
       return u'List update is assigned for %s/%s.' % (self._user['list_user'], self._user['list_name'])

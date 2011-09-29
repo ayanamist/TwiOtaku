@@ -16,10 +16,12 @@ from core.xmpp import XMPPMessageHandler
 from core.cron import CronStart, CronMisc
 from core.stream import StreamThread
 from core.worker import Worker
+from core.messagesender import MessageSender
 
 logger = logging.getLogger('xmpp')
 
 class XMPPBot(sleekxmpp.ClientXMPP):
+  messages_queue = Queue()
   worker_queues = dict()
   worker_threads = dict()
   stream_threads = dict()
@@ -39,6 +41,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     self.get_roster()
     if self.first_run:
       self.first_run = False
+      self.start_message_sender()
       self.start_workers()
       self.start_streams()
       self.start_cron()
@@ -49,9 +52,9 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     if msg['type'] == 'chat':
       XMPPMessageHandler(self).process(msg)
     elif msg['type'] == 'error':
-      # If we send lots of stanzas at the same time, some of them will be returned as type "error", we must resend them.
       if msg['error']['type'] == 'cancel':
-        self.send_message(msg['from'], msg['body'])
+        # we can do nothing because if we resend this message, some of them will always fail.
+        pass
       else:
         logger.info('%s -> %s: %s' % (msg['from'], msg['to'], str(msg['error'])))
 
@@ -75,7 +78,8 @@ class XMPPBot(sleekxmpp.ClientXMPP):
   def send_message(self, mto, mbody, msubject=None, mtype=None, mhtml=None, mfrom=None, mnick=None):
     if mtype is None:
       mtype = 'chat' # we must set this so that messages can be saved into gmail.
-    return super(XMPPBot, self).send_message(mto, mbody, msubject, mtype, mhtml, mfrom, mnick)
+    self.messages_queue.put(
+      self.make_message(mto, mbody, msubject=msubject, mtype=mtype, mhtml=mhtml, mfrom=mfrom, mnick=mnick))
 
   def add_online_user(self, bare_jid):
     self.start_worker(bare_jid)
@@ -91,8 +95,17 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     self.stop_streams()
     self.stop_cron()
     self.stop_workers()
+    self.stop_message_sender()
     self.disconnect(wait=True)
     sys.exit(0)
+
+  def start_message_sender(self):
+    self.sender = MessageSender(self.messages_queue)
+    self.sender.start()
+
+  def stop_message_sender(self):
+    self.messages_queue.put(None)
+    self.sender.join()
 
   def start_worker(self, bare_jid):
     w = self.worker_threads.get(bare_jid)

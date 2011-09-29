@@ -11,7 +11,7 @@ from lib import twitter
 from lib.thread import StoppableThread, threadstop
 from lib.logger import debug
 
-MAX_IDLE_TIME = 300
+MAX_IDLE_TIME = 120
 CRON_INTERVAL = 60
 CRON_BLOCKED_IDS_INTERVAL = 3600
 CRON_LIST_IDS_INTERVAL = 3600
