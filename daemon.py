@@ -6,11 +6,7 @@ from Queue import Queue
 from itertools import ifilter
 
 # we must write these code here because sleekxmpp will set its own logger during import!
-from lib import logger
-
-logging.basicConfig(level=logging.DEBUG, format=logger.LOGGING_FORMAT, datefmt=logger.LOGGING_DATEFMT,
-                    stream=sys.stdout)
-logging.setLoggerClass(logger.ErrorLogger)
+from lib.logger import debug
 
 import sleekxmpp
 
@@ -42,12 +38,13 @@ class XMPPBot(sleekxmpp.ClientXMPP):
   def on_start(self, _):
     self.get_roster()
     if self.first_run:
+      self.first_run = False
       self.start_workers()
       self.start_streams()
       self.start_cron()
-      self.first_run = False
     self.send_presence()
 
+  @debug
   def on_message(self, msg):
     if msg['type'] == 'chat':
       XMPPMessageHandler(self).process(msg)
@@ -155,7 +152,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
 
 if __name__ == '__main__':
-  if sys.version_info[0] != '2' or sys.version_info[1] < '6':
+  if sys.version_info[0] != 2 or sys.version_info[1] < 6:
     print 'TwiOtaku needs Python 2.6 or later. Python 3.X is not supported yet.'
     exit(1)
 
