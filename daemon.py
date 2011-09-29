@@ -51,7 +51,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     elif msg['type'] == 'error':
       # If we send lots of stanzas at the same time, some of them will be returned as type "error", we must resend them.
       if msg['error']['type'] == 'cancel':
-        msg.reply(msg['body']).send()
+        self.send_message(msg['from'], msg['body'])
       else:
         logger.info('%s -> %s: %s' % (msg['from'], msg['to'], str(msg['error'])))
 
