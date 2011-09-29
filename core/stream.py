@@ -59,7 +59,7 @@ class StreamThread(StoppableThread):
     self.track_words = map(string.lower, self.user['track_words'].split(',')) if self.user['track_words'] else ()
     self.user_at_screen_name = '@%s' % self.user['screen_name']
     self.api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
-      access_token_key=self.user['access_key'], access_token_secret=self.user['access_secret'])
+                           access_token_key=self.user['access_key'], access_token_secret=self.user['access_secret'])
 
   @threadstop
   def run(self):
@@ -101,7 +101,6 @@ class StreamThread(StoppableThread):
       if char == '\n':
         return s.tostring()
 
-  @debug
   def read_data(self, fp):
     while True:
       # we should not directly use readline method of user_stream_handler,
