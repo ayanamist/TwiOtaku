@@ -31,7 +31,6 @@ class Response(object):
 
 
 def fetch(url, method='GET', body=None, headers=None, block=True, timeout=None):
-  log.debug('Fetching %s' % url)
   req = urllib2.Request(url, data=body, headers=headers)
   # dirty hack for PUT DELETE method http://stackoverflow.com/questions/111945/is-there-any-way-to-do-http-put-in-python
   req.get_method = lambda: method
