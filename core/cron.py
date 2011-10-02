@@ -141,7 +141,7 @@ class CronGetTimeline(StoppableThread):
 
       data = fetch_dm()
       if data:
-        queue.put(Job(user_jid, data=data, title='Direct Message:', allow_duplicate=False, always=False))
+        queue.put(Job(user_jid, data=data, title='Direct Message:', allow_duplicate=False, always=False, xmpp_command=False))
       all_data = list()
       all_data_ids = list()
       all_data_add(fetch_list())
@@ -158,7 +158,7 @@ class CronGetTimeline(StoppableThread):
           data['in_reply_to_status'] = None
 
       if all_data:
-        queue.put(Job(user_jid, data=all_data, allow_duplicate=False, always=False, reverse=False))
+        queue.put(Job(user_jid, data=all_data, allow_duplicate=False, always=False, reverse=False, xmpp_command=False))
 
       self.queue.task_done()
 

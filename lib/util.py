@@ -157,7 +157,7 @@ class Util(object):
         if text:
           msgs.append(text)
       except DuplicateError:
-        return
+        pass
     else:
       raise TypeError('Unknown data type: %s' % str(data))
     return msgs

@@ -173,7 +173,10 @@ class StreamThread(StoppableThread):
       if 'direct_message' in data:
         if self.user['timeline'] & db.MODE_DM:
           data = twitter.DirectMessage(data['direct_message'])
-          title = 'Direct Message:'
+          if data['sender_screen_name'] == self.user['screen_name']:
+            title = 'Direct Message sent to %s:' % data['recipient_screen_name']
+          else:
+            title = 'Direct Message:'
         else:
           data = None
       else:
@@ -195,4 +198,4 @@ class StreamThread(StoppableThread):
           else:
             data = None
       if data:
-        self.queue.put(Job(self.user['jid'], data=data, allow_duplicate=False, always=False, title=title))
+        self.queue.put(Job(self.user['jid'], data=data, allow_duplicate=False, always=False, title=title, xmpp_command=False))

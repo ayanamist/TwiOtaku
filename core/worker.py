@@ -4,13 +4,13 @@ from lib.logger import debug
 from lib.thread import StoppableThread, threadstop
 
 class Job(object):
-  def __init__(self, jid, data=None, title=None, reverse=True, allow_duplicate=True, include_reply=False, always=True):
+  def __init__(self, jid, data=None, title=None, reverse=True, allow_duplicate=True, xmpp_command=True, always=True):
     self.data = data
     self.jid = jid
     self.title = title
     self.reverse = reverse
     self.allow_duplicate = allow_duplicate
-    self.include_reply = include_reply
+    self.xmpp_command = xmpp_command
     self.always = always # always send message no matter client is online or not
 
 
@@ -42,10 +42,11 @@ class Worker(StoppableThread):
         util = Util(user)
         util.allow_duplicate = item.allow_duplicate
         result = util.parse_data(item.data, reverse=item.reverse)
-        if result is not None:
+        if result or (not result and item.title and item.xmpp_command):
           if item.title:
             msg = u'%s\n%s' % (item.title, '\n'.join(result) if type(result) is list else result)
             self.xmpp.send_message(item.jid, msg)
           else:
             for m in result:
               self.xmpp.send_message(item.jid, m)
+          

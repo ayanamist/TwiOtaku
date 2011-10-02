@@ -394,7 +394,7 @@ class XMPPMessageHandler(object):
           screen_name = status['user']['screen_name']
         else:
           direct_message = self._api.get_direct_message(long_id)
-          screen_name = direct_message['sender']['screen_name']
+          screen_name = direct_message['sender_screen_name']
       else:
         screen_name = screen_name_or_short_id_or_page
       message = ' '.join(content)
