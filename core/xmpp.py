@@ -756,7 +756,7 @@ class XMPPMessageHandler(object):
   def func_track(self, *values):
     if values:
       self._user['track_words'] = ','.join(values)
-      db.update_user(id=self._user['id'], track_word=self._user['track_words'])
+      db.update_user(id=self._user['id'], track_words=self._user['track_words'])
       self._xmpp.stream_threads[self._bare_jid].stop()
       self._xmpp.stream_threads[self._bare_jid].join()
       self._xmpp.start_stream(self._bare_jid)

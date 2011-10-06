@@ -450,7 +450,7 @@ class Api(object):
     if block:
       try:
         response = urlfetch.fetch(method=http_method, url=url, body=encoded_post_data, headers=headers, timeout=timeout)
-      except SSLError, e:
+      except (SSLError, httplib.BadStatusLine), e:
         raise NetworkError(str(e))
       else:
         return self._check_for_twitter_error(response)
