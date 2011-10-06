@@ -1,4 +1,5 @@
 import os
+from time import sleep
 
 import apsw
 
@@ -9,6 +10,7 @@ except ImportError:
 
 from config import DATABASE_DIR
 
+RETRY_TIMEOUT = 3000 # add a retry timeout for busy handling
 database_dir = os.path.abspath(DATABASE_DIR)
 _db_path = os.path.abspath(database_dir + os.sep + 'twiotaku.db')
 _status_path = os.path.abspath(database_dir + os.sep + 'status.db')
@@ -132,7 +134,15 @@ def flush_status(force=False):
   global _status_queue
   if len(_status_queue) > 500 or force:
     cursor = _conn_status.cursor()
-    cursor.execute('BEGIN')
+    # if another transaction failed, we must wait until it succeeds
+    continued = True
+    while continued:
+      try:
+        cursor.execute('BEGIN')
+      except apws.SQLError:
+        sleep(RETRY_TIMEOUT)
+      else:
+        continued = False
     try:
       while _status_queue:
         id_str, data = _status_queue.pop()
@@ -144,7 +154,7 @@ if not os.path.exists(database_dir):
   os.makedirs(database_dir)
 
 _conn_db = apsw.Connection(_db_path)
-_conn_db.setbusytimeout(3000) # add a retry timeout 3 seconds for busy handling
+_conn_db.setbusytimeout(RETRY_TIMEOUT)
 cursor = _conn_db.cursor()
 sql = dict(
   id_lists="""CREATE TABLE "id_lists" (
@@ -205,7 +215,7 @@ for t in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'"):
 for v in sql.itervalues():
   cursor.execute(v)
 _conn_status = apsw.Connection(_status_path)
-_conn_status.setbusytimeout(3000) # add a retry timeout 3 seconds for busy handling
+_conn_status.setbusytimeout(RETRY_TIMEOUT)
 cursor = _conn_status.cursor()
 sql = """CREATE TABLE "statuses" (
             "id_str"  TEXT NOT NULL,
