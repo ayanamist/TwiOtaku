@@ -158,7 +158,7 @@ class CronGetTimeline(StoppableThread):
           data['in_reply_to_status'] = None
 
       if all_data:
-        queue.put(Job(user_jid, data=all_data.sort(operator.itemgetter('id')), allow_duplicate=False, always=False, reverse=False, xmpp_command=False))
+        queue.put(Job(user_jid, data=all_data.sort(key=operator.itemgetter('id')), allow_duplicate=False, always=False, reverse=False, xmpp_command=False))
 
       self.queue.task_done()
 

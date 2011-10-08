@@ -139,7 +139,7 @@ def flush_status(force=False):
     while continued:
       try:
         cursor.execute('BEGIN')
-      except apws.SQLError:
+      except apsw.SQLError:
         sleep(RETRY_TIMEOUT)
       else:
         continued = False
