@@ -19,9 +19,4 @@ def debug(f):
 
   return wrap
 
-logging.basicConfig(level=logging.DEBUG, format=LOGGING_FORMAT, datefmt=LOGGING_DATEFMT, stream=sys.stdout)
-logging_stderr = logging.StreamHandler(sys.stderr)
-logging_stderr.setLevel(logging.WARNING)
-formatter = logging.Formatter(LOGGING_FORMAT, datefmt=LOGGING_DATEFMT)
-logging_stderr.setFormatter(formatter)
-logging.getLogger('').addHandler(logging_stderr)
+logging.basicConfig(level=logging.WARNING, format=LOGGING_FORMAT, datefmt=LOGGING_DATEFMT, stream=sys.stderr)
