@@ -1,4 +1,5 @@
 import os
+import logging
 from time import sleep
 
 import apsw
@@ -17,6 +18,7 @@ _status_path = os.path.abspath(database_dir + os.sep + 'status.db')
 _conn_db = None
 _conn_status = None
 _status_queue = list()
+logger = logging.getLogger('sqlite')
 
 def get_user_from_jid(jid):
   cursor = _conn_db.cursor()
@@ -134,13 +136,17 @@ def flush_status(force=False):
   global _status_queue
   if len(_status_queue) > 500 or force:
     cursor = _conn_status.cursor()
-    # if another transaction failed, we must wait until it succeeds
+    # if another transaction failed, we must retry
     continued = True
     while continued:
       try:
         cursor.execute('BEGIN')
-      except apsw.SQLError:
-        sleep(RETRY_TIMEOUT)
+      except apsw.SQLError, e:
+        logger.warning(e)
+        try:
+          cursor.execute('COMMIT')
+        except apsw.SQLError:
+          logger.warning(e)
       else:
         continued = False
     try:
@@ -148,7 +154,10 @@ def flush_status(force=False):
         id_str, data = _status_queue.pop()
         cursor.execute('INSERT OR REPLACE INTO statuses (id_str, data) VALUES(?,?)', (id_str, data))
     finally:
-      cursor.execute('COMMIT')
+      try:
+        cursor.execute('COMMIT')
+      except apsw.SQLError:
+        pass
 
 if not os.path.exists(database_dir):
   os.makedirs(database_dir)

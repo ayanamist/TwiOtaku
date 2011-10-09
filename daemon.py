@@ -54,7 +54,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     elif msg['type'] == 'error':
       if msg['error']['type'] == 'cancel':
         # we can do nothing because if we resend this message, some of them will always fail.
-        pass
+        logger.warning('xmpp failed: %s', str(msg))
       else:
         logger.info('%s -> %s: %s' % (msg['from'], msg['to'], str(msg['error'])))
 
