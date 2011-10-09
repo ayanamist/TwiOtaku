@@ -132,11 +132,14 @@ class Util(object):
 
   def parse_status(self, single):
     single = self.make_namespace(single, self.allow_duplicate)
-    t = Template(self._user['msg_tpl'] if self._user['msg_tpl'] else DEFAULT_MESSAGE_TEMPLATE)
-    try:
-      result = t.render(**single)
-    except Exception, e:
-      result = unicode(e)
+    if single:
+      t = Template(self._user['msg_tpl'] if self._user['msg_tpl'] else DEFAULT_MESSAGE_TEMPLATE)
+      try:
+        result = t.render(**single)
+      except Exception, e:
+        result = unicode(e)
+    else:
+      result = ''
     return result
 
   def parse_data(self, data, reverse=True):
