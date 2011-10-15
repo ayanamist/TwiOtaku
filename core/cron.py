@@ -117,14 +117,12 @@ class CronGetTimeline(StoppableThread):
           db.update_user(jid=user_jid, last_search_id=data[0]['id_str'])
           return data
 
-    def all_data_add(iterable):
+    def all_statuses_add(iterable):
       if not iterable:
         return
-      for x in iterable:
-        x_id = x['id']
-        if x_id not in all_data_ids:
-          all_data_ids.append(x_id)
-          all_data.append(x)
+      for x in ifilter(lambda x: x['id'] not in all_data_ids and x['user']['screen_name'] != user['screen_name'], iterable):
+        all_data_ids.append(x['id'])
+        all_data.append(x)
 
 
     while not self.queue.empty():
@@ -144,10 +142,10 @@ class CronGetTimeline(StoppableThread):
         queue.put(Job(user_jid, data=data, title='Direct Message:', allow_duplicate=False, always=False, xmpp_command=False))
       all_data = list()
       all_data_ids = list()
-      all_data_add(fetch_list())
-      all_data_add(fetch_mention())
-      all_data_add(fetch_home())
-      all_data_add(fetch_search())
+      all_statuses_add(fetch_list())
+      all_statuses_add(fetch_mention())
+      all_statuses_add(fetch_home())
+      all_statuses_add(fetch_search())
 
       for data in ifilter(lambda x: user_at_screen_name in x['text'] and x['user']['screen_name'] != user['screen_name']
                           , all_data):

@@ -173,15 +173,16 @@ class StreamThread(StoppableThread):
       if 'direct_message' in data:
         if self.user['timeline'] & db.MODE_DM:
           data = twitter.DirectMessage(data['direct_message'])
-          if data['sender_screen_name'] == self.user['screen_name']:
-            title = 'Direct Message sent to %s:' % data['recipient_screen_name']
-          else:
+          if data['sender_screen_name'] != self.user['screen_name']:
             title = 'Direct Message:'
+          else:
+            data = None
         else:
           data = None
       else:
         if data['user']['id'] in self.blocked_ids or\
-           ('retweeted_status' in data and data['retweeted_status']['user']['id'] in self.blocked_ids):
+           ('retweeted_status' in data and data['retweeted_status']['user']['id'] in self.blocked_ids) or\
+           data['user']['screen_name'] == self.user['screen_name']:
           data = None
         else:
           data = twitter.CachedStatus(data)
