@@ -1,6 +1,7 @@
 import random
 import time
 import operator
+import re
 from itertools import ifilter
 from Queue import Queue
 from urlparse import parse_qsl
@@ -33,6 +34,8 @@ SHORT_COMMANDS = {
   '?': 'help',
   'h': 'help',
   }
+
+_screen_name_regex = r'[a-zA-Z0-9_]+'
 
 class XMPPMessageHandler(object):
   def __init__(self, xmpp):
@@ -327,9 +330,8 @@ class XMPPMessageHandler(object):
         else:
           data = self._api.get_direct_message(long_id)
           add_mention_user(data['sender_screen_name'])
-        user_mentions = data.get('entities', dict()).get('user_mentions', ())
-        for x in user_mentions:
-          add_mention_user(x['screen_name'])
+        for screen_name in re.findall('@(%s)' % _screen_name_regex, data['text']):
+          add_mention_user(screen_name)
       except twitter.NotFoundError:
         pass
     if not mention_users:
@@ -355,10 +357,10 @@ class XMPPMessageHandler(object):
       message = u'%sRT @%s' % (user_msg, status['user']['screen_name'])
       if len(message) > twitter.CHARACTER_LIMIT:
         raise ValueError('Content is too long to be RT.')
-      else:
-        message = '%s: %s' % (message, status['text'])
-        message = message[:140]
-      status = self._api.post_update(message.encode('UTF8'))
+      message = '%s: %s' % (message, status['text'])
+      message_stripped = message[:140]
+      
+      status = self._api.post_update(message_stripped.encode('UTF8'))
       self._queue.put(Job(self._jid, data=status, allow_duplicate=False))
 
   def func_del(self, short_id=None):
