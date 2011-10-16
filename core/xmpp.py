@@ -70,6 +70,8 @@ class XMPPMessageHandler(object):
       func = getattr(self, func_name)
       return func(*args[1:])
     else:
+      if not self._user:
+        return
       status = self._api.post_update(cmd.encode('UTF8'))
       self._queue.put(Job(self._jid, data=status, allow_duplicate=False))
 
