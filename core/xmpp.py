@@ -361,7 +361,7 @@ class XMPPMessageHandler(object):
         raise ValueError('Content is too long to be RT.')
       message = '%s: %s' % (message, status['text'])
       stripped = False
-      for m in re.finditer('@%s' % _screen_name_regex, data['text']):
+      for m in re.finditer('@%s' % _screen_name_regex, status['text']):
         m_start = m.start()
         m_end = m.end()
         if m_end > twitter.CHARACTER_LIMIT and m_start <= twitter.CHARACTER_LIMIT:
