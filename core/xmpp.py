@@ -360,14 +360,14 @@ class XMPPMessageHandler(object):
       if len(message) > twitter.CHARACTER_LIMIT:
         raise ValueError('Content is too long to be RT.')
       message = '%s: %s' % (message, status['text'])
-      stripped = False
+      message_stripped = ''
       for m in re.finditer('@%s' % _screen_name_regex, status['text']):
         m_start = m.start()
         m_end = m.end()
         if m_end > twitter.CHARACTER_LIMIT and m_start <= twitter.CHARACTER_LIMIT:
           message_stripped = message[:m_start]
-          stripped = True
-      if not stripped:
+          break
+      if not message_stripped:
         message_stripped = message[:140]
       status = self._api.post_update(message_stripped.encode('UTF8'))
       self._queue.put(Job(self._jid, data=status, allow_duplicate=False))
