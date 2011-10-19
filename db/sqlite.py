@@ -1,6 +1,5 @@
 import os
 import logging
-from time import sleep
 
 import apsw
 

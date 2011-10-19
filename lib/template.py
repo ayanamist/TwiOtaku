@@ -18,7 +18,7 @@ class MemoryBytecodeCache(jinja2.BytecodeCache):
 
 
 class Environment(ImmutableSandboxedEnvironment):
-  def is_safe_callable(self, obj):
+  def is_safe_callable(self, _):
     return False
 
 env = Environment(bytecode_cache=MemoryBytecodeCache())
