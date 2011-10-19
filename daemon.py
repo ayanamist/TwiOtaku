@@ -156,6 +156,14 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     for user in ifilter(lambda user: user['access_key'] and user['access_secret'], db.get_all_users()):
       self.start_stream(user['jid'])
 
+  def stop_stream(self, jid):
+    t = self.stream_threads.get(jid)
+    if t:
+      t.stop()
+      t.join()
+      return True
+    return False
+
   def stop_streams(self):
     logger.info('shutdown stream.')
     for t in self.stream_threads:

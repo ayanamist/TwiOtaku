@@ -551,8 +551,11 @@ class XMPPMessageHandler(object):
           self._user['timeline'] |= db.MODE_EVENT
         elif a == 'track':
           self._user['timeline'] |= db.MODE_TRACK
-      self._xmpp.stream_threads[self._bare_jid].user_changed()
       db.update_user(id=self._user['id'], timeline=self._user['timeline'])
+      if self._user['timeline']:
+        self._xmpp.stream_threads[self._bare_jid].user_changed()
+      else:
+        self._xmpp.stop_stream(self._bare_jid)
     modes = []
     if self._user['timeline'] & db.MODE_LIST:
       modes.append('list')
@@ -588,7 +591,10 @@ class XMPPMessageHandler(object):
     else:
       self._user['timeline'] = db.MODE_NONE
     db.update_user(self._user['id'], timeline=self._user['timeline'])
-    self._xmpp.stream_threads[self._bare_jid].user_changed()
+    if self._user['timeline']:
+      self._xmpp.stream_threads[self._bare_jid].user_changed()
+    else:
+      self._xmpp.stop_stream(self._bare_jid)
     return self.func_on()
 
   def func_live(self, list_user_name=None):
