@@ -1,5 +1,4 @@
-*.db
-data
 .idea
+*.db
 *.pyc
 config.sample.py

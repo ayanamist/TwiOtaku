@@ -1,4 +1,4 @@
-config.py
-*.db
+.idea/
 *.pyc
-.idea
+*.db
+config.py
