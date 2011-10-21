@@ -229,13 +229,13 @@ class CronMisc(StoppableThread):
     if user['list_user'] and user['list_name'] and self._now - user['list_ids_last_update'] > CRON_LIST_IDS_INTERVAL:
       logger.debug('%s: refresh list ids.' % user['jid'])
       cursor = -1
-      list_ids = list()
+      list_ids = set()
       while cursor:
         result = self._api.get_list_members(user['list_user'], user['list_name'], cursor=cursor)
-        list_ids.extend(imap(operator.itemgetter('id_str'), result['users']))
+        map(list_ids.add, imap(operator.itemgetter('id_str'), result['users']))
         cursor = result['next_cursor']
       user = db.get_user_from_jid(user['jid'])
-      if (list_ids and user['list_ids']) is None or set(list_ids) - set(user['list_ids'].split(',')):
+      if (list_ids and user['list_ids'] is None) or (list_ids ^ set(user['list_ids'].split(','))):
         db.update_user(id=user['id'], list_ids=','.join(list_ids), list_ids_last_update=self._now)
         self._thread.user_changed()
       else:
