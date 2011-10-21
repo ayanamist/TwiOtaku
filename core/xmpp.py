@@ -236,6 +236,7 @@ class XMPPMessageHandler(object):
             result = u'Removed %s from list %s.' % (args[2], args[1])
           if self._user['screen_name'] == self._user['list_user'] and args[1] == self._user['list_name']:
             db.update_user(id=self._user['id'], list_ids_last_update=0)
+            self._xmpp.stream_threads[self._bare_jid].user_changed()
           return result
       else:
         raise TypeError('Not supported list command.')
