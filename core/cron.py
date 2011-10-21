@@ -110,7 +110,7 @@ class CronGetTimeline(StoppableThread):
 
     @debug
     def fetch_search():
-      if user_timeline == db.MODE_TRACK and user['track_words']:
+      if user_timeline & db.MODE_TRACK and user['track_words']:
         q = user['track_words'].replace(',', ' ')
         data = api.get_search(q, since_id=user['last_search_id'])
         if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
