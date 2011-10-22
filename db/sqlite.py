@@ -1,5 +1,12 @@
 import os
 import logging
+from time import mktime
+from email.utils import parsedate
+
+try:
+  import ujson as json
+except ImportError:
+  import json
 
 import apsw
 
@@ -125,10 +132,14 @@ def get_status(id_str):
     return data
 
 
-def add_status(id_str, data):
+def add_status(data):
   global _status_queue
-  _status_queue.append((id_str, data))
-  flush_status()
+  id_str = data.get('id_str')
+  timestamp = parsedate(data.get('created_at'))
+  if id_str and timestamp:
+    timestamp = int(mktime(timestamp))
+    _status_queue.append((id_str, timestamp, json.dumps(data)))
+    flush_status()
 
 
 def flush_status(force=False):
@@ -150,8 +161,8 @@ def flush_status(force=False):
         continued = False
     try:
       while _status_queue:
-        id_str, data = _status_queue.pop()
-        cursor.execute('INSERT OR REPLACE INTO statuses (id_str, data) VALUES(?,?)', (id_str, data))
+        id_str, timestamp, data = _status_queue.pop()
+        cursor.execute('INSERT OR REPLACE INTO statuses (id_str, data, timestamp) VALUES(?,?,?)', (id_str, data, timestamp))
     finally:
       try:
         cursor.execute('COMMIT')
@@ -227,11 +238,14 @@ _conn_status.setbusytimeout(RETRY_TIMEOUT)
 cursor = _conn_status.cursor()
 sql = """CREATE TABLE "statuses" (
             "id_str"  TEXT NOT NULL,
+            "timestamp"  INTEGER NOT NULL,
             "data"  BLOB NOT NULL,
             PRIMARY KEY ("id_str") ON CONFLICT REPLACE
             );
             CREATE UNIQUE INDEX "status_id"
             ON "statuses" ("id_str");
+            CREATE INDEX "timestamp"
+            ON "statuses" ("timestamp");
             """
 for t in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'"):
   t = t[0]

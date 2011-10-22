@@ -75,7 +75,7 @@ class Status(dict):
 class CachedStatus(Status):
   def __init__(self, *args, **kwargs):
     Status.__init__(self, *args, **kwargs)
-    db.add_status(self['id_str'], json.dumps(self))
+    db.add_status(self)
 
 
 class DirectMessage(dict):
