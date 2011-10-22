@@ -1,4 +1,5 @@
 .idea
+.gitignore
 *.db
 *.pyc
 config.sample.py
