@@ -169,6 +169,10 @@ def flush_status(force=False):
       except apsw.SQLError:
         pass
 
+def purge_old_statuses(from_timestamp):
+  cursor = _conn_status.cursor()
+  cursor.execute('DELETE FROM statuses WHERE timestamp<?', (from_timestamp,))
+
 if not os.path.exists(database_dir):
   os.makedirs(database_dir)
 

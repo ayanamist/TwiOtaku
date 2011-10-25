@@ -12,6 +12,7 @@ from lib.thread import StoppableThread, threadstop
 from lib.logger import debug
 
 MAX_IDLE_TIME = 120
+MAX_STATUS_CACHE_TIME = 604800 # 7 days
 CRON_INTERVAL = 60
 CRON_BLOCKED_IDS_INTERVAL = 3600
 CRON_LIST_IDS_INTERVAL = 3600
@@ -185,9 +186,13 @@ class CronMisc(StoppableThread):
                               access_token_key=user['access_key'], access_token_secret=user['access_secret'])
       self._now = int(time.time())
       self._thread = self._xmpp.stream_threads.get(user['jid'])
+      self.check_stop()
       if self.verify_credential(user):
+        self.check_stop()
         self.refresh_blocked_ids(user)
         self.refresh_list_ids(user)
+    self.check_stop()
+    self.clean_expired_cache()
 
   @debug
   def verify_credential(self, user):
@@ -231,6 +236,7 @@ class CronMisc(StoppableThread):
       cursor = -1
       list_ids = set()
       while cursor:
+        self.check_stop()
         result = self._api.get_list_members(user['list_user'], user['list_name'], cursor=cursor)
         map(list_ids.add, imap(operator.itemgetter('id_str'), result['users']))
         cursor = result['next_cursor']
@@ -240,3 +246,8 @@ class CronMisc(StoppableThread):
         self._thread.user_changed()
       else:
         db.update_user(id=user['id'], list_ids_last_update=self._now)
+
+  @debug
+  def clean_expired_cache(self):
+    from_stamp = int(time.time()) - MAX_STATUS_CACHE_TIME
+    db.purge_old_statuses(from_stamp)

@@ -22,6 +22,7 @@ global get_short_id_from_long_id
 global get_status
 global get_user_from_jid
 global get_users_count
+global purge_old_statuses
 global update_long_id_from_short_id
 global update_user
 
@@ -41,6 +42,7 @@ if _db_type == 'sqlite':
   _vars['get_status'] = sqlite.get_status
   _vars['get_user_from_jid'] = sqlite.get_user_from_jid
   _vars['get_users_count'] = sqlite.get_users_count
+  _vars['purge_old_statuses'] = sqlite.purge_old_statuses
   _vars['update_long_id_from_short_id'] = sqlite.update_long_id_from_short_id
   _vars['update_user'] = sqlite.update_user
 else:
