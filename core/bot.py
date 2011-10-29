@@ -110,6 +110,14 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     for t in self.worker_threads.itervalues():
       t.join()
 
+  def stop_worker(self, jid):
+    t = self.worker_threads.get(jid)
+    if t:
+      t.stop()
+      t.join()
+      return True
+    return False
+
   def start_cron(self):
     logger.debug('start cron.')
     self.cron_thread = CronStart(self.worker_queues)
