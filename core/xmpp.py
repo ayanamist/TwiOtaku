@@ -347,11 +347,11 @@ class XMPPMessageHandler(object):
     long_id, long_id_type = self._util.restore_short_id(short_id)
     if long_id_type == db.TYPE_DM:
       raise TypeError('Can not retweet a direct message.')
-    if not content:
+    status = self._api.get_status(long_id)
+    if not content and not status['user']['protected']:
       status = self._api.create_retweet(long_id)
       self._queue.put(Job(self._jid, data=status, allow_duplicate=False))
     else:
-      status = self._api.get_status(long_id)
       user_msg = ' '.join(content)
       if user_msg and ord(user_msg[-1]) < 128:
         user_msg += ' '
