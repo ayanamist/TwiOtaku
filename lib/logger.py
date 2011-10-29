@@ -15,3 +15,12 @@ def debug(f):
 
   return wrap
 
+def silent(f):
+  @wraps(f)
+  def wrap(*args, **kwds):
+    try:
+      return f(*args, **kwds)
+    except Exception:
+      pass
+
+  return wrap
