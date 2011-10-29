@@ -9,7 +9,7 @@ from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
 from worker import Job
 from lib import twitter
 from lib.thread import StoppableThread, threadstop
-from lib.logger import debug
+from lib.logger import silent
 
 MAX_IDLE_TIME = 120
 MAX_STATUS_CACHE_TIME = 604800 # 7 days
@@ -65,7 +65,7 @@ class CronGetTimeline(StoppableThread):
     self.queue = queue
 
   def run(self):
-    @debug
+    @silent
     def fetch_home():
       data = api.get_home_timeline(since_id=user['last_home_id'])
       if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
@@ -76,7 +76,7 @@ class CronGetTimeline(StoppableThread):
         else:
           return data
 
-    @debug
+    @silent
     def fetch_mention():
       if user_timeline & db.MODE_MENTION:
         data = api.get_mentions(since_id=user['last_mention_id'])
@@ -84,7 +84,7 @@ class CronGetTimeline(StoppableThread):
           db.update_user(jid=user_jid, last_mention_id=data[0]['id_str'])
           return data
 
-    @debug
+    @silent
     def fetch_dm():
       if user_timeline & db.MODE_DM:
         data = api.get_direct_messages(since_id=user['last_dm_id'])
@@ -92,7 +92,7 @@ class CronGetTimeline(StoppableThread):
           db.update_user(jid=user_jid, last_dm_id=data[0]['id_str'])
           return data
 
-    @debug
+    @silent
     def fetch_list():
       if user_timeline & db.MODE_LIST:
         if user['list_user'] and user['list_name']:
@@ -109,7 +109,7 @@ class CronGetTimeline(StoppableThread):
               db.update_user(jid=user_jid, last_list_id=data[0]['id_str'])
               return data
 
-    @debug
+    @silent
     def fetch_search():
       if user_timeline & db.MODE_TRACK and user['track_words']:
         q = user['track_words'].replace(',', ' ')
@@ -194,7 +194,7 @@ class CronMisc(StoppableThread):
     self.check_stop()
     self.clean_expired_cache()
 
-  @debug
+  @silent
   def verify_credential(self, user):
     if self._now - user['last_verified'] > CRON_VERIFY_CREDENTIAL_INTERVAL:
       logger.debug('%s: check credential.' % user['jid'])
@@ -217,7 +217,7 @@ class CronMisc(StoppableThread):
     else:
       return True
 
-  @debug
+  @silent
   def refresh_blocked_ids(self, user):
     if self._now - user['blocked_ids_last_update'] > CRON_BLOCKED_IDS_INTERVAL:
       logger.debug('%s: refresh blocked ids.' % user['jid'])
@@ -229,7 +229,7 @@ class CronMisc(StoppableThread):
       else:
         db.update_user(id=user['id'], blocked_ids_last_update=self._now)
 
-  @debug
+  @silent
   def refresh_list_ids(self, user):
     if user['list_user'] and user['list_name'] and self._now - user['list_ids_last_update'] > CRON_LIST_IDS_INTERVAL:
       logger.debug('%s: refresh list ids.' % user['jid'])
@@ -247,7 +247,7 @@ class CronMisc(StoppableThread):
       else:
         db.update_user(id=user['id'], list_ids_last_update=self._now)
 
-  @debug
+  @silent
   def clean_expired_cache(self):
     from_stamp = int(time.time()) - MAX_STATUS_CACHE_TIME
     db.purge_old_statuses(from_stamp)
