@@ -3,7 +3,7 @@ import sys
 import signal
 import logging
 
-logging.basicConfig(level=logging.WARNING, format='%(asctime)-15s %(name)-8s %(levelname)-8s %(message)s',
+logging.basicConfig(level=logging.ERROR, format='%(asctime)-15s %(name)-8s %(levelname)-8s %(message)s',
                     datefmt='%m-%d %H:%M:%S', stream=sys.stderr)
 
 from core.bot import XMPPBot
