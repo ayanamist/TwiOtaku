@@ -1,5 +1,5 @@
 import db
-from lib.util import Util
+from lib.data import Util
 from lib.logger import debug
 from lib.thread import StoppableThread, threadstop
 

@@ -12,7 +12,7 @@ import db
 from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, MAX_CONVERSATION_NUM, ADMIN_USERS
 from worker import Job
 from lib import oauth, twitter
-from lib.util import Util
+from lib.data import Util
 from lib.logger import debug
 
 SHORT_COMMANDS = {
