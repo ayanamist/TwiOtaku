@@ -397,15 +397,17 @@ class Api(object):
 
   def _check_for_twitter_error(self, response):
     error_message = ''
-    try:
-      data = json.loads(response.data)
-    except ValueError:
-      data = response.data
-    else:
-      if isinstance(data, dict) and 'error' in data:
-        error_message = data['error']
-    if response.status == httplib.OK and not error_message:
-      return data
+    if response.data is not None:
+      try:
+        data = json.loads(response.data)
+      except ValueError:
+        pass
+      else:
+        response.data = data
+        if isinstance(data, dict) and 'error' in data:
+          error_message = data['error']
+    if response.status == httplib.OK:
+      return response
     elif response.status == httplib.BAD_REQUEST:
       raise BadRequestError(error_message)
     elif response.status == httplib.UNAUTHORIZED:
@@ -425,7 +427,7 @@ class Api(object):
     else:
       raise Error('%d: %s' % (response.status, str(error_message)))
 
-  def _fetch_url(self, url, post_data=None, parameters=None, http_method='GET', block=True, timeout=None):
+  def _fetch_url_async(self, url, post_data=None, parameters=None, http_method='GET', timeout=None):
     headers = {'Accept-Encoding': 'gzip'}
     extra_params = dict()
     if parameters is not None:
@@ -447,17 +449,17 @@ class Api(object):
     else:
       url = self._build_url(url, extra_params=extra_params)
       encoded_post_data = self._encode_post_data(post_data)
-    if block:
-      try:
-        response = urlfetch.fetch(method=http_method, url=url, body=encoded_post_data, headers=headers, timeout=timeout)
-      except (SSLError, httplib.BadStatusLine), e:
-        raise NetworkError(str(e))
-      else:
-        return self._check_for_twitter_error(response)
+    try:
+      response = urlfetch.fetch(method=http_method, url=url, body=encoded_post_data, headers=headers, timeout=timeout)
+    except (SSLError, httplib.BadStatusLine), e:
+      raise NetworkError(str(e))
     else:
-      return urlfetch.fetch(method=http_method, url=url, body=encoded_post_data, headers=headers, block=False)
+      response = self._check_for_twitter_error(response)
+    return response
 
-  # return a file-like object
+  def _fetch_url(self, url, post_data=None, parameters=None, http_method='GET'):
+    return self._fetch_url_async(url, post_data=post_data, parameters=parameters, http_method=http_method).data
+
   def user_stream(self, timeout, reply_all=False, track=None):
     url = 'https://userstream.twitter.com/2/user.json'
     parameters = dict(delimited='length')
@@ -465,4 +467,4 @@ class Api(object):
       parameters['replies'] = 'all'
     if track:
       parameters['track'] = ','.join(track) if isinstance(track, list) else track
-    return self._fetch_url(url=url, parameters=parameters, block=False, timeout=timeout)
+    return self._fetch_url_async(url=url, parameters=parameters, timeout=timeout)

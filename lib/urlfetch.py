@@ -23,31 +23,27 @@ class GZipHandler(urllib2.BaseHandler):
   https_response = http_response
 
 
-class Response(object):
-  def __init__(self, status, data, headers):
-    self.status = status
-    self.data = data
-    self.headers = headers
-
-
-def fetch(url, method='GET', body=None, headers=None, block=True, timeout=None):
+def fetch(url, method='GET', body=None, headers=None, timeout=None):
   req = urllib2.Request(url, data=body, headers=headers)
   # dirty hack for PUT DELETE method http://stackoverflow.com/questions/111945/is-there-any-way-to-do-http-put-in-python
   req.get_method = lambda: method
   if timeout is None:
     timeout = socket._GLOBAL_DEFAULT_TIMEOUT
-  if block:
-    code = httplib.OK
-    try:
-      r = urllib2.urlopen(req, timeout=timeout)
-    except urllib2.HTTPError, e:
-      code = e.code
-      r = e
-    except urllib2.URLError, e:
-      raise Error(e.reason)
-    return Response(code, r.read(), r.info())
+  code = httplib.OK
+  try:
+    r = urllib2.urlopen(req, timeout=timeout)
+  except urllib2.HTTPError, e:
+    code = e.code
+    r = e
+  except urllib2.URLError, e:
+    raise Error(e.reason)
+  setattr(r, 'status', code)
+  setattr(r, 'header', r.info())
+  if not timeout:
+    setattr(r, 'data', r.read())
   else:
-    return urllib2.urlopen(req, timeout=timeout)
+    setattr(r, 'data', None)
+  return r
 
 opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookielib.CookieJar()), GZipHandler())
 urllib2.install_opener(opener)
