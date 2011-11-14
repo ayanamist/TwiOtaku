@@ -164,6 +164,10 @@ class StreamThread(StoppableThread):
         elif data['event'] == 'list_member_removed':
           if data['target']['id'] in self.list_ids:
             self.list_ids.remove(data['target']['id'])
+        elif data['event'] == 'favorite':
+          title = '%s favorited %s\'s tweet %s.'% (data['source']['screen_name'], data['target']['screen_name'], data['target_object']['id_str'])
+        elif data['event'] == 'unfavorite':
+          title = '%s unfavorited %s\'s tweet %s.'% (data['source']['screen_name'], data['target']['screen_name'], data['target_object']['id_str'])
       if title:
         self.queue.put(Job(self.user['jid'], title=title, always=False))
     elif 'delete' in data:
