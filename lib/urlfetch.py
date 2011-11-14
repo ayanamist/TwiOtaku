@@ -27,8 +27,10 @@ def fetch(url, method='GET', body=None, headers=None, timeout=None):
   req = urllib2.Request(url, data=body, headers=headers)
   # dirty hack for PUT DELETE method http://stackoverflow.com/questions/111945/is-there-any-way-to-do-http-put-in-python
   req.get_method = lambda: method
+  block = False
   if timeout is None:
     timeout = socket._GLOBAL_DEFAULT_TIMEOUT
+    block = True
   code = httplib.OK
   try:
     r = urllib2.urlopen(req, timeout=timeout)
@@ -37,12 +39,12 @@ def fetch(url, method='GET', body=None, headers=None, timeout=None):
     r = e
   except urllib2.URLError, e:
     raise Error(e.reason)
-  setattr(r, 'status', code)
-  setattr(r, 'header', r.info())
-  if not timeout:
-    setattr(r, 'data', r.read())
+  r.status = code
+  r.header = r.info()
+  if block:
+    r.data = r.read()
   else:
-    setattr(r, 'data', None)
+    r.data = None
   return r
 
 opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookielib.CookieJar()), GZipHandler())
