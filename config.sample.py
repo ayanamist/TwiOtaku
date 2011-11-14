@@ -17,7 +17,7 @@ DEFAULT_MESSAGE_TEMPLATE = u"""{% if user %}{{ user.screen_name }}{% else %}{{ s
 └Retweeted by {{ retweet.user.screen_name }} {{ retweet.created_at_fmt }} via {{ retweet.source }}{% endif %}{% if in_reply_to_status %}
 ┌────────────
 {{ in_reply_to_status.user.screen_name }}: {{ in_reply_to_status.text }}
-{{ in_reply_to_status.created_at_fmt }} [{{ in_reply_to_status.short_id_str_num }} = {{ in_reply_to_status.short_id_str_alpha }}] via {{ in_reply_to_status.source }}
+{{ in_reply_to_status.created_at_fmt }} via {{ in_reply_to_status.source }}
 └────────────{% endif %}
 
 """
