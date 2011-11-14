@@ -365,7 +365,7 @@ class XMPPMessageHandler(object):
       for m in re.finditer('@%s' % _screen_name_regex, status['text']):
         m_start = m.start()
         m_end = m.end()
-        if m_end > twitter.CHARACTER_LIMIT and m_start <= twitter.CHARACTER_LIMIT:
+        if twitter.CHARACTER_LIMIT < m_end >= m_start:
           message_stripped = message[:m_start]
           break
       if not message_stripped:
