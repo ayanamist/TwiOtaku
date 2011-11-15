@@ -2,7 +2,6 @@ import urllib2
 import threading
 import logging
 import socket
-import operator
 import string
 from array import array
 from itertools import imap
@@ -25,7 +24,7 @@ MAX_DATA_TIMEOUT = 90
 WAIT_TIMES = (0, 30, 60, 120, 240)
 
 logger = logging.getLogger('user streaming')
-contain = lambda strlist, str: reduce(operator.__or__, imap(lambda a: a in str, strlist))
+contain = lambda strlist, s: any(imap(s.__contains__, strlist))
 
 class Timeout(Exception):
   pass
