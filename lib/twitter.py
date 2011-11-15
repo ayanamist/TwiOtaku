@@ -450,7 +450,8 @@ class Api(object):
       url = self._build_url(url, extra_params=extra_params)
       encoded_post_data = self._encode_post_data(post_data)
     try:
-      response = urlfetch.fetch_async(method=http_method, url=url, body=encoded_post_data, headers=headers, timeout=timeout)
+      response = urlfetch.fetch_async(method=http_method, url=url, body=encoded_post_data, headers=headers,
+        timeout=timeout)
     except (SSLError, httplib.BadStatusLine), e:
       raise NetworkError(str(e))
     else:

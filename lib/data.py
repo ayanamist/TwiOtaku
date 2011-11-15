@@ -66,7 +66,8 @@ class Util(object):
       else:
         return data['text']
 
-    return parse_entities(data).replace('\r\n', '\n').replace('\r', '\n').replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+    return parse_entities(data).replace('\r\n', '\n').replace('\r', '\n').replace("&lt;", "<").replace("&gt;",
+      ">").replace("&amp;", "&")
 
   def make_namespace(self, single, allow_duplicate=True):
     if single is None:

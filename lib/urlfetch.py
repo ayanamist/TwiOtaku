@@ -7,6 +7,7 @@ from StringIO import StringIO
 from gzip import GzipFile
 
 log = logging.getLogger('urlfetch')
+
 class Error(Exception):
   pass
 
@@ -41,6 +42,7 @@ def fetch_async(url, method='GET', body=None, headers=None, timeout=None):
   r.header = r.info()
   r.data = None
   return r
+
 
 def fetch(url, method='GET', body=None, headers=None, timeout=None):
   r = fetch_async(url, method=method, body=body, headers=headers, timeout=timeout)

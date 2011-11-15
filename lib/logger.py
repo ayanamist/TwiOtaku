@@ -15,6 +15,7 @@ def debug(f):
 
   return wrap
 
+
 def silent(f):
   @wraps(f)
   def wrap(*args, **kwds):
