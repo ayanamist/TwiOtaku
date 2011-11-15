@@ -455,7 +455,7 @@ class Api(object):
     try:
       response = urlfetch.fetch_async(method=http_method, url=url, body=encoded_post_data, headers=headers,
         timeout=timeout)
-    except (SSLError, httplib.BadStatusLine), e:
+    except (SSLError, httplib.BadStatusLine, urlfetch.Error), e:
       raise NetworkError(str(e))
     else:
       response = self._check_for_twitter_error(response)
