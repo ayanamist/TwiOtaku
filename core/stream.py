@@ -162,7 +162,7 @@ class StreamThread(StoppableThread):
             self.list_ids.remove(data['target']['id'])
         elif data['event'] in ('favorite', 'unfavorite'):
           if data['source']['screen_name'] != self.user['screen_name']:
-            title = '%s %sd %s\'s tweet:' % (data['event'], data['source']['screen_name'], data['target']['screen_name'])
+            title = '%s %sd %s\'s tweet:' % (data['source']['screen_name'], data['event'], data['target']['screen_name'])
             data['target_object']['user'] = data['target']
             data = twitter.CachedStatus(data['target_object'])
         else:

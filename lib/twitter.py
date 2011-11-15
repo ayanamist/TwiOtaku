@@ -395,8 +395,7 @@ class Api(object):
     else:
       return urllib.urlencode(dict([(k, self._encode(v)) for k, v in post_data.items()]))
 
-  def _check_for_twitter_error(self, response):
-    error_message = ''
+  def _check_for_twitter_data_error(self, response):
     if response.data is not None:
       try:
         data = json.loads(response.data)
@@ -405,7 +404,11 @@ class Api(object):
       else:
         response.data = data
         if isinstance(data, dict) and 'error' in data:
-          error_message = data['error']
+          return data['error']
+    return ''
+
+  def _check_for_twitter_error(self, response):
+    error_message = self._check_for_twitter_data_error(response)
     if response.status == httplib.OK:
       return response
     elif response.status == httplib.BAD_REQUEST:
@@ -460,7 +463,9 @@ class Api(object):
 
   def _fetch_url(self, url, post_data=None, parameters=None, http_method='GET'):
     r = self._fetch_url_async(url, post_data=post_data, parameters=parameters, http_method=http_method)
-    return r.read()
+    r.data = r.read()
+    self._check_for_twitter_data_error(r)
+    return r.data
 
   def user_stream(self, timeout, reply_all=False, track=None):
     url = 'https://userstream.twitter.com/2/user.json'
