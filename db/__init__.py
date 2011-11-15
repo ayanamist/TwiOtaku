@@ -41,3 +41,5 @@ update_long_id_from_short_id = dbapi.update_long_id_from_short_id
 
 update_user = dbapi.update_user
 
+flush_status = dbapi.flush_status
+

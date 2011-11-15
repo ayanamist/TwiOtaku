@@ -88,6 +88,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     self.stop_cron()
     self.stop_workers()
     self.disconnect(wait=True)
+    db.flush_status()
 
   def start_worker(self, bare_jid):
     w = self.worker_threads.get(bare_jid)
