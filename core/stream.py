@@ -168,7 +168,7 @@ class StreamThread(StoppableThread):
         else:
           logger.error('Unmatched event %s.' % data['event'])
       if title:
-        job = Job(self.user['jid'], title=title, always=False, xmpp_command=False, allow_duplicate=False)
+        job = Job(self.user['jid'], title=title, always=False, xmpp_command=False)
         if isinstance(data, twitter.CachedStatus):
           job.data = data
         self.queue.put(job)
