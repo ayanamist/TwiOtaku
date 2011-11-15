@@ -146,19 +146,10 @@ def flush_status(force=False):
   global _status_queue
   if len(_status_queue) > 500 or force:
     cursor = _conn_status.cursor()
-    # if another transaction failed, we must retry
-    continued = True
-    while continued:
-      try:
-        cursor.execute('BEGIN')
-      except apsw.SQLError, e:
-        logger.warning(e)
-        try:
-          cursor.execute('COMMIT')
-        except apsw.SQLError:
-          logger.warning(e)
-      else:
-        continued = False
+    try:
+      cursor.execute('BEGIN')
+    except apsw.SQLError, e:
+      logger.warning(e)
     try:
       while _status_queue:
         id_str, timestamp, data = _status_queue.pop()
