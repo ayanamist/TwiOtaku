@@ -30,39 +30,39 @@ class Error(Exception):
 
 
 class BadRequestError(Exception):
-  pass
+  code = 400
 
 
 class UnauthorizedError(Error):
-  pass
+  code = 401
 
 
 class ForbiddenError(Error):
-  pass
+  code = 403
 
 
 class NotFoundError(Error):
-  pass
+  code = 404
 
 
 class EnhanceYourCalmError(Error):
-  pass
+  code = 420
 
 
 class InternalServerError(Error):
-  pass
+  code = 500
 
 
 class BadGatewayError(Error):
-  pass
+  code = 502
 
 
 class ServiceUnavailableError(Error):
-  pass
+  code = 503
 
 
 class NetworkError(Error):
-  pass
+  code = 0
 
 
 class Status(dict):
@@ -450,7 +450,7 @@ class Api(object):
       url = self._build_url(url, extra_params=extra_params)
       encoded_post_data = self._encode_post_data(post_data)
     try:
-      response = urlfetch.fetch(method=http_method, url=url, body=encoded_post_data, headers=headers, timeout=timeout)
+      response = urlfetch.fetch_async(method=http_method, url=url, body=encoded_post_data, headers=headers, timeout=timeout)
     except (SSLError, httplib.BadStatusLine), e:
       raise NetworkError(str(e))
     else:
@@ -458,7 +458,8 @@ class Api(object):
     return response
 
   def _fetch_url(self, url, post_data=None, parameters=None, http_method='GET'):
-    return self._fetch_url_async(url, post_data=post_data, parameters=parameters, http_method=http_method).data
+    r = self._fetch_url_async(url, post_data=post_data, parameters=parameters, http_method=http_method)
+    return r.read()
 
   def user_stream(self, timeout, reply_all=False, track=None):
     url = 'https://userstream.twitter.com/2/user.json'

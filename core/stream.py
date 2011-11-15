@@ -1,7 +1,5 @@
-import urllib2
 import threading
 import logging
-import socket
 import string
 from array import array
 from itertools import imap
@@ -125,15 +123,14 @@ class StreamThread(StoppableThread):
         self.check_user_changed()
         if data:
           self.process(data)
-    except urllib2.HTTPError, e:
-      if e.code == 401:
-        logger.error('User %s OAuth unauthorized, exiting.' % self.user['jid'])
-        raise ThreadStop
-      if e.code == 420:
-        logger.warn('User %s Streaming connect too often!' % self.user['jid'])
-        if not self.wait_time_now_index:
-          self.wait_time_now_index = 1
-    except (urllib2.URLError, SSLError, Timeout, socket.error), e:
+    except twitter.UnauthorizedError:
+      logger.error('User %s OAuth unauthorized, exiting.' % self.user['jid'])
+      raise ThreadStop
+    except twitter.EnhanceYourCalmError:
+      logger.warn('User %s Streaming connect too often!' % self.user['jid'])
+      if not self.wait_time_now_index:
+        self.wait_time_now_index = 1
+    except (Timeout, twitter.Error), e:
       logger.warn('connection failed: %s' % unicode(e))
 
   @debug
