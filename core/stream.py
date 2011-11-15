@@ -165,12 +165,16 @@ class StreamThread(StoppableThread):
             self.list_ids.remove(data['target']['id'])
         elif data['event'] in ('favorite', 'unfavorite'):
           if data['source']['screen_name'] != self.user['screen_name']:
-            title = '%s %sd %s\'s tweet %s.'\
-            % (data['event'], data['source']['screen_name'], data['target']['screen_name'], data['target_object']['id_str'])
+            title = '%s %sd %s\'s tweet:' % (data['event'], data['source']['screen_name'], data['target']['screen_name'])
+            data['target_object']['user'] = data['target']
+            data = twitter.CachedStatus(data['target_object'])
         else:
           logger.error('Unmatched event %s.' % data['event'])
       if title:
-        self.queue.put(Job(self.user['jid'], title=title, always=False))
+        job = Job(self.user['jid'], title=title, always=False, xmpp_command=False, allow_duplicate=False)
+        if isinstance(data, twitter.CachedStatus):
+          job.data = data
+        self.queue.put(job)
     elif 'delete' in data:
       pass
     else:
