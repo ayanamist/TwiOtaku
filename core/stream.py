@@ -135,38 +135,41 @@ class StreamThread(StoppableThread):
 
   @debug
   def process(self, data):
-    if 'event' in data:
+    event = data.get('event')
+    if event:
       title = None
       if self.user['timeline'] & db.MODE_EVENT:
-        if data['event'] == 'follow':
+        if event == 'follow':
           if data['source']['screen_name'] != self.user['screen_name']:
             title = '@%s is now following @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
           else:
             if data['target']['id'] not in self.friend_ids:
               self.friend_ids.append(data['target']['id'])
-        elif data['event'] == 'block':
+        elif event == 'block':
           if data['target']['id'] not in self.blocked_ids:
             self.blocked_ids.append(data['target']['id'])
           if data['target']['id'] in self.friend_ids:
             self.friend_ids.remove(data['target']['id'])
           title = '@%s has blocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
-        elif data['event'] == 'unblock':
+        elif event == 'unblock':
           if data['target']['id'] in self.blocked_ids:
             self.blocked_ids.remove(data['target']['id'])
           title = '@%s has unblocked @%s.' % (data['source']['screen_name'], data['target']['screen_name'])
-        elif data['event'] == 'list_member_added':
+        elif event == 'list_member_added':
           if data['target']['id'] not in self.list_ids:
             self.list_ids.append(data['target']['id'])
-        elif data['event'] == 'list_member_removed':
+        elif event == 'list_member_removed':
           if data['target']['id'] in self.list_ids:
             self.list_ids.remove(data['target']['id'])
-        elif data['event'] in ('favorite', 'unfavorite'):
+        elif event in ('favorite', 'unfavorite'):
           if data['source']['screen_name'] != self.user['screen_name']:
             title = '%s %sd %s\'s tweet:' % (data['source']['screen_name'], data['event'], data['target']['screen_name'])
             data['target_object']['user'] = data['target']
             data = twitter.CachedStatus(data['target_object'])
+        elif event == 'user_update':
+          pass
         else:
-          logger.error('Unmatched event %s.' % data['event'])
+          logger.error('Unmatched event %s.' % event)
       if title:
         job = Job(self.user['jid'], title=title, always=False, xmpp_command=False)
         if isinstance(data, twitter.CachedStatus):
