@@ -165,14 +165,14 @@ class StreamThread(StoppableThread):
           if data['source']['screen_name'] != self.user['screen_name']:
             title = '%s %sd %s\'s tweet:' % (data['source']['screen_name'], data['event'], data['target']['screen_name'])
             data['target_object']['user'] = data['target']
-            data = twitter.CachedStatus(data['target_object'])
+            data = twitter.Status(data['target_object'])
         elif event == 'user_update':
           pass
         else:
           logger.error('Unmatched event %s.' % event)
       if title:
         job = Job(self.user['jid'], title=title, always=False, xmpp_command=False)
-        if isinstance(data, twitter.CachedStatus):
+        if isinstance(data, twitter.Status):
           job.data = data
         self.queue.put(job)
     elif 'delete' in data:
