@@ -2,7 +2,6 @@ import threading
 import logging
 import string
 from httplib import HTTPException
-from array import array
 from itertools import imap
 from ssl import SSLError
 
@@ -52,8 +51,8 @@ class StreamThread(StoppableThread):
   def refresh_user(self):
     logger.debug('%s: refresh user.' % self.bare_jid)
     self.user = db.get_user_from_jid(self.bare_jid)
-    self.blocked_ids = array('L', imap(int, self.user['blocked_ids'].split(',')) if self.user['blocked_ids'] else ())
-    self.list_ids = array('L', imap(int, self.user['list_ids'].split(',')) if self.user['list_ids'] else ())
+    self.blocked_ids = map(int, self.user['blocked_ids'].split(',')) if self.user['blocked_ids'] else ()
+    self.list_ids = map(int, self.user['list_ids'].split(',')) if self.user['list_ids'] else ()
     self.track_words = map(string.lower, self.user['track_words'].split(',')) if self.user['track_words'] else ()
     self.user_at_screen_name = '@%s' % self.user['screen_name']
     self.api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
@@ -72,32 +71,32 @@ class StreamThread(StoppableThread):
         self.wait_time_now_index += 1
 
   def read(self, fp, size):
-    tmp = array('c')
+    s = ''
     data_len = 0
     timeout_sum = 0
     while data_len < size:
       self.check_stop()
       try:
         c = fp.read(1)
-      except SSLError:
+      except (SSLError, HTTPException), e:
         timeout_sum += MAX_CONNECT_TIMEOUT
         if timeout_sum > MAX_DATA_TIMEOUT:
-          raise Timeout
+          raise Timeout(e)
       else:
         if c:
-          tmp.append(c)
+          s += c
           data_len += 1
         else:
           raise Timeout
-    return tmp.tostring()
+    return s
 
   def read_line(self, fp):
-    s = array('c')
+    s = ''
     while True:
       char = self.read(fp, 1)
-      s.append(char)
+      s += char
       if char == '\n':
-        return s.tostring()
+        return s
 
   def read_data(self, fp):
     while True:
@@ -114,7 +113,7 @@ class StreamThread(StoppableThread):
       user_stream_handler = self.api.user_stream(timeout=MAX_CONNECT_TIMEOUT, track=self.user['track_words'])
       logger.debug('%s: connected.' % self.user['jid'])
 
-      self.friend_ids = array('L', self.read_data(user_stream_handler)['friends'])
+      self.friend_ids = self.read_data(user_stream_handler)['friends']
 
       if self.wait_time_now_index:
         self.wait_time_now_index = 0
@@ -131,7 +130,7 @@ class StreamThread(StoppableThread):
       logger.warn('User %s Streaming connect too often!' % self.user['jid'])
       if not self.wait_time_now_index:
         self.wait_time_now_index = 1
-    except (Timeout, twitter.Error, HTTPException), e:
+    except (Timeout, twitter.Error), e:
       logger.warn('connection failed: %s' % str(e))
 
   @debug
