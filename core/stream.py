@@ -1,6 +1,7 @@
 import threading
 import logging
 import string
+from httplib import HTTPException
 from array import array
 from itertools import imap
 from ssl import SSLError
@@ -130,8 +131,8 @@ class StreamThread(StoppableThread):
       logger.warn('User %s Streaming connect too often!' % self.user['jid'])
       if not self.wait_time_now_index:
         self.wait_time_now_index = 1
-    except (Timeout, twitter.Error), e:
-      logger.warn('connection failed: %s' % unicode(e))
+    except (Timeout, twitter.Error, HTTPException), e:
+      logger.warn('connection failed: %s' % str(e))
 
   @debug
   def process(self, data):
