@@ -1,10 +1,26 @@
+# Copyright 2011 ayanamist aka gh05tw01f
+# the program is distributed under the terms of the GNU General Public License
+# This file is part of TwiOtaku.
+#
+#    Foobar is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    TwiOtaku is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with TwiOtaku.  If not, see <http://www.gnu.org/licenses/>.
+
 import threading
 import logging
 import string
 from httplib import HTTPException
 from itertools import imap
 from ssl import SSLError
-
 
 import db
 import lib.myjson as json
@@ -53,7 +69,7 @@ class StreamThread(StoppableThread):
     self.track_words = map(string.lower, self.user['track_words'].split(',')) if self.user['track_words'] else ()
     self.user_at_screen_name = '@%s' % self.user['screen_name']
     self.api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
-                           access_token_key=self.user['access_key'], access_token_secret=self.user['access_secret'])
+      access_token_key=self.user['access_key'], access_token_secret=self.user['access_secret'])
 
   @threadstop
   def run(self):
@@ -160,7 +176,8 @@ class StreamThread(StoppableThread):
             self.list_ids.remove(data['target']['id'])
         elif event in ('favorite', 'unfavorite'):
           if data['source']['screen_name'] != self.user['screen_name']:
-            title = '%s %sd %s\'s tweet:' % (data['source']['screen_name'], data['event'], data['target']['screen_name'])
+            title = '%s %sd %s\'s tweet:' % (
+            data['source']['screen_name'], data['event'], data['target']['screen_name'])
             data['target_object']['user'] = data['target']
             data = twitter.Status(data['target_object'])
         elif event == 'user_update':
@@ -205,4 +222,5 @@ class StreamThread(StoppableThread):
           else:
             data = None
       if data:
-        self.queue.put(Job(self.user['jid'], data=data, allow_duplicate=False, always=False, title=title, xmpp_command=False))
+        self.queue.put(
+          Job(self.user['jid'], data=data, allow_duplicate=False, always=False, title=title, xmpp_command=False))

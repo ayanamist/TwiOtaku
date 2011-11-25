@@ -1,3 +1,20 @@
+# Copyright 2011 ayanamist aka gh05tw01f
+# the program is distributed under the terms of the GNU General Public License
+# This file is part of TwiOtaku.
+#
+#    Foobar is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    TwiOtaku is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with TwiOtaku.  If not, see <http://www.gnu.org/licenses/>.
+
 import time
 import logging
 import operator
@@ -44,7 +61,7 @@ class CronStart(StoppableThread):
   def running(self):
     cron_queue = Queue()
     for user in ifilter(lambda x: x['access_key'] and x['access_secret'] and (x['timeline'] & ~db.MODE_EVENT),
-                        db.get_all_users()):
+      db.get_all_users()):
       if time.time() - user['last_update'] > MAX_IDLE_TIME:
         # if it's a long time since last update, we should abandon these old data.
         logger.debug('%s: Exceed %s seconds, all results won\'t be shown.' % (user['jid'], MAX_IDLE_TIME))
@@ -98,12 +115,12 @@ class CronGetTimeline(StoppableThread):
         if user['list_user'] and user['list_name']:
           try:
             data = api.get_list_statuses(screen_name=user['list_user'], slug=user['list_name'],
-                                         since_id=user['last_list_id'])
+              since_id=user['last_list_id'])
           except twitter.NotFoundError:
             user['timeline'] &= ~db.MODE_LIST
             db.update_user(id=user['id'], timeline=user['timeline'])
             queue.put(Job(user['jid'],
-                          title='List %s/%s not exists, disable List update.' % (user['list_user'], user['list_name'])))
+              title='List %s/%s not exists, disable List update.' % (user['list_user'], user['list_name'])))
           else:
             if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
               db.update_user(jid=user_jid, last_list_id=data[0]['id_str'])
@@ -121,7 +138,8 @@ class CronGetTimeline(StoppableThread):
     def all_statuses_add(iterable):
       if not iterable:
         return
-      for x in ifilter(lambda x: x['id'] not in all_data_ids and x['user']['screen_name'] != user['screen_name'], iterable):
+      for x in ifilter(lambda x: x['id'] not in all_data_ids and x['user']['screen_name'] != user['screen_name'],
+        iterable):
         all_data_ids.append(x['id'])
         all_data.append(x)
 
@@ -133,14 +151,15 @@ class CronGetTimeline(StoppableThread):
       db.update_user(id=user['id'], last_update=int(time.time()))
 
       api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY,
-                        consumer_secret=OAUTH_CONSUMER_SECRET,
-                        access_token_key=user['access_key'],
-                        access_token_secret=user['access_secret'])
+        consumer_secret=OAUTH_CONSUMER_SECRET,
+        access_token_key=user['access_key'],
+        access_token_secret=user['access_secret'])
       user_at_screen_name = '@%s' % user['screen_name']
 
       data = fetch_dm()
       if data:
-        queue.put(Job(user_jid, data=data, title='Direct Message:', allow_duplicate=False, always=False, xmpp_command=False))
+        queue.put(
+          Job(user_jid, data=data, title='Direct Message:', allow_duplicate=False, always=False, xmpp_command=False))
       all_data = list()
       all_data_ids = list()
       all_statuses_add(fetch_list())
@@ -149,7 +168,7 @@ class CronGetTimeline(StoppableThread):
       all_statuses_add(fetch_search())
 
       for data in ifilter(lambda x: user_at_screen_name in x['text'] and x['user']['screen_name'] != user['screen_name']
-                          , all_data):
+        , all_data):
         retweeted_status = data.get('retweeted_status')
         if retweeted_status and retweeted_status.get('in_reply_to_status_id_str'):
           data['retweeted_status']['in_reply_to_status'] = None
@@ -157,7 +176,8 @@ class CronGetTimeline(StoppableThread):
           data['in_reply_to_status'] = None
 
       if all_data:
-        queue.put(Job(user_jid, data=all_data.sort(key=operator.itemgetter('id')), allow_duplicate=False, always=False, reverse=False, xmpp_command=False))
+        queue.put(Job(user_jid, data=all_data.sort(key=operator.itemgetter('id')), allow_duplicate=False, always=False,
+          reverse=False, xmpp_command=False))
 
       self.queue.task_done()
 
@@ -183,7 +203,7 @@ class CronMisc(StoppableThread):
   def running(self):
     for user in ifilter(lambda x: x['access_key'] and x['access_secret'], db.get_all_users()):
       self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
-                              access_token_key=user['access_key'], access_token_secret=user['access_secret'])
+        access_token_key=user['access_key'], access_token_secret=user['access_secret'])
       self._now = int(time.time())
       self._thread = self._xmpp.stream_threads.get(user['jid'])
       self.check_stop()

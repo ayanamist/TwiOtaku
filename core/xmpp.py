@@ -1,3 +1,20 @@
+# Copyright 2011 ayanamist aka gh05tw01f
+# the program is distributed under the terms of the GNU General Public License
+# This file is part of TwiOtaku.
+#
+#    Foobar is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    TwiOtaku is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with TwiOtaku.  If not, see <http://www.gnu.org/licenses/>.
+
 import random
 import time
 import operator
@@ -51,8 +68,8 @@ class XMPPMessageHandler(object):
     if self._user:
       self._util = Util(self._user)
       self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
-                              access_token_key=self._user.get('access_key'),
-                              access_token_secret=self._user.get('access_secret'))
+        access_token_key=self._user.get('access_key'),
+        access_token_secret=self._user.get('access_secret'))
     try:
       result = self.parse_command(msg['body'])
     except Exception, e:
@@ -103,8 +120,8 @@ class XMPPMessageHandler(object):
       access_token = dict(parse_qsl(resp))
       if 'oauth_token' in access_token:
         db.update_user(self._user['id'], access_key=access_token['oauth_token'],
-                       access_secret=access_token['oauth_token_secret'],
-                       screen_name=access_token['screen_name'])
+          access_secret=access_token['oauth_token_secret'],
+          screen_name=access_token['screen_name'])
         self._xmpp.add_online_user(self._bare_jid)
         return u'Associated you with @%s.' % access_token['screen_name']
     return u'Invalid PIN code.'
@@ -187,8 +204,8 @@ class XMPPMessageHandler(object):
       for l in lists:
         texts.append(u'%s %s: %s' %
                      (l['slug'] if l['user']['screen_name'] == self._user['screen_name'] else u'%s/%s' % (
-                     l['user']['screen_name'],
-                     l['slug']), l['mode'], l['description']))
+                       l['user']['screen_name'],
+                       l['slug']), l['mode'], l['description']))
       return u'Subscribing Lists:\n' + '\n'.join(texts)
     elif length == 1 or (length == 2 and args[1].isdigit()):
       try:
@@ -457,7 +474,7 @@ class XMPPMessageHandler(object):
         all_dms.extend(self._api.get_sent_direct_messages(max_id=long_id, count=50))
         for dm in ifilter(lambda dm: dm['recipient_screen_name'] == self._user['screen_name'] or
                                      dm['sender_screen_name'] == self._user['screen_name'],
-                          sorted(all_dms, key=operator.itemgetter('id'), reverse=True)):
+          sorted(all_dms, key=operator.itemgetter('id'), reverse=True)):
           data.insert(0, dm)
           if len(data) >= MAX_CONVERSATION_NUM:
             break
@@ -611,7 +628,7 @@ class XMPPMessageHandler(object):
       self._user['list_user'] = response['user']['screen_name']
       self._user['list_name'] = response['slug']
       db.update_user(id=self._user['id'], list_user=self._user['list_user'], list_name=self._user['list_name'],
-                     list_ids=None, list_ids_last_update=0)
+        list_ids=None, list_ids_last_update=0)
       self._xmpp.stream_threads[self._bare_jid].user_changed()
     if self._user['list_user'] and self._user['list_name']:
       return u'List update is assigned for %s/%s.' % (self._user['list_user'], self._user['list_name'])
