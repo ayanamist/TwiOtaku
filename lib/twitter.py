@@ -4,11 +4,7 @@ import urllib
 import urlparse
 from ssl import SSLError
 
-try:
-  import ujson as json
-except ImportError:
-  import json
-
+import lib.myjson as json
 import oauth
 import urlfetch
 import db

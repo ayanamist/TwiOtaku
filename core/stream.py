@@ -5,12 +5,9 @@ from httplib import HTTPException
 from itertools import imap
 from ssl import SSLError
 
-try:
-  import ujson as json
-except ImportError:
-  import json
 
 import db
+import lib.myjson as json
 from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
 from worker import Job
 from lib import twitter

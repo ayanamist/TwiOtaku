@@ -3,18 +3,9 @@ import logging
 from time import mktime
 from email.utils import parsedate
 
-try:
-  import ujson as json
-except ImportError:
-  import json
-
 import apsw
 
-try:
-  import ujson as json
-except ImportError:
-  import json
-
+import lib.myjson as json
 from config import DATABASE_DIR
 
 RETRY_TIMEOUT = 3000 # add a retry timeout for busy handling
