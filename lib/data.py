@@ -1,13 +1,12 @@
 # -*- encoding: utf-8 -*-
 from operator import itemgetter
 from itertools import ifilter, imap
-from bisect import bisect
-from array import array
 from time import mktime, localtime, strftime
 from email.utils import parsedate
 
 import db
 import twitter
+from urlwrapper import URLUnwrapper
 from template import Template
 from number import alpha_to_digit, digit_to_alpha
 from config import MAX_ID_LIST_NUM, DEFAULT_MESSAGE_TEMPLATE, DEFAULT_DATE_FORMAT, OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
@@ -16,34 +15,6 @@ short_id_pattern = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
 class DuplicateError(Exception):
   pass
-
-
-class ostring(object):
-  def __init__(self, s):
-    self.original_s = s
-    self._str_list = list()
-    self._str_indices = array('H', [0])
-
-  def __unicode__(self):
-    if self._str_list:
-      result = list()
-      for i, s in enumerate(self._str_list):
-        result.append(self.original_s[self._str_indices[i * 2]:self._str_indices[i * 2 + 1]])
-        result.append(s)
-      result.append(self.original_s[self._str_indices[-1]:])
-      return u''.join(result)
-    else:
-      return unicode(self.original_s)
-
-  def __str__(self):
-    return unicode(self).encode('UTF8')
-
-  def replace_indices(self, start, stop, replace_text):
-    i = bisect(self._str_indices, start)
-    self._str_indices.insert(i, start)
-    self._str_indices.insert(i + 1, stop)
-    self._str_list.insert(i // 2, replace_text)
-    return self
 
 
 class Util(object):
@@ -57,7 +28,7 @@ class Util(object):
   def parse_text(self, data):
     def parse_entities(data):
       if 'entities' in data:
-        tmp = ostring(data['text'])
+        tmp = URLUnwrapper(data['text'])
         for url in ifilter(itemgetter('expanded_url'), data['entities'].get('urls', tuple())):
           tmp.replace_indices(url['indices'][0], url['indices'][1], url['expanded_url'])
         for media in ifilter(itemgetter('media_url'), data['entities'].get('media', tuple())):
