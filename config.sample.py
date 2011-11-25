@@ -5,6 +5,7 @@ OAUTH_CONSUMER_KEY = 'yourkey'
 OAUTH_CONSUMER_SECRET = 'yoursecret'
 MAX_ID_LIST_NUM = 702
 MAX_CONVERSATION_NUM = 4
+MAX_STATUS_CACHE_TIME = 604800 # 7 days
 DATABASE_TYPE = 'sqlite' # only sqlite now.
 DATABASE_DIR = '/home/dotcloud/data'
 ADMIN_USERS = (

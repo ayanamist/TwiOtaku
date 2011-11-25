@@ -5,14 +5,13 @@ from itertools import imap, ifilter
 from Queue import Queue
 
 import db
-from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET
+from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, MAX_STATUS_CACHE_TIME
 from worker import Job
 from lib import twitter
 from lib.thread import StoppableThread, threadstop
 from lib.logger import silent
 
 MAX_IDLE_TIME = 120
-MAX_STATUS_CACHE_TIME = 604800 # 7 days
 CRON_INTERVAL = 60
 CRON_BLOCKED_IDS_INTERVAL = 3600
 CRON_LIST_IDS_INTERVAL = 3600
@@ -78,6 +77,7 @@ class CronGetTimeline(StoppableThread):
 
     @silent
     def fetch_mention():
+      # TODO: use activity api instead of this one. add event support
       if user_timeline & db.MODE_MENTION:
         data = api.get_mentions(since_id=user['last_mention_id'])
         if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
