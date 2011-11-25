@@ -169,8 +169,8 @@ for t in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'"):
     i = tables.index(t)
   except ValueError:
     i = -1
-  if t >= 0:
-    del(tables[t])
+  if i >= 0:
+    del(tables[i])
 for v in tables:
   path = _sql_dir + os.sep + v + '.sql'
   if os.path.exists(path):
