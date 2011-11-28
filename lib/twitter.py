@@ -407,7 +407,7 @@ class Api(object):
     else:
       return urllib.urlencode(dict([(k, self._encode(v)) for k, v in post_data.items()]))
 
-  def _check_for_twitter_data_error(self, response):
+  def _get_twitter_data_error(self, response):
     if response.data is not None:
       try:
         data = json.loads(response.data)
@@ -419,10 +419,9 @@ class Api(object):
           return data['error']
     return ''
 
-  def _check_for_twitter_error(self, response):
-    error_message = self._check_for_twitter_data_error(response)
+  def _check_for_twitter_code_error(self, response, error_message=''):
     if response.status == httplib.OK:
-      return response
+      pass
     elif response.status == httplib.BAD_REQUEST:
       raise BadRequestError(error_message)
     elif response.status == httplib.UNAUTHORIZED:
@@ -469,14 +468,12 @@ class Api(object):
         timeout=timeout)
     except (SSLError, httplib.BadStatusLine, urlfetch.Error), e:
       raise NetworkError(str(e))
-    else:
-      response = self._check_for_twitter_error(response)
     return response
 
   def _fetch_url(self, url, post_data=None, parameters=None, http_method='GET'):
     r = self._fetch_url_async(url, post_data=post_data, parameters=parameters, http_method=http_method)
     r.data = r.read()
-    self._check_for_twitter_data_error(r)
+    self._check_for_twitter_code_error(r, self._get_twitter_data_error(r))
     return r.data
 
   def user_stream(self, timeout, reply_all=False, track=None):
@@ -486,4 +483,6 @@ class Api(object):
       parameters['replies'] = 'all'
     if track:
       parameters['track'] = ','.join(track) if isinstance(track, list) else track
-    return self._fetch_url_async(url=url, parameters=parameters, timeout=timeout)
+    response = self._fetch_url_async(url=url, parameters=parameters, timeout=timeout)
+    self._check_for_twitter_code_error(response)
+    return response
