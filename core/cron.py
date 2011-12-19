@@ -26,7 +26,7 @@ from config import OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, MAX_STATUS_CACHE_T
 from worker import Job
 from lib import twitter
 from lib.thread import StoppableThread, threadstop
-from lib.logger import silent
+from lib.logger import silent, debug
 
 MAX_IDLE_TIME = 120
 CRON_INTERVAL = 60
@@ -214,7 +214,7 @@ class CronMisc(StoppableThread):
     self.check_stop()
     self.clean_expired_cache()
 
-  @silent
+  @debug
   def verify_credential(self, user):
     if self._now - user['last_verified'] > CRON_VERIFY_CREDENTIAL_INTERVAL:
       logger.debug('%s: check credential.' % user['jid'])
@@ -237,7 +237,7 @@ class CronMisc(StoppableThread):
     else:
       return True
 
-  @silent
+  @debug
   def refresh_blocked_ids(self, user):
     if self._now - user['blocked_ids_last_update'] > CRON_BLOCKED_IDS_INTERVAL:
       logger.debug('%s: refresh blocked ids.' % user['jid'])
@@ -249,7 +249,7 @@ class CronMisc(StoppableThread):
       else:
         db.update_user(id=user['id'], blocked_ids_last_update=self._now)
 
-  @silent
+  @debug
   def refresh_list_ids(self, user):
     if user['list_user'] and user['list_name'] and self._now - user['list_ids_last_update'] > CRON_LIST_IDS_INTERVAL:
       logger.debug('%s: refresh list ids.' % user['jid'])

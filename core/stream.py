@@ -180,7 +180,19 @@ class StreamThread(StoppableThread):
             data['source']['screen_name'], data['event'], data['target']['screen_name'])
             data['target_object']['user'] = data['target']
             data = twitter.Status(data['target_object'])
+        elif event == 'list_created':
+          pass
+        elif event == 'list_updated':
+          pass
+        elif event == 'list_destroyed':
+          pass
+        elif event == 'list_user_subscribed':
+          pass
+        elif event == 'list_user_unsubscribed':
+          pass
         elif event == 'user_update':
+          pass
+        elif event == 'access_revoked':
           pass
         else:
           logger.error('Unmatched event %s.' % event)
