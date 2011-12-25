@@ -64,9 +64,9 @@ class StreamThread(StoppableThread):
   def refresh_user(self):
     logger.debug('%s: refresh user.' % self.bare_jid)
     self.user = db.get_user_from_jid(self.bare_jid)
-    self.blocked_ids = map(int, self.user['blocked_ids'].split(',')) if self.user['blocked_ids'] else ()
-    self.list_ids = map(int, self.user['list_ids'].split(',')) if self.user['list_ids'] else ()
-    self.track_words = map(string.lower, self.user['track_words'].split(',')) if self.user['track_words'] else ()
+    self.blocked_ids = map(int, self.user['blocked_ids'].split(',')) if self.user['blocked_ids'] else []
+    self.list_ids = map(int, self.user['list_ids'].split(',')) if self.user['list_ids'] else []
+    self.track_words = map(string.lower, self.user['track_words'].split(',')) if self.user['track_words'] else []
     self.user_at_screen_name = '@%s' % self.user['screen_name']
     self.api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
       access_token_key=self.user['access_key'], access_token_secret=self.user['access_secret'])
