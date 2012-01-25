@@ -19,9 +19,9 @@ import threading
 import time
 import functools
 
-__sleep_interval_seconds = 1
+_sleep_interval_seconds = 1
 
-class ThreadStop(BaseException):
+class ThreadStop(Exception):
     pass
 
 
@@ -42,8 +42,8 @@ class StoppableThread(threading.Thread):
         i = 0
         while i < secs:
             self.check_stop()
-            time.sleep(__sleep_interval_seconds)
-            i += __sleep_interval_seconds
+            time.sleep(_sleep_interval_seconds)
+            i += _sleep_interval_seconds
 
     def check_stop(self):
         if self.is_stopped():

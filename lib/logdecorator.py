@@ -15,26 +15,22 @@
 #    You should have received a copy of the GNU General Public License
 #    along with TwiOtaku.  If not, see <http://www.gnu.org/licenses/>.
 
+import functools
 import logging
-import traceback
-from functools import wraps
-from StringIO import StringIO
 
 def debug(f):
-    @wraps(f)
+    @functools.wraps(f)
     def wrap(*args, **kwds):
         try:
             return f(*args, **kwds)
-        except Exception:
-            err = StringIO()
-            traceback.print_exc(file=err)
-            logging.error(err.getvalue())
+        except Exception, e:
+            logging.exception(str(e))
 
     return wrap
 
 
 def silent(f):
-    @wraps(f)
+    @functools.wraps(f)
     def wrap(*args, **kwds):
         try:
             return f(*args, **kwds)

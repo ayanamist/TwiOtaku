@@ -387,7 +387,7 @@ class Request(dict):
                     # Get the parameters from the header.
                     header_params = cls._split_header(auth_header)
                     parameters.update(header_params)
-                except BaseException:
+                except Exception:
                     raise Error('Unable to parse OAuth parameters from '
                                 'Authorization header.')
 

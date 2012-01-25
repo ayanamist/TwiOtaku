@@ -95,7 +95,7 @@ class Util(object):
             if not single['in_reply_to_status']:
                 try:
                     single['in_reply_to_status'] = self._api.get_status(single['in_reply_to_status_id_str'])
-                except BaseException:
+                except twitter.Error:
                     pass
             single['in_reply_to_status'] = self.make_namespace(single['in_reply_to_status'])
         self.allow_duplicate = old_allow_duplicate
