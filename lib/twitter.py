@@ -248,11 +248,11 @@ class Api(object):
 
   def create_favorite(self, id):
     url = '%s/favorites/create/%s.json' % (self.base_url, str(id))
-    return CachedStatus(self._fetch_url(url, post_data={'id': id}))
+    return Status(self._fetch_url(url, post_data={'id': id}))
 
   def destroy_favorite(self, id):
     url = '%s/favorites/destroy/%s.json' % (self.base_url, str(id))
-    return CachedStatus(self._fetch_url(url, post_data={'id': id}))
+    return Status(self._fetch_url(url, post_data={'id': id}))
 
   def get_favorites(self, screen_name=None, page=None, include_entities=True):
     url = '%s/favorites.json' % self.base_url

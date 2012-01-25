@@ -24,7 +24,7 @@ import sleekxmpp
 
 import db
 from config import XMPP_USERNAME, XMPP_PASSWORD
-from core.xmpp import XMPPMessageHandler
+from core.command import XMPPMessageHandler
 from core.cron import CronStart, CronMisc
 from core.stream import StreamThread
 from core.worker import Worker
