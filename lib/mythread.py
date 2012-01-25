@@ -21,7 +21,7 @@ import functools
 
 _sleep_interval_seconds = 1
 
-class ThreadStop(Exception):
+class ThreadStop(BaseException):
     pass
 
 
