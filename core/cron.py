@@ -36,7 +36,7 @@ CRON_VERIFY_CREDENTIAL_INTERVAL = 3600
 logger = logging.getLogger('cron')
 
 class CronStart(mythread.StoppableThread):
-    _pool_size = db.get_users_count() // 20 + 1
+    __pool_size = db.get_users_count() // 20 + 1
 
     def __init__(self, queues):
         super(CronStart, self).__init__()
@@ -48,8 +48,8 @@ class CronStart(mythread.StoppableThread):
             last = time.time()
             self.running()
             now = time.time()
-            if now - last >= CRON_INTERVAL and self._pool_size <= db.get_users_count():
-                self._pool_size += 1
+            if now - last >= CRON_INTERVAL and self.__pool_size <= db.get_users_count():
+                self.__pool_size += 1
             else:
                 remain = CRON_INTERVAL - (now - last)
                 logger.debug('Sleep %.2f seconds.' % remain)
@@ -68,7 +68,7 @@ class CronStart(mythread.StoppableThread):
                 else:
                     queue = self.queues[user['jid']]
                 cron_queue.put((queue, user))
-        for _ in range(self._pool_size):
+        for _ in range(self.__pool_size):
             t = CronGetTimeline(cron_queue)
             t.start()
         cron_queue.join()
@@ -77,7 +77,7 @@ class CronStart(mythread.StoppableThread):
 class CronGetTimeline(mythread.StoppableThread):
     def __init__(self, queue):
         super(CronGetTimeline, self).__init__()
-        self.queue = queue
+        self.__queue = queue
 
     def run(self):
         @logdecorator.silent
@@ -144,8 +144,8 @@ class CronGetTimeline(mythread.StoppableThread):
                     all_data.append(x)
 
 
-        while not self.queue.empty():
-            queue, user = self.queue.get()
+        while not self.__queue.empty():
+            queue, user = self.__queue.get()
             user_jid = user['jid']
             user_timeline = user['timeline']
             db.update_user(id=user['id'], last_update=int(time.time()))
@@ -179,14 +179,14 @@ class CronGetTimeline(mythread.StoppableThread):
                 queue.put(job.Job(user_jid, data=all_data.sort(key=operator.itemgetter('id')), allow_duplicate=False,
                     always=False, reverse=False, xmpp_command=False))
 
-            self.queue.task_done()
+            self.__queue.task_done()
 
 
 class CronMisc(mythread.StoppableThread):
     # this cron check credentials, list ids, blocked_ids
     def __init__(self, xmpp):
         super(CronMisc, self).__init__()
-        self._xmpp = xmpp
+        self.__xmpp = xmpp
 
     @mythread.monitorstop
     def run(self):
@@ -203,12 +203,12 @@ class CronMisc(mythread.StoppableThread):
     def running(self):
         for user in db.get_all_users():
             if user['access_key'] and user['access_secret']:
-                self._api = twitter.Api(consumer_key=config.OAUTH_CONSUMER_KEY,
+                self.__api = twitter.Api(consumer_key=config.OAUTH_CONSUMER_KEY,
                     consumer_secret=config.OAUTH_CONSUMER_SECRET,
                     access_token_key=user['access_key'],
                     access_token_secret=user['access_secret'])
-                self._now = int(time.time())
-                self._thread = self._xmpp.stream_threads.get(user['jid'])
+                self.__now = int(time.time())
+                self.__thread = self.__xmpp.stream_threads.get(user['jid'])
                 self.check_stop()
                 if self.verify_credential(user):
                     self.check_stop()
@@ -219,15 +219,15 @@ class CronMisc(mythread.StoppableThread):
 
     @logdecorator.debug
     def verify_credential(self, user):
-        if self._now - user['last_verified'] > CRON_VERIFY_CREDENTIAL_INTERVAL:
+        if self.__now - user['last_verified'] > CRON_VERIFY_CREDENTIAL_INTERVAL:
             logger.debug('%s: check credential.' % user['jid'])
             try:
-                twitter_user = self._api.verify_credentials()
+                twitter_user = self.__api.verify_credentials()
             except twitter.UnauthorizedError:
                 logger.debug('%s: credential is invalid.' % user['jid'])
                 db.update_user(access_key=None, access_secret=None)
-                if self._thread:
-                    self._thread.stop()
+                if self.__thread:
+                    self.__thread.stop()
                     return False
             else:
                 if user['screen_name'] != twitter_user['screen_name']:
@@ -236,41 +236,41 @@ class CronMisc(mythread.StoppableThread):
                     db.update_user(id=user['id'], screen_name=twitter_user['screen_name'])
                 return True
             finally:
-                db.update_user(id=user['id'], last_verified=self._now)
+                db.update_user(id=user['id'], last_verified=self.__now)
         else:
             return True
 
     @logdecorator.debug
     def refresh_blocked_ids(self, user):
-        if self._now - user['blocked_ids_last_update'] > CRON_BLOCKED_IDS_INTERVAL:
+        if self.__now - user['blocked_ids_last_update'] > CRON_BLOCKED_IDS_INTERVAL:
             logger.debug('%s: refresh blocked ids.' % user['jid'])
-            blocked_ids = self._api.get_blocking_ids(stringify_ids=True)
+            blocked_ids = self.__api.get_blocking_ids(stringify_ids=True)
             if (blocked_ids and user['blocked_ids'] is None) or\
                (set(blocked_ids) - set(user['blocked_ids'].split(',') if user['blocked_ids'] else tuple())):
-                db.update_user(id=user['id'], blocked_ids=','.join(blocked_ids), blocked_ids_last_update=self._now)
-                self._thread.user_changed()
+                db.update_user(id=user['id'], blocked_ids=','.join(blocked_ids), blocked_ids_last_update=self.__now)
+                self.__thread.user_changed()
             else:
-                db.update_user(id=user['id'], blocked_ids_last_update=self._now)
+                db.update_user(id=user['id'], blocked_ids_last_update=self.__now)
 
     @logdecorator.debug
     def refresh_list_ids(self, user):
-        if user['list_user'] and user['list_name'] and self._now - user[
-                                                                   'list_ids_last_update'] > CRON_LIST_IDS_INTERVAL:
+        if user['list_user'] and user['list_name'] and self.__now - user[
+                                                                    'list_ids_last_update'] > CRON_LIST_IDS_INTERVAL:
             logger.debug('%s: refresh list ids.' % user['jid'])
             cursor = -1
             list_ids = set()
             while cursor:
                 self.check_stop()
-                result = self._api.get_list_members(user['list_user'], user['list_name'], cursor=cursor)
+                result = self.__api.get_list_members(user['list_user'], user['list_name'], cursor=cursor)
                 for x in result['users']:
                     list_ids.add(x['id_str'])
                 cursor = result['next_cursor']
             user = db.get_user_from_jid(user['jid'])
             if (list_ids and user['list_ids'] is None) or (list_ids ^ set(user['list_ids'].split(','))):
-                db.update_user(id=user['id'], list_ids=','.join(list_ids), list_ids_last_update=self._now)
-                self._thread.user_changed()
+                db.update_user(id=user['id'], list_ids=','.join(list_ids), list_ids_last_update=self.__now)
+                self.__thread.user_changed()
             else:
-                db.update_user(id=user['id'], list_ids_last_update=self._now)
+                db.update_user(id=user['id'], list_ids_last_update=self.__now)
 
     @logdecorator.silent
     def clean_expired_cache(self):

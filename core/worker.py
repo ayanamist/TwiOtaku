@@ -24,14 +24,14 @@ from lib import util
 class Worker(mythread.StoppableThread):
     def __init__(self, xmpp, queue):
         super(Worker, self).__init__()
-        self.xmpp = xmpp
-        self.queue = queue
+        self.__xmpp = xmpp
+        self.__queue = queue
 
     @mythread.monitorstop
     def run(self):
         while True:
-            item = self.queue.get()
-            self.queue.task_done()
+            item = self.__queue.get()
+            self.__queue.task_done()
             self.check_stop()
             if item is not None:
                 self.running(item)
@@ -40,20 +40,20 @@ class Worker(mythread.StoppableThread):
     def running(self, item):
         if not isinstance(item, job.Job):
             raise TypeError(str(item))
-        bare_jid = self.xmpp.getjidbare(item.jid).lower()
+        bare_jid = self.__xmpp.getjidbare(item.jid).lower()
         user = db.get_user_from_jid(bare_jid)
-        if self.xmpp.get_presence(bare_jid) or item.always or user['always']:
+        if self.__xmpp.get_presence(bare_jid) or item.always or user['always']:
             if item.data is None:
-                self.xmpp.send_message(item.jid, item.title)
+                self.__xmpp.send_message(item.jid, item.title)
             else:
-                _util = util.Util(user)
-                _util.allow_duplicate = item.allow_duplicate
-                result = _util.parse_data(item.data, reverse=item.reverse)
+                self.__util = util.Util(user)
+                self.__util.allow_duplicate = item.allow_duplicate
+                result = self.__util.parse_data(item.data, reverse=item.reverse)
                 if result or (not result and item.title and item.xmpp_command):
                     if item.title:
                         msg = u'%s\n%s' % (item.title, '\n'.join(result) if type(result) is list else result)
-                        self.xmpp.send_message(item.jid, msg)
+                        self.__xmpp.send_message(item.jid, msg)
                     else:
                         for m in result:
-                            self.xmpp.send_message(item.jid, m)
+                            self.__xmpp.send_message(item.jid, m)
           

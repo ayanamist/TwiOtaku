@@ -80,17 +80,18 @@ class NetworkError(Error):
 
 
 class Status(dict):
-  def __call__(self):
-    if 'retweeted_status' in self:
-      self['retweeted_status'] = CachedStatus(self['retweeted_status'])
+    def __call__(self):
+        if 'retweeted_status' in self:
+            self['retweeted_status'] = CachedStatus(self['retweeted_status'])
 
 
 class CachedStatus(Status):
     def __call__(self):
         super(CachedStatus, self).__call__()
+        id_str = self.get('id_str')
         timestamp = email.utils.parsedate(self.get('created_at'))
-        if timestamp:
-            db.add_status(self, int(time.mktime(timestamp)))
+        if id_str and timestamp:
+            db.add_status(id_str, myjson.dumps(self), int(time.mktime(timestamp)), )
 
 
 class DirectMessage(dict):

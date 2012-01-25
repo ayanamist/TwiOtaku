@@ -24,8 +24,8 @@ import config
 import db
 from lib import myjson
 from lib import job
-from lib import twitter
 from lib import mythread
+from lib import twitter
 from lib import logdecorator
 
 MAX_CONNECT_TIMEOUT = 5
@@ -42,26 +42,26 @@ class Timeout(Exception):
 class StreamThread(mythread.StoppableThread):
     def __init__(self, queue, bare_jid):
         super(StreamThread, self).__init__()
-        self._user_changed = threading.Event()
-        self.bare_jid = bare_jid
-        self.queue = queue
+        self.__user_changed = threading.Event()
+        self.__bare_jid = bare_jid
+        self.__queue = queue
         self.refresh_user()
 
     def user_changed(self):
         self.refresh_user()
-        self._user_changed.set()
+        self.__user_changed.set()
 
     def is_user_changed(self):
-        return self._user_changed.is_set()
+        return self.__user_changed.is_set()
 
     def check_user_changed(self):
         if self.is_user_changed():
-            self._user_changed = threading.Event()
-            self.user = db.get_user_from_jid(self.bare_jid)
+            self.__user_changed = threading.Event()
+            self.user = db.get_user_from_jid(self.__bare_jid)
 
     def refresh_user(self):
-        logger.debug('%s: refresh user.' % self.bare_jid)
-        self.user = db.get_user_from_jid(self.bare_jid)
+        logger.debug('%s: refresh user.' % self.__bare_jid)
+        self.user = db.get_user_from_jid(self.__bare_jid)
 
         self.blocked_ids = list()
         if self.user['blocked_ids']:
@@ -219,7 +219,7 @@ class StreamThread(mythread.StoppableThread):
                 _job = job.Job(self.user['jid'], title=title, always=False, xmpp_command=False)
                 if isinstance(data, twitter.Status):
                     _job.data = data
-                self.queue.put(_job)
+                self.__queue.put(_job)
         elif 'delete' in data:
             pass
         else:
@@ -253,5 +253,5 @@ class StreamThread(mythread.StoppableThread):
                     else:
                         data = None
             if data:
-                self.queue.put(job.Job(self.user['jid'], data=data, allow_duplicate=False, always=False, title=title,
+                self.__queue.put(job.Job(self.user['jid'], data=data, allow_duplicate=False, always=False, title=title,
                     xmpp_command=False))

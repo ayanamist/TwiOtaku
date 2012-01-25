@@ -38,9 +38,11 @@ class Environment(jinja2.sandbox.ImmutableSandboxedEnvironment):
     def is_safe_callable(self, _):
         return False
 
-env = Environment(bytecode_cache=MemoryBytecodeCache())
-env.globals = dict()
 
 class Template(jinja2.Template):
     def __new__(cls, source):
         return env.from_string(source)
+
+env = Environment(bytecode_cache=MemoryBytecodeCache())
+env.globals = dict()
+

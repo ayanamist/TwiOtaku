@@ -18,10 +18,10 @@
 import logging
 import os
 
+# TODO: use pysqlite instead of apsw
 import apsw
 
 import config
-from lib import myjson
 
 
 RETRY_TIMEOUT = 3000 # add a retry timeout for busy handling
@@ -140,10 +140,9 @@ def get_status(id_str):
         return data
 
 
-def add_status(data, timestamp):
+def add_status(id_str, data_str, timestamp):
     global _status_queue
-    assert isinstance(timestamp, int)
-    _status_queue.append((data['id_str'], timestamp, myjson.dumps(data)))
+    _status_queue.append((id_str, timestamp, data_str))
     flush_status()
 
 

@@ -20,13 +20,13 @@ import Queue
 
 import sleekxmpp
 
+import config
 import db
-from config import XMPP_USERNAME, XMPP_PASSWORD
-from core.command import XMPPMessageHandler
-from core.cron import CronStart, CronMisc
-from core.stream import StreamThread
-from core.worker import Worker
-from lib.logdecorator import debug
+from core import command
+from core import cron
+from core import stream
+from core import worker
+from lib import logdecorator
 
 logger = logging.getLogger('xmpp')
 
@@ -40,7 +40,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     first_run = True
 
     def __init__(self):
-        sleekxmpp.ClientXMPP.__init__(self, XMPP_USERNAME, XMPP_PASSWORD)
+        sleekxmpp.ClientXMPP.__init__(self, config.XMPP_USERNAME, config.XMPP_PASSWORD)
         self.add_event_handler('session_start', self.on_start)
         self.add_event_handler('message', self.on_message)
         self.add_event_handler('changed_status', self.on_changed_status)
@@ -55,10 +55,10 @@ class XMPPBot(sleekxmpp.ClientXMPP):
             self.start_cron()
         self.send_presence()
 
-    @debug
+    @logdecorator.debug
     def on_message(self, msg):
         if msg['type'] == 'chat':
-            XMPPMessageHandler(self).process(msg)
+            command.XMPPMessageHandler(self).process(msg)
         elif msg['type'] == 'error':
             if msg['error']['type'] == 'cancel':
                 # we can do nothing because if we resend this message, some of them will always fail.
@@ -113,7 +113,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
         else:
             logger.debug('%s: start worker.' % bare_jid)
             q = self.worker_queues[bare_jid] = Queue.Queue()
-            w = self.worker_threads[bare_jid] = Worker(self, q)
+            w = self.worker_threads[bare_jid] = worker.Worker(self, q)
             w.start()
 
     def start_workers(self):
@@ -138,9 +138,9 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
     def start_cron(self):
         logger.debug('start cron.')
-        self.cron_thread = CronStart(self.worker_queues)
+        self.cron_thread = cron.CronStart(self.worker_queues)
         self.cron_thread.start()
-        self.cron_misc_thread = CronMisc(self)
+        self.cron_misc_thread = cron.CronMisc(self)
         self.cron_misc_thread.start()
 
     def stop_cron(self):
@@ -156,7 +156,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
             t.user_changed()
         else:
             logger.debug('%s: start user streaming.' % bare_jid)
-            t = StreamThread(self.worker_queues[bare_jid], bare_jid)
+            t = stream.StreamThread(self.worker_queues[bare_jid], bare_jid)
             t.start()
             self.stream_threads[bare_jid] = t
 
