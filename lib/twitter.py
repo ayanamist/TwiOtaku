@@ -139,7 +139,7 @@ class Api(object):
     if since_id:
       parameters['since_id'] = since_id
     url = '%s/statuses/home_timeline.json' % self.base_url
-    return map(CachedStatus, self._fetch_url(url, parameters=parameters))
+    return [CachedStatus(x) for x in self._fetch_url(url, parameters=parameters)]
 
   def get_user_timeline(self, user_id=None, screen_name=None, since_id=None, max_id=None, count=None,
                         page=None, include_rts=True, include_entities=True):
@@ -157,7 +157,7 @@ class Api(object):
       parameters['count'] = int(count)
     if page:
       parameters['page'] = int(page)
-    return map(CachedStatus, self._fetch_url(url, parameters=parameters))
+    return [CachedStatus(x) for x in self._fetch_url(url, parameters=parameters)]
 
   def get_related_results(self, id, include_entities=True):
     url = '%s/related_results/show/%s.json' % (self.base_url, str(id))
@@ -202,7 +202,7 @@ class Api(object):
       parameters['max_id'] = max_id
     if count:
       parameters['count'] = int(count)
-    return map(DirectMessage, self._fetch_url(url, parameters=parameters))
+    return [DirectMessage(x) for x in self._fetch_url(url, parameters=parameters)]
 
   def get_sent_direct_messages(self, since_id=None, page=None, include_entities=True, max_id=None, count=None):
     url = '%s/direct_messages/sent.json' % self.base_url
@@ -215,7 +215,7 @@ class Api(object):
       parameters['max_id'] = max_id
     if count:
       parameters['count'] = int(count)
-    return map(DirectMessage, self._fetch_url(url, parameters=parameters))
+    return [DirectMessage(x) for x in self._fetch_url(url, parameters=parameters)]
 
   def get_direct_message(self, id, include_entities=True):
     data = self.get_direct_messages(max_id=id, count=1, include_entities=int(bool(include_entities)))
@@ -261,7 +261,7 @@ class Api(object):
       parameters['page'] = int(page)
     if screen_name:
       parameters['id'] = screen_name
-    return map(CachedStatus, self._fetch_url(url, parameters=parameters))
+    return [CachedStatus(x) for x in self._fetch_url(url, parameters=parameters)]
 
   def get_mentions(self, since_id=None, max_id=None, page=None, include_entities=True):
     url = '%s/statuses/mentions.json' % self.base_url
@@ -272,7 +272,7 @@ class Api(object):
       parameters['max_id'] = max_id
     if page:
       parameters['page'] = int(page)
-    return map(CachedStatus, self._fetch_url(url, parameters=parameters))
+    return [CachedStatus(x) for x in self._fetch_url(url, parameters=parameters)]
 
   def create_retweet(self, id, include_entities=True):
     url = '%s/statuses/retweet/%s.json' % (self.base_url, id)
@@ -324,7 +324,7 @@ class Api(object):
       parameters['max_id'] = max_id
     if page:
       parameters['page'] = int(page)
-    return map(CachedStatus, self._fetch_url(url, parameters=parameters))
+    return [CachedStatus(x) for x in self._fetch_url(url, parameters=parameters)]
 
   def get_list_members(self, screen_name, slug, cursor=-1, skip_status=False, include_entities=False):
     url = '%s/lists/members.json' % self.base_url
@@ -369,7 +369,7 @@ class Api(object):
       parameters['count'] = int(count)
     if include_entities:
       parameters['include_entities'] = True
-    return map(CachedStatus, self._fetch_url(url, parameters=parameters))
+    return [CachedStatus(x) for x in self._fetch_url(url, parameters=parameters)]
 
   def _build_url(self, url, path_elements=None, extra_params=None):
     (scheme, netloc, path, params, query, fragment) = urlparse.urlparse(url)

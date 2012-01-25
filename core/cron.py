@@ -18,7 +18,6 @@
 import time
 import logging
 import operator
-from itertools import imap, ifilter
 from Queue import Queue
 
 import db
@@ -60,16 +59,16 @@ class CronStart(StoppableThread):
 
   def running(self):
     cron_queue = Queue()
-    for user in ifilter(lambda x: x['access_key'] and x['access_secret'] and (x['timeline'] & ~db.MODE_EVENT),
-      db.get_all_users()):
-      if time.time() - user['last_update'] > MAX_IDLE_TIME:
-        # if it's a long time since last update, we should abandon these old data.
-        logger.debug('%s: Exceed %s seconds, all results won\'t be shown.' % (user['jid'], MAX_IDLE_TIME))
-        queue = Queue()
-      else:
-        queue = self.queues[user['jid']]
-      cron_queue.put((queue, user))
-    for _ in xrange(self._pool_size):
+    for user in db.get_all_users():
+      if user['access_key'] and user['access_secret'] and (user['timeline'] & ~db.MODE_EVENT):
+        if time.time() - user['last_update'] > MAX_IDLE_TIME:
+          # if it's a long time since last update, we should abandon these old data.
+          logger.debug('%s: Exceed %s seconds, all results won\'t be shown.' % (user['jid'], MAX_IDLE_TIME))
+          queue = Queue()
+        else:
+          queue = self.queues[user['jid']]
+        cron_queue.put((queue, user))
+    for _ in range(self._pool_size):
       t = CronGetTimeline(cron_queue)
       t.start()
     cron_queue.join()
@@ -88,7 +87,7 @@ class CronGetTimeline(StoppableThread):
         db.update_user(jid=user_jid, last_home_id=data[0]['id_str'])
         if not user_timeline & db.MODE_HOME:
           if user_timeline & db.MODE_MENTION:
-            return filter(lambda x: user_at_screen_name in x['text'], data)
+            return [x for x in data if user_at_screen_name in x['text']]
         else:
           return data
 
@@ -138,10 +137,10 @@ class CronGetTimeline(StoppableThread):
     def all_statuses_add(iterable):
       if not iterable:
         return
-      for x in ifilter(lambda x: x['id'] not in all_data_ids and x['user']['screen_name'] != user['screen_name'],
-        iterable):
-        all_data_ids.append(x['id'])
-        all_data.append(x)
+      for x in iterable:
+        if x['id'] not in all_data_ids and x['user']['screen_name'] != user['screen_name']:
+          all_data_ids.append(x['id'])
+          all_data.append(x)
 
 
     while not self.queue.empty():
@@ -167,13 +166,13 @@ class CronGetTimeline(StoppableThread):
       all_statuses_add(fetch_home())
       all_statuses_add(fetch_search())
 
-      for data in ifilter(lambda x: user_at_screen_name in x['text'] and x['user']['screen_name'] != user['screen_name']
-        , all_data):
-        retweeted_status = data.get('retweeted_status')
-        if retweeted_status and retweeted_status.get('in_reply_to_status_id_str'):
-          data['retweeted_status']['in_reply_to_status'] = None
-        elif data.get('in_reply_to_status_id_str'):
-          data['in_reply_to_status'] = None
+      for data in all_data:
+        if user_at_screen_name in data['text'] and data['user']['screen_name'] != user['screen_name']:
+          retweeted_status = data.get('retweeted_status')
+          if retweeted_status and retweeted_status.get('in_reply_to_status_id_str'):
+            data['retweeted_status']['in_reply_to_status'] = None
+          elif data.get('in_reply_to_status_id_str'):
+            data['in_reply_to_status'] = None
 
       if all_data:
         queue.put(Job(user_jid, data=all_data.sort(key=operator.itemgetter('id')), allow_duplicate=False, always=False,
@@ -201,16 +200,17 @@ class CronMisc(StoppableThread):
       self.check_stop()
 
   def running(self):
-    for user in ifilter(lambda x: x['access_key'] and x['access_secret'], db.get_all_users()):
-      self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
-        access_token_key=user['access_key'], access_token_secret=user['access_secret'])
-      self._now = int(time.time())
-      self._thread = self._xmpp.stream_threads.get(user['jid'])
-      self.check_stop()
-      if self.verify_credential(user):
+    for user in db.get_all_users():
+      if user['access_key'] and user['access_secret']:
+        self._api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
+          access_token_key=user['access_key'], access_token_secret=user['access_secret'])
+        self._now = int(time.time())
+        self._thread = self._xmpp.stream_threads.get(user['jid'])
         self.check_stop()
-        self.refresh_blocked_ids(user)
-        self.refresh_list_ids(user)
+        if self.verify_credential(user):
+          self.check_stop()
+          self.refresh_blocked_ids(user)
+          self.refresh_list_ids(user)
     self.check_stop()
     self.clean_expired_cache()
 
@@ -258,7 +258,8 @@ class CronMisc(StoppableThread):
       while cursor:
         self.check_stop()
         result = self._api.get_list_members(user['list_user'], user['list_name'], cursor=cursor)
-        map(list_ids.add, imap(operator.itemgetter('id_str'), result['users']))
+        for x in result['users']:
+          list_ids.add(x['id_str'])
         cursor = result['next_cursor']
       user = db.get_user_from_jid(user['jid'])
       if (list_ids and user['list_ids'] is None) or (list_ids ^ set(user['list_ids'].split(','))):

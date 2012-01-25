@@ -19,7 +19,6 @@ import random
 import time
 import operator
 import re
-from itertools import ifilter
 from Queue import Queue
 from urlparse import parse_qsl
 from email.utils import parsedate
@@ -472,12 +471,12 @@ class XMPPMessageHandler(object):
       all_dms = self._api.get_direct_messages(max_id=long_id, count=50)
       if all_dms and all_dms[0]['id_str'] == str(long_id):
         all_dms.extend(self._api.get_sent_direct_messages(max_id=long_id, count=50))
-        for dm in ifilter(lambda dm: dm['recipient_screen_name'] == self._user['screen_name'] or
-                                     dm['sender_screen_name'] == self._user['screen_name'],
-          sorted(all_dms, key=operator.itemgetter('id'), reverse=True)):
-          data.insert(0, dm)
-          if len(data) >= MAX_CONVERSATION_NUM:
-            break
+        for dm in sorted(all_dms, key=operator.itemgetter('id'), reverse=True):
+          if dm['recipient_screen_name'] == self._user['screen_name'] or\
+          dm['sender_screen_name'] == self._user['screen_name']:
+            data.insert(0, dm)
+            if len(data) >= MAX_CONVERSATION_NUM:
+              break
       else:
         raise twitter.NotFoundError
     self._queue.put(Job(self._jid, data=data, title='Conversation: %s' % long_id_str, reverse=False))

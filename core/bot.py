@@ -18,7 +18,6 @@
 import logging
 
 from Queue import Queue
-from itertools import ifilter
 
 import sleekxmpp
 
@@ -118,8 +117,9 @@ class XMPPBot(sleekxmpp.ClientXMPP):
       w.start()
 
   def start_workers(self):
-    for user in ifilter(lambda user: user['access_key'] and user['access_secret'], db.get_all_users()):
-      self.start_worker(user['jid'])
+    for user in db.get_all_users():
+      if user['access_key'] and user['access_secret']:
+        self.start_worker(user['jid'])
 
   def stop_workers(self):
     logger.info('shutdown workers.')
@@ -161,8 +161,9 @@ class XMPPBot(sleekxmpp.ClientXMPP):
       self.stream_threads[bare_jid] = t
 
   def start_streams(self):
-    for user in ifilter(lambda user: user['access_key'] and user['access_secret'], db.get_all_users()):
-      self.start_stream(user['jid'])
+    for user in db.get_all_users():
+      if user['access_key'] and user['access_secret']:
+        self.start_stream(user['jid'])
 
   def stop_stream(self, jid):
     t = self.stream_threads.get(jid)

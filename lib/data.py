@@ -16,8 +16,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with TwiOtaku.  If not, see <http://www.gnu.org/licenses/>.
 
-from operator import itemgetter
-from itertools import ifilter, imap
 from time import mktime, localtime, strftime
 from email.utils import parsedate
 
@@ -46,10 +44,16 @@ class Util(object):
     def parse_entities(data):
       if 'entities' in data:
         tmp = URLUnwrapper(data['text'])
-        for url in ifilter(itemgetter('expanded_url'), data['entities'].get('urls', tuple())):
-          tmp.replace_indices(url['indices'][0], url['indices'][1], url['expanded_url'])
-        for media in ifilter(itemgetter('media_url'), data['entities'].get('media', tuple())):
-          tmp.replace_indices(media['indices'][0], media['indices'][1], media['media_url'])
+
+        urls = data['entities'].get('urls')
+        if urls:
+          for url in urls:
+            tmp.replace_indices(url['indices'][0], url['indices'][1], url['expanded_url'])
+
+        medias = data['entities'].get('media')
+        if medias:
+          for media in medias:
+            tmp.replace_indices(media['indices'][0], media['indices'][1], media['media_url'])
         return unicode(tmp)
       else:
         return data['text']
@@ -153,7 +157,7 @@ class Util(object):
       g = short_id[1:]
     else:
       g = short_id
-    if any(imap(lambda x: x not in short_id_pattern, g)):
+    if any(x not in short_id_pattern for x in g):
       raise TypeError('Incorrect short id %s.' % short_id)
     try:
       short_id = int(g)

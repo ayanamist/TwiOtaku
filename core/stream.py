@@ -17,9 +17,7 @@
 
 import threading
 import logging
-import string
 from httplib import HTTPException
-from itertools import imap
 from ssl import SSLError
 
 import db
@@ -35,7 +33,7 @@ MAX_DATA_TIMEOUT = 90
 WAIT_TIMES = (0, 30, 60, 120, 240)
 
 logger = logging.getLogger('user streaming')
-contain = lambda strlist, s: any(imap(s.__contains__, strlist))
+contain = lambda strlist, s: any(x in s for x in strlist)
 
 class Timeout(Exception):
   pass
@@ -64,9 +62,29 @@ class StreamThread(StoppableThread):
   def refresh_user(self):
     logger.debug('%s: refresh user.' % self.bare_jid)
     self.user = db.get_user_from_jid(self.bare_jid)
-    self.blocked_ids = map(int, self.user['blocked_ids'].split(',')) if self.user['blocked_ids'] else []
-    self.list_ids = map(int, self.user['list_ids'].split(',')) if self.user['list_ids'] else []
-    self.track_words = map(string.lower, self.user['track_words'].split(',')) if self.user['track_words'] else []
+
+    self.blocked_ids = list()
+    if self.user['blocked_ids']:
+      for blocked_id in self.user['blocked_ids'].split(','):
+        try:
+          blocked_id = int(blocked_id)
+        except ValueError:
+          pass
+        else:
+          self.blocked_ids.append(blocked_id)
+
+    self.list_ids = list()
+    if self.user['list_ids']:
+      for list_id in self.user['list_ids'].split(','):
+        try:
+          list_id = int(list_id)
+        except ValueError:
+          pass
+        else:
+          self.list_ids.append(list_id)
+
+    self.track_words = [x.lower() for x in self.user['track_words'].split(',')] if self.user['track_words'] else []
+
     self.user_at_screen_name = '@%s' % self.user['screen_name']
     self.api = twitter.Api(consumer_key=OAUTH_CONSUMER_KEY, consumer_secret=OAUTH_CONSUMER_SECRET,
       access_token_key=self.user['access_key'], access_token_secret=self.user['access_secret'])
