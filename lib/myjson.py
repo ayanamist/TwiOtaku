@@ -16,7 +16,7 @@
 #    along with TwiOtaku.  If not, see <http://www.gnu.org/licenses/>.
 
 try:
-  from ujson import load, loads, dump, dumps
+    from ujson import load, loads, dump, dumps
 except ImportError:
-  from json import load, loads, dump, dumps
+    from json import load, loads, dump, dumps
   

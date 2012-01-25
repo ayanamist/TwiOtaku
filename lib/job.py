@@ -15,25 +15,14 @@
 #    You should have received a copy of the GNU General Public License
 #    along with TwiOtaku.  If not, see <http://www.gnu.org/licenses/>.
 
-def digit_to_alpha(digit):
-    if not isinstance(digit, int):
-        raise TypeError('Only accept digit argument.')
-    nums = list()
-    digit += 1
-    while digit > 26:
-        t = digit % 26
-        if t > 0:
-            nums.insert(0, t)
-            digit //= 26
-        else:
-            nums.insert(0, 26)
-            digit = digit // 26 - 1
-    nums.insert(0, digit)
-    return ''.join([chr(x + 64) for x in nums])
+class Job(object):
+    def __init__(self, jid, data=None, title=None, reverse=True, allow_duplicate=True, xmpp_command=True, always=True):
+        self.data = data
+        self.jid = jid
+        self.title = title
+        self.reverse = reverse
+        self.allow_duplicate = allow_duplicate
+        self.xmpp_command = xmpp_command
+        self.always = always # always send message no matter client is online or not
 
 
-def alpha_to_digit(alpha):
-    if not (isinstance(alpha, str) and alpha.isalpha()):
-        raise TypeError('Only accept alpha argument.')
-    return reduce(lambda x, y: x * 26 + y, [ord(x) - 64 for x in alpha]) - 1
-  

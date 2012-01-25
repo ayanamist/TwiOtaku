@@ -15,25 +15,30 @@
 #    You should have received a copy of the GNU General Public License
 #    along with TwiOtaku.  If not, see <http://www.gnu.org/licenses/>.
 
-def digit_to_alpha(digit):
-    if not isinstance(digit, int):
-        raise TypeError('Only accept digit argument.')
-    nums = list()
-    digit += 1
-    while digit > 26:
-        t = digit % 26
-        if t > 0:
-            nums.insert(0, t)
-            digit //= 26
-        else:
-            nums.insert(0, 26)
-            digit = digit // 26 - 1
-    nums.insert(0, digit)
-    return ''.join([chr(x + 64) for x in nums])
+import logging
+import traceback
+from functools import wraps
+from StringIO import StringIO
+
+def debug(f):
+    @wraps(f)
+    def wrap(*args, **kwds):
+        try:
+            return f(*args, **kwds)
+        except Exception:
+            err = StringIO()
+            traceback.print_exc(file=err)
+            logging.error(err.getvalue())
+
+    return wrap
 
 
-def alpha_to_digit(alpha):
-    if not (isinstance(alpha, str) and alpha.isalpha()):
-        raise TypeError('Only accept alpha argument.')
-    return reduce(lambda x, y: x * 26 + y, [ord(x) - 64 for x in alpha]) - 1
-  
+def silent(f):
+    @wraps(f)
+    def wrap(*args, **kwds):
+        try:
+            return f(*args, **kwds)
+        except Exception:
+            pass
+
+    return wrap

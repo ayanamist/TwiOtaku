@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with TwiOtaku.  If not, see <http://www.gnu.org/licenses/>.
 
-from config import DATABASE_TYPE
+import config
 
 MODE_NONE = 0
 MODE_DM = 1
@@ -28,7 +28,7 @@ MODE_TRACK = 32
 TYPE_STATUS = 0
 TYPE_DM = 1
 
-dbapi = __import__(DATABASE_TYPE.lower(), globals=globals(), locals=locals())
+dbapi = __import__(config.DATABASE_TYPE.lower(), globals=globals(), locals=locals())
 
 add_invite_code = dbapi.add_invite_code
 
