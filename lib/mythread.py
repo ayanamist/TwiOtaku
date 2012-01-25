@@ -29,7 +29,7 @@ class StoppableThread(threading.Thread):
     _stop = threading.Event()
 
     def __init__(self, target=None, name=None, args=(), kwargs=None, verbose=None):
-        super(StoppableThread, self).__init__(self, target=target, name=name, args=args, kwargs=kwargs, verbose=verbose)
+        super(StoppableThread, self).__init__(target=target, name=name, args=args, kwargs=kwargs, verbose=verbose)
         self.setDaemon(True)
 
     def stop(self):
