@@ -17,7 +17,7 @@
 
 def digit_to_alpha(digit):
     if not isinstance(digit, int):
-        raise TypeError('Only accept digit argument.')
+        raise TypeError('Only accept digit argument, but accept %s' % str(digit))
     nums = list()
     digit += 1
     while digit > 26:
@@ -34,6 +34,6 @@ def digit_to_alpha(digit):
 
 def alpha_to_digit(alpha):
     if not (isinstance(alpha, str) and alpha.isalpha()):
-        raise TypeError('Only accept alpha argument.')
+        raise TypeError('Only accept alpha argument, but accept %s.' % str(alpha))
     return reduce(lambda x, y: x * 26 + y, [ord(x) - 64 for x in alpha]) - 1
   

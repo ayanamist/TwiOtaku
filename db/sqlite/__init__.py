@@ -135,7 +135,7 @@ def get_long_id_from_short_id(uid, short_id):
     sql = 'SELECT long_id, type FROM id_lists WHERE uid=? AND short_id=?'
     cursor = conn_user.execute(sql, (uid, short_id))
     result = cursor.fetchone()
-    return result[0] if result else None
+    return tuple(result) if result else (None, None)
 
 
 @write_decorator
