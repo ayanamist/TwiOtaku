@@ -15,34 +15,30 @@
 #    You should have received a copy of the GNU General Public License
 #    along with TwiOtaku.  If not, see <http://www.gnu.org/licenses/>.
 
-import jinja2
-import jinja2.sandbox
+import Queue
 
-_tpl_cache = dict()
-
-class MemoryBytecodeCache(jinja2.BytecodeCache):
-    def load_bytecode(self, bucket):
-        if bucket.key in _tpl_cache:
-            bucket.bytecode_from_string(_tpl_cache[bucket.key])
-
-    def dump_bytecode(self, bucket):
-        global _tpl_cache
-        _tpl_cache[bucket.key] = bucket.bytecode_to_string()
-
-    def clear(self):
-        global _tpl_cache
-        _tpl_cache = dict()
+class Error(Exception):
+    pass
 
 
-class Environment(jinja2.sandbox.ImmutableSandboxedEnvironment):
-    def is_safe_callable(self, _):
-        return False
+class NoResultError(Error):
+    pass
 
 
-class Template(jinja2.Template):
-    def __new__(cls, source):
-        return env.from_string(source)
+class SQLCommand(object):
+    def __init__(self, name, *args, **kwargs):
+        self.name = name
+        self.args = args
+        self.kwargs = kwargs
+        self.result_queue = Queue.Queue()
 
-env = Environment(bytecode_cache=MemoryBytecodeCache())
-env.globals = dict()
-
+    def get_result(self):
+        if self.result_queue:
+            result = self.result_queue.get()
+            self.result_queue = None
+            if isinstance(result, Exception):
+                raise result
+            else:
+                return result
+        else:
+            raise NoResultError('There is no result.')

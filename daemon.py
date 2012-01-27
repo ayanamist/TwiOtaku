@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2011 ayanamist aka gh05tw01f
+# Copyright 2011 ayanamist
 # the program is distributed under the terms of the GNU General Public License
 # This file is part of TwiOtaku.
 #

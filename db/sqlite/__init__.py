@@ -1,4 +1,4 @@
-# Copyright 2011 ayanamist aka gh05tw01f
+# Copyright 2011 ayanamist
 # the program is distributed under the terms of the GNU General Public License
 # This file is part of TwiOtaku.
 #
@@ -15,195 +15,177 @@
 #    You should have received a copy of the GNU General Public License
 #    along with TwiOtaku.  If not, see <http://www.gnu.org/licenses/>.
 
+import functools
 import logging
 import os
 
-# TODO: use pysqlite instead of apsw
-import apsw
+try:
+    from pysqlite2 import dbapi2 as sqlite3
+except ImportError:
+    import sqlite3
 
 import config
+from . import sqlthread
+from . import sqlcommand
 
 
-RETRY_TIMEOUT = 3000 # add a retry timeout for busy handling
-database_dir = os.path.abspath(config.DATABASE_DIR)
-_db_path = os.path.join(database_dir, 'twiotaku.db')
-_status_path = os.path.join(database_dir, 'status.db')
-_sql_dir = os.path.join(os.path.dirname(__file__), 'sql')
-_conn_db = None
-_conn_status = None
-_status_queue = list()
 logger = logging.getLogger('sqlite')
+sql_dir = os.path.join(os.path.dirname(__file__), 'sql')
+database_dir = os.path.abspath(config.DATABASE_DIR)
+if not os.path.exists(database_dir):
+    os.makedirs(database_dir)
+user_path = os.path.join(database_dir, 'twiotaku.db')
+status_path = os.path.join(database_dir, 'status.db')
+
+def write_decorator(f):
+    @functools.wraps(f)
+    def wrap(*args, **kwargs):
+        command = sqlcommand.SQLCommand(f.__name__, *args, **kwargs)
+        write_thread.process(command)
+        return command.get_result()
+
+    return wrap
+
+
+def init_db_user(conn):
+    tables = ['id_lists', 'invites', 'users']
+    for t in conn.execute("SELECT name FROM sqlite_master WHERE type='table'"):
+        if t[0] in tables:
+            tables.remove(t[0])
+    for v in tables:
+        path = sql_dir + os.sep + v + '.sql'
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                sql = f.read()
+            conn.executescript(sql)
+    conn.commit()
+
+
+def init_db_status(conn):
+    sql = True
+    for t in conn.execute("SELECT name FROM sqlite_master WHERE type='table'"):
+        if t[0] == 'statuses':
+            sql = False
+    if sql:
+        path = sql_dir + os.sep + 'statuses.sql'
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                sql = f.read()
+            conn.executescript(sql)
+    conn.commit()
+    return conn
+
+
+def init_conn_user():
+    conn = sqlite3.connect(user_path, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_conn_status():
+    conn = sqlite3.connect(status_path, check_same_thread=False)
+    return conn
+
+
+def init_write_thread(conn_user, conn_status):
+    thread = sqlthread.SQLThread(conn_user=conn_user, conn_status=conn_status)
+    return thread
+
 
 def get_user_from_jid(jid):
-    cursor = _conn_db.cursor()
-    user = dict()
-    for u in cursor.execute('SELECT * FROM users WHERE jid=?', (jid, )):
-        d = cursor.getdescription()
-        for i in range(len(d)):
-            user[d[i][0]] = u[i]
-    return user
+    sql = 'SELECT * FROM users WHERE jid=?'
+    cursor = conn_status.execute(sql, (jid, ))
+    return cursor.fetchone()
 
 
+@write_decorator
 def update_user(id=None, jid=None, **kwargs):
-    if id is None and jid is None:
-        raise TypeError('The method takes at least one argument.')
-    if kwargs:
-        cursor = _conn_db.cursor()
-        cols = list()
-        values = list()
-        for k, v in kwargs.iteritems():
-            cols.append('%s=?' % k)
-            values.append(v)
-        if id:
-            cond = 'id=?'
-            values.append(id)
-        else:
-            cond = 'jid=?'
-            values.append(jid)
-        sql = 'UPDATE users SET %s WHERE %s' % (','.join(cols), cond)
-        cursor.execute(sql, values)
+    pass
 
 
 def get_users_count():
-    cursor = _conn_db.cursor()
     sql = 'SELECT COUNT(id) FROM users'
-    cursor.execute(sql)
-    return list(cursor)[0][0]
+    cursor = conn_user.execute(sql)
+    return cursor.fetchone()[0]
 
 
+@write_decorator
 def add_user(jid):
-    cursor = _conn_db.cursor()
-    sql = 'INSERT INTO users (jid) VALUES(?)'
-    cursor.execute(sql, (jid,))
+    pass
 
 
 def get_all_users():
-    cursor = _conn_db.cursor()
     sql = 'SELECT * FROM users'
-    d = None
-    for u in cursor.execute(sql):
-        if d is None:
-            d = cursor.getdescription()
-        user = dict()
-        for i in range(len(d)):
-            user[d[i][0]] = u[i]
-        yield user
+    cursor = conn_user.execute(sql)
+    return cursor.fetchall()
 
 
-def get_invite_code(invide_code):
-    cursor = _conn_db.cursor()
-    for u in cursor.execute('SELECT id, create_time FROM invites WHERE id=?', (invide_code, )):
-        return u
-    return None, None
+def iter_all_users():
+    sql = 'SELECT * FROM users'
+    cursor = conn_user.execute(sql)
+    for x in cursor:
+        yield x
 
 
+def get_invite_code(invite_code):
+    sql = 'SELECT id, create_time FROM invites WHERE id=?'
+    cursor = conn_user.execute(sql, (invite_code, ))
+    result = cursor.fetchone()
+    return result if result else None, None
+
+
+@write_decorator
 def add_invite_code(invite_code, create_time):
-    cursor = _conn_db.cursor()
-    sql = 'INSERT INTO invites (id, create_time) VALUES(?,?)'
-    cursor.execute(sql, (invite_code, create_time))
+    pass
 
 
+@write_decorator
 def delete_invite_code(invite_code):
-    cursor = _conn_db.cursor()
-    sql = 'DELETE FROM invites WHERE id=?'
-    cursor.execute(sql, (invite_code,))
+    pass
 
 
 def get_short_id_from_long_id(uid, long_id, single_type):
-    cursor = _conn_db.cursor()
     sql = 'SELECT short_id FROM id_lists WHERE uid=? AND long_id=? AND type=?'
-    for x in cursor.execute(sql, (uid, long_id, single_type)):
-        return x[0]
+    cursor = conn_user.execute(sql, (uid, long_id, single_type))
+    result = cursor.fetchone()
+    return result[0] if result else None
 
 
 def get_long_id_from_short_id(uid, short_id):
-    cursor = _conn_db.cursor()
     sql = 'SELECT long_id, type FROM id_lists WHERE uid=? AND short_id=?'
-    for x in cursor.execute(sql, (uid, short_id)):
-        return x[0], x[1]
-    return None, None
+    cursor = conn_user.execute(sql, (uid, short_id))
+    result = cursor.fetchone()
+    return result[0] if result else None
 
 
+@write_decorator
 def update_long_id_from_short_id(uid, short_id, long_id, single_type):
-    cursor = _conn_db.cursor()
-    sql = 'DELETE FROM id_lists WHERE uid=? AND short_id=?'
-    cursor.execute(sql, (uid, short_id))
-    sql = 'INSERT INTO id_lists (uid, short_id, long_id, type) VALUES(?, ?, ?, ?)'
-    cursor.execute(sql, (uid, short_id, long_id, single_type))
+    pass
 
 
 def get_status(id_str):
-    flush_status(force=True)
-    cursor = _conn_status.cursor()
     sql = 'SELECT data FROM statuses WHERE id_str=?'
-    for data, in cursor.execute(sql, (id_str,)):
-        return data
+    cursor = conn_status.execute(sql, (id_str,))
+    result = cursor.fetchone()
+    return result[0] if result else None
 
 
+@write_decorator
 def add_status(id_str, data_str, timestamp):
-    global _status_queue
-    _status_queue.append((id_str, timestamp, data_str))
-    flush_status()
+    pass
 
 
+@write_decorator
 def flush_status(force=False):
-    global _status_queue
-    if len(_status_queue) > 500 or force:
-        cursor = _conn_status.cursor()
-        try:
-            cursor.execute('BEGIN')
-        except apsw.SQLError, e:
-            logger.warning(e)
-        try:
-            while _status_queue:
-                id_str, timestamp, data = _status_queue.pop()
-                cursor.execute('INSERT OR REPLACE INTO statuses (id_str, data, timestamp) VALUES(?,?,?)',
-                    (id_str, data, timestamp))
-        finally:
-            try:
-                cursor.execute('COMMIT')
-            except apsw.SQLError:
-                pass
+    pass
 
 
+@write_decorator
 def purge_old_statuses(from_timestamp):
-    cursor = _conn_status.cursor()
-    cursor.execute('DELETE FROM statuses WHERE timestamp<?', (from_timestamp,))
+    pass
 
-if not os.path.exists(database_dir):
-    os.makedirs(database_dir)
-
-_conn_db = apsw.Connection(_db_path)
-_conn_db.setbusytimeout(RETRY_TIMEOUT)
-cursor = _conn_db.cursor()
-tables = ['id_lists', 'invites', 'users']
-for t in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'"):
-    t = t[0]
-    try:
-        i = tables.index(t)
-    except ValueError:
-        i = -1
-    if i >= 0:
-        del(tables[i])
-for v in tables:
-    path = _sql_dir + os.sep + v + '.sql'
-    if os.path.exists(path):
-        f = open(path, 'r')
-        sql = f.read()
-        f.close()
-        cursor.execute(v)
-_conn_status = apsw.Connection(_status_path)
-_conn_status.setbusytimeout(RETRY_TIMEOUT)
-cursor = _conn_status.cursor()
-sql = True
-for t in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'"):
-    t = t[0]
-    if t == 'statuses':
-        sql = False
-if sql:
-    path = _sql_dir + os.sep + 'statuses.sql'
-    if os.path.exists(path):
-        f = open(path, 'r')
-        sql = f.read()
-        f.close()
-        cursor.execute(sql)
+conn_user = init_conn_user()
+conn_status = init_conn_status()
+init_db_user(conn_user)
+init_db_status(conn_status)
+write_thread = init_write_thread(conn_user=conn_user, conn_status=conn_status)
