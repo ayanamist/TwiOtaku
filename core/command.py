@@ -62,10 +62,12 @@ class XMPPMessageHandler(object):
     def process(self, msg):
         self.__jid = str(msg['from'])
         self.__bare_jid = self.__xmpp.getjidbare(self.__jid).lower()
-        self.__queue = self.__xmpp.worker_threads[self.__bare_jid].job_queue
         self.__user = db.get_user_from_jid(self.__bare_jid)
         if self.__user:
             self.__util = util.Util(self.__user)
+            t = self.__xmpp.worker_threads.get(self.__bare_jid)
+            if t:
+                self.__queue = t.job_queue
             self.__api = twitter.Api(consumer_key=config.OAUTH_CONSUMER_KEY,
                 consumer_secret=config.OAUTH_CONSUMER_SECRET,
                 access_token_key=self.__user.get('access_key'),
@@ -134,8 +136,8 @@ class XMPPMessageHandler(object):
         expire_days = 3
 
         if invite_code:
-            invite_code, create_time = db.get_invite_code(invite_code)
-            if invite_code and create_time and create_time + expire_days * 24 * 3600 > time.time():
+            create_time = db.verify_invite_code(invite_code)
+            if create_time and create_time + expire_days * 24 * 3600 > time.time():
                 db.delete_invite_code(invite_code)
                 if not self.__user:
                     db.add_user(self.__bare_jid)

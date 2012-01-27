@@ -36,7 +36,7 @@ add_user = dbapi.add_user
 
 delete_invite_code = dbapi.delete_invite_code
 
-get_invite_code = dbapi.get_invite_code
+verify_invite_code = dbapi.verify_invite_code
 
 get_long_id_from_short_id = dbapi.get_long_id_from_short_id
 

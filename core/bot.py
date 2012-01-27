@@ -30,19 +30,17 @@ from lib import logdecorator
 logger = logging.getLogger('xmpp')
 
 class XMPPBot(sleekxmpp.ClientXMPP):
-    worker_threads = dict()
-    stream_threads = dict()
-    online_clients = dict() # this save available roster using ref count
-    auto_authorize = True
-    auto_subscribe = True
-    first_run = True
-
     def __init__(self):
         sleekxmpp.ClientXMPP.__init__(self, config.XMPP_USERNAME, config.XMPP_PASSWORD)
+        self.worker_threads = dict()
+        self.stream_threads = dict()
+        self.online_clients = dict() # this save available roster using ref count
+        self.auto_authorize = True
+        self.auto_subscribe = True
+        self.first_run = True
         self.add_event_handler('session_start', self.on_start)
         self.add_event_handler('message', self.on_message)
         self.add_event_handler('changed_status', self.on_changed_status)
-        self.register_plugin('xep_0030') # Service Discovery
 
     def on_start(self, _):
         self.get_roster()

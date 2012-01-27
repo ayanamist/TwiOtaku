@@ -68,13 +68,16 @@ def init_conn_user():
 
 def init_write_thread(conn_user):
     thread = sqlthread.SQLThread(conn_user=conn_user)
+    thread.setDaemon(True)
+    thread.start()
     return thread
 
 
 def get_user_from_jid(jid):
     sql = 'SELECT * FROM users WHERE jid=?'
     cursor = conn_user.execute(sql, (jid, ))
-    return dict(cursor.fetchone())
+    result = cursor.fetchone()
+    return dict(result) if result else None
 
 
 @write_decorator
@@ -104,11 +107,11 @@ def iter_all_users():
         yield dict(x)
 
 
-def get_invite_code(invite_code):
-    sql = 'SELECT id, create_time FROM invites WHERE id=?'
+def verify_invite_code(invite_code):
+    sql = 'SELECT create_time FROM invites WHERE id=?'
     cursor = conn_user.execute(sql, (invite_code, ))
     result = cursor.fetchone()
-    return result[0], result[1] if result else None, None
+    return result[0] if result else None
 
 
 @write_decorator
