@@ -38,9 +38,9 @@ logger = logging.getLogger('cron')
 class CronStart(mythread.StoppableThread):
     __pool_size = db.get_users_count() // 20 + 1
 
-    def __init__(self, queues):
+    def __init__(self, xmpp):
         super(CronStart, self).__init__()
-        self.queues = queues
+        self.__xmpp = xmpp
 
     @mythread.monitorstop
     def run(self):
@@ -64,10 +64,9 @@ class CronStart(mythread.StoppableThread):
                 if time.time() - user['last_update'] > MAX_IDLE_TIME:
                     # if it's a long time since last update, we should abandon these old data.
                     logger.debug('%s: Exceed %s seconds, all results won\'t be shown.' % (user['jid'], MAX_IDLE_TIME))
-                    queue = Queue.Queue()
                 else:
-                    queue = self.queues[user['jid']]
-                cron_queue.put((queue, user))
+                    queue = self.__xmpp.worker_threads[user['jid']].job_queue
+                    cron_queue.put((queue, user))
         for _ in range(self.__pool_size):
             t = CronGetTimeline(cron_queue)
             t.start()

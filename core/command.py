@@ -22,7 +22,6 @@ import random
 import re
 import time
 import urlparse
-import Queue
 
 import config
 import db
@@ -63,7 +62,7 @@ class XMPPMessageHandler(object):
     def process(self, msg):
         self.__jid = str(msg['from'])
         self.__bare_jid = self.__xmpp.getjidbare(self.__jid).lower()
-        self.__queue = self.__xmpp.worker_queues.get(self.__bare_jid, Queue.Queue())
+        self.__queue = self.__xmpp.worker_threads[self.__bare_jid].job_queue
         self.__user = db.get_user_from_jid(self.__bare_jid)
         if self.__user:
             self.__util = util.Util(self.__user)

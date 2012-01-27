@@ -15,6 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with TwiOtaku.  If not, see <http://www.gnu.org/licenses/>.
 
+import Queue
+
 import db
 from lib import job
 from lib import logdecorator
@@ -22,16 +24,16 @@ from lib import mythread
 from lib import util
 
 class Worker(mythread.StoppableThread):
-    def __init__(self, xmpp, queue):
+    def __init__(self, xmpp):
         super(Worker, self).__init__()
         self.__xmpp = xmpp
-        self.__queue = queue
+        self.job_queue = Queue.Queue()
 
     @mythread.monitorstop
     def run(self):
         while True:
-            item = self.__queue.get()
-            self.__queue.task_done()
+            item = self.job_queue.get()
+            self.job_queue.task_done()
             self.check_stop()
             if item is not None:
                 self.running(item)

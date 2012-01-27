@@ -16,7 +16,6 @@
 #    along with TwiOtaku.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-import Queue
 
 import sleekxmpp
 
@@ -31,7 +30,6 @@ from lib import logdecorator
 logger = logging.getLogger('xmpp')
 
 class XMPPBot(sleekxmpp.ClientXMPP):
-    worker_queues = dict()
     worker_threads = dict()
     stream_threads = dict()
     online_clients = dict() # this save available roster using ref count
@@ -111,8 +109,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
             pass
         else:
             logger.debug('%s: start worker.' % bare_jid)
-            q = self.worker_queues[bare_jid] = Queue.Queue()
-            w = self.worker_threads[bare_jid] = worker.Worker(self, q)
+            w = self.worker_threads[bare_jid] = worker.Worker(self)
             w.start()
 
     def start_workers(self):
@@ -137,7 +134,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
     def start_cron(self):
         logger.debug('start cron.')
-        self.cron_thread = cron.CronStart(self.worker_queues)
+        self.cron_thread = cron.CronStart(self)
         self.cron_thread.start()
         self.cron_misc_thread = cron.CronMisc(self)
         self.cron_misc_thread.start()
@@ -155,7 +152,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
             t.user_changed()
         else:
             logger.debug('%s: start user streaming.' % bare_jid)
-            t = stream.StreamThread(self.worker_queues[bare_jid], bare_jid)
+            t = stream.StreamThread(self.worker_threads[bare_jid].job_queue, bare_jid)
             t.start()
             self.stream_threads[bare_jid] = t
 
