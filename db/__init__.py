@@ -28,7 +28,7 @@ MODE_TRACK = 32
 TYPE_STATUS = 0
 TYPE_DM = 1
 
-dbapi = __import__(config.DATABASE_TYPE.lower())
+dbapi = __import__(config.DATABASE_TYPE.lower(), globals=globals(), locals=locals())
 
 add_invite_code = dbapi.add_invite_code
 

@@ -94,7 +94,7 @@ def init_write_thread(conn_user, conn_status):
 
 def get_user_from_jid(jid):
     sql = 'SELECT * FROM users WHERE jid=?'
-    cursor = conn_status.execute(sql, (jid, ))
+    cursor = conn_user.execute(sql, (jid, ))
     return cursor.fetchone()
 
 
@@ -131,7 +131,7 @@ def get_invite_code(invite_code):
     sql = 'SELECT id, create_time FROM invites WHERE id=?'
     cursor = conn_user.execute(sql, (invite_code, ))
     result = cursor.fetchone()
-    return result if result else None, None
+    return result[0], result[1] if result else None, None
 
 
 @write_decorator
