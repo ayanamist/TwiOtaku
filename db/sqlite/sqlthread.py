@@ -27,16 +27,16 @@ class SQLThread(mythread.StoppableThread):
     def __init__(self, conn_user):
         super(SQLThread, self).__init__()
         self.__conn_user = conn_user
-        self.__write_queue = Queue.Queue()
+        self.write_queue = Queue.Queue()
 
     def process(self, command):
-        return self.__write_queue.put(command)
+        return self.write_queue.put(command)
 
     @mythread.monitorstop
     def run(self):
         while True:
             self.check_stop()
-            command = self.__write_queue.get()
+            command = self.write_queue.get()
             if isinstance(command, sqlcommand.SQLCommand):
                 try:
                     func = getattr(self, command.name)
@@ -48,7 +48,7 @@ class SQLThread(mythread.StoppableThread):
                     except Exception, e:
                         result = e
                 command.result_queue.put(result)
-            self.__write_queue.task_done()
+            self.write_queue.task_done()
 
 
     def update_user(self, id=None, jid=None, **kwargs):
@@ -90,6 +90,8 @@ class SQLThread(mythread.StoppableThread):
 
 
     def update_long_id_from_short_id(self, uid, short_id, long_id, single_type):
-        sql = 'INSERT OR REPLACE INTO id_lists (uid, short_id, long_id, type) VALUES(?, ?, ?, ?)'
+        sql = 'DELETE FROM id_lists WHERE uid=? AND short_id=?'
+        self.__conn_user.execute(sql, (uid, short_id))
+        sql = 'INSERT INTO id_lists (uid, short_id, long_id, type) VALUES(?, ?, ?, ?)'
         self.__conn_user.execute(sql, (uid, short_id, long_id, single_type))
         self.__conn_user.commit()

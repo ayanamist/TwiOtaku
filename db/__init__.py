@@ -34,6 +34,8 @@ add_invite_code = dbapi.add_invite_code
 
 add_user = dbapi.add_user
 
+close = dbapi.close
+
 delete_invite_code = dbapi.delete_invite_code
 
 verify_invite_code = dbapi.verify_invite_code

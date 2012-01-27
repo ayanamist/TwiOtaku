@@ -18,6 +18,7 @@
 import functools
 import logging
 import os
+import threading
 
 try:
     from pysqlite2 import dbapi2 as sqlite3
@@ -35,13 +36,31 @@ database_dir = os.path.abspath(config.DATABASE_DIR)
 if not os.path.exists(database_dir):
     os.makedirs(database_dir)
 user_path = os.path.join(database_dir, 'twiotaku.db')
+read_condition = threading.Condition()
 
 def write_decorator(f):
     @functools.wraps(f)
     def wrap(*args, **kwargs):
+        read_condition.acquire()
         command = sqlcommand.SQLCommand(f.__name__, *args, **kwargs)
         write_thread.process(command)
-        return command.get_result()
+        result = command.get_result()
+        read_condition.notify_all()
+        read_condition.release()
+        return result
+
+    return wrap
+
+
+def read_decorator(f):
+    @functools.wraps(f)
+    def wrap(*args, **kwargs):
+        read_condition.acquire()
+        if not write_thread.write_queue.empty():
+            read_condition.wait()
+        result = f(*args, **kwargs)
+        read_condition.release()
+        return result
 
     return wrap
 
@@ -73,6 +92,7 @@ def init_write_thread(conn_user):
     return thread
 
 
+@read_decorator
 def get_user_from_jid(jid):
     sql = 'SELECT * FROM users WHERE jid=?'
     cursor = conn_user.execute(sql, (jid, ))
@@ -85,6 +105,7 @@ def update_user(id=None, jid=None, **kwargs):
     pass
 
 
+@read_decorator
 def get_users_count():
     sql = 'SELECT COUNT(id) FROM users'
     cursor = conn_user.execute(sql)
@@ -96,10 +117,12 @@ def add_user(jid):
     pass
 
 
+@read_decorator
 def get_all_users():
     return list(iter_all_users())
 
 
+@read_decorator
 def iter_all_users():
     sql = 'SELECT * FROM users'
     cursor = conn_user.execute(sql)
@@ -107,6 +130,7 @@ def iter_all_users():
         yield dict(x)
 
 
+@read_decorator
 def verify_invite_code(invite_code):
     sql = 'SELECT create_time FROM invites WHERE id=?'
     cursor = conn_user.execute(sql, (invite_code, ))
@@ -124,6 +148,7 @@ def delete_invite_code(invite_code):
     pass
 
 
+@read_decorator
 def get_short_id_from_long_id(uid, long_id, single_type):
     sql = 'SELECT short_id FROM id_lists WHERE uid=? AND long_id=? AND type=?'
     cursor = conn_user.execute(sql, (uid, long_id, single_type))
@@ -131,6 +156,7 @@ def get_short_id_from_long_id(uid, long_id, single_type):
     return result[0] if result else None
 
 
+@read_decorator
 def get_long_id_from_short_id(uid, short_id):
     sql = 'SELECT long_id, type FROM id_lists WHERE uid=? AND short_id=?'
     cursor = conn_user.execute(sql, (uid, short_id))
@@ -142,6 +168,9 @@ def get_long_id_from_short_id(uid, short_id):
 def update_long_id_from_short_id(uid, short_id, long_id, single_type):
     pass
 
+
+def close():
+    conn_user.close()
 
 conn_user = init_conn_user()
 init_db_user(conn_user)
