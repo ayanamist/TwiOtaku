@@ -95,7 +95,7 @@ def init_write_thread(conn_user, conn_status):
 def get_user_from_jid(jid):
     sql = 'SELECT * FROM users WHERE jid=?'
     cursor = conn_user.execute(sql, (jid, ))
-    return cursor.fetchone()
+    return dict(cursor.fetchone())
 
 
 @write_decorator
@@ -115,16 +115,14 @@ def add_user(jid):
 
 
 def get_all_users():
-    sql = 'SELECT * FROM users'
-    cursor = conn_user.execute(sql)
-    return cursor.fetchall()
+    return list(iter_all_users())
 
 
 def iter_all_users():
     sql = 'SELECT * FROM users'
     cursor = conn_user.execute(sql)
     for x in cursor:
-        yield x
+        yield dict(x)
 
 
 def get_invite_code(invite_code):
