@@ -239,7 +239,7 @@ class StreamThread(mythread.StoppableThread):
                    data['user']['screen_name'] == self.user['screen_name']:
                     data = None
                 else:
-                    data = twitter.CachedStatus(data)
+                    data = twitter.Status(data)
                     if (self.user['timeline'] & db.MODE_HOME and data['user']['id'] in self.friend_ids) or\
                        (self.user['timeline'] & db.MODE_MENTION and self.user_at_screen_name in data['text']) or\
                        (self.user['timeline'] & db.MODE_LIST and data['user']['id'] in self.list_ids) or\

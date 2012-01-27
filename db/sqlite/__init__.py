@@ -35,7 +35,6 @@ database_dir = os.path.abspath(config.DATABASE_DIR)
 if not os.path.exists(database_dir):
     os.makedirs(database_dir)
 user_path = os.path.join(database_dir, 'twiotaku.db')
-status_path = os.path.join(database_dir, 'status.db')
 
 def write_decorator(f):
     @functools.wraps(f)
@@ -61,34 +60,14 @@ def init_db_user(conn):
     conn.commit()
 
 
-def init_db_status(conn):
-    sql = True
-    for t in conn.execute("SELECT name FROM sqlite_master WHERE type='table'"):
-        if t[0] == 'statuses':
-            sql = False
-    if sql:
-        path = sql_dir + os.sep + 'statuses.sql'
-        if os.path.exists(path):
-            with open(path, 'r') as f:
-                sql = f.read()
-            conn.executescript(sql)
-    conn.commit()
-    return conn
-
-
 def init_conn_user():
     conn = sqlite3.connect(user_path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
 
-def init_conn_status():
-    conn = sqlite3.connect(status_path, check_same_thread=False)
-    return conn
-
-
-def init_write_thread(conn_user, conn_status):
-    thread = sqlthread.SQLThread(conn_user=conn_user, conn_status=conn_status)
+def init_write_thread(conn_user):
+    thread = sqlthread.SQLThread(conn_user=conn_user)
     return thread
 
 
@@ -161,29 +140,6 @@ def update_long_id_from_short_id(uid, short_id, long_id, single_type):
     pass
 
 
-def get_status(id_str):
-    sql = 'SELECT data FROM statuses WHERE id_str=?'
-    cursor = conn_status.execute(sql, (id_str,))
-    result = cursor.fetchone()
-    return result[0] if result else None
-
-
-@write_decorator
-def add_status(id_str, data_str, timestamp):
-    pass
-
-
-@write_decorator
-def flush_status(force=False):
-    pass
-
-
-@write_decorator
-def purge_old_statuses(from_timestamp):
-    pass
-
 conn_user = init_conn_user()
-conn_status = init_conn_status()
 init_db_user(conn_user)
-init_db_status(conn_status)
-write_thread = init_write_thread(conn_user=conn_user, conn_status=conn_status)
+write_thread = init_write_thread(conn_user=conn_user)

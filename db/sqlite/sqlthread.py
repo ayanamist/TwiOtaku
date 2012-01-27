@@ -24,12 +24,10 @@ logger = logging.getLogger('sqlite_thread')
 
 
 class SQLThread(mythread.StoppableThread):
-    def __init__(self, conn_user, conn_status):
+    def __init__(self, conn_user):
         super(SQLThread, self).__init__()
         self.__conn_user = conn_user
-        self.__conn_status = conn_status
         self.__write_queue = Queue.Queue()
-        self.__status_queue = list()
 
     def process(self, command):
         return self.__write_queue.put(command)
@@ -95,21 +93,3 @@ class SQLThread(mythread.StoppableThread):
         sql = 'INSERT OR REPLACE INTO id_lists (uid, short_id, long_id, type) VALUES(?, ?, ?, ?)'
         self.__conn_user.execute(sql, (uid, short_id, long_id, single_type))
         self.__conn_user.commit()
-
-
-    def add_status(self, id_str, data_str, timestamp):
-        self.__status_queue.append((id_str, timestamp, data_str))
-        self.flush_status()
-
-
-    def flush_status(self, force=False):
-        if len(self.__status_queue) > 500 or force:
-            sql = 'INSERT OR REPLACE INTO statuses (id_str, data, timestamp) VALUES(?,?,?)'
-            self.__conn_status.executemany(sql, self.__status_queue)
-            self.__status_queue = list()
-            self.__conn_status.commit()
-
-
-    def purge_old_statuses(self, from_timestamp):
-        self.__conn_status.execute('DELETE FROM statuses WHERE timestamp<?', (from_timestamp,))
-        self.__conn_status.commit()

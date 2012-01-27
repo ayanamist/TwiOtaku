@@ -215,7 +215,6 @@ class CronMisc(mythread.StoppableThread):
                     self.refresh_blocked_ids(user)
                     self.refresh_list_ids(user)
         self.check_stop()
-        self.clean_expired_cache()
 
     @logdecorator.debug
     def verify_credential(self, user):
@@ -272,7 +271,3 @@ class CronMisc(mythread.StoppableThread):
             else:
                 db.update_user(id=user['id'], list_ids_last_update=self.__now)
 
-    @logdecorator.silent
-    def clean_expired_cache(self):
-        from_stamp = int(time.time()) - config.MAX_STATUS_CACHE_TIME
-        db.purge_old_statuses(from_stamp)
