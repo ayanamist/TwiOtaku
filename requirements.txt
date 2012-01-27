@@ -1,0 +1,5 @@
+SleekXMPP
+Jinja2
+pysqlite
+ujson
+MarkupSafe
