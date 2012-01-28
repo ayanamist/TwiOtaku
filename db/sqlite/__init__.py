@@ -18,7 +18,6 @@
 import functools
 import logging
 import os
-import threading
 
 try:
     from pysqlite2 import dbapi2 as sqlite3
@@ -26,8 +25,7 @@ except ImportError:
     import sqlite3
 
 import config
-from . import sqlthread
-from . import sqlcommand
+from lib import mythread
 
 
 logger = logging.getLogger('sqlite')
@@ -36,17 +34,13 @@ database_dir = os.path.abspath(config.DATABASE_DIR)
 if not os.path.exists(database_dir):
     os.makedirs(database_dir)
 user_path = os.path.join(database_dir, 'twiotaku.db')
-read_condition = threading.Condition()
+rwlock = mythread.ReadWriteLock()
 
 def write_decorator(f):
     @functools.wraps(f)
     def wrap(*args, **kwargs):
-        read_condition.acquire()
-        command = sqlcommand.SQLCommand(f.__name__, *args, **kwargs)
-        write_thread.process(command)
-        result = command.get_result()
-        read_condition.notify_all()
-        read_condition.release()
+        with rwlock.writelock:
+            result = f(*args, **kwargs)
         return result
 
     return wrap
@@ -55,11 +49,8 @@ def write_decorator(f):
 def read_decorator(f):
     @functools.wraps(f)
     def wrap(*args, **kwargs):
-        read_condition.acquire()
-        if not write_thread.write_queue.empty():
-            read_condition.wait()
-        result = f(*args, **kwargs)
-        read_condition.release()
+        with rwlock.readlock:
+            result = f(*args, **kwargs)
         return result
 
     return wrap
@@ -85,13 +76,6 @@ def init_conn_user():
     return conn
 
 
-def init_write_thread(conn_user):
-    thread = sqlthread.SQLThread(conn_user=conn_user)
-    thread.setDaemon(True)
-    thread.start()
-    return thread
-
-
 @read_decorator
 def get_user_from_jid(jid):
     sql = 'SELECT * FROM users WHERE jid=?'
@@ -102,7 +86,23 @@ def get_user_from_jid(jid):
 
 @write_decorator
 def update_user(id=None, jid=None, **kwargs):
-    pass
+    if id is None and jid is None:
+        raise TypeError('The method takes at least one argument.')
+    if kwargs:
+        cols = list()
+        values = list()
+        for k, v in kwargs.iteritems():
+            cols.append('%s=?' % k)
+            values.append(v)
+        if id:
+            cond = 'id=?'
+            values.append(id)
+        else:
+            cond = 'jid=?'
+            values.append(jid)
+        sql = 'UPDATE users SET %s WHERE %s' % (','.join(cols), cond)
+        conn_user.execute(sql, values)
+        conn_user.commit()
 
 
 @read_decorator
@@ -114,7 +114,9 @@ def get_users_count():
 
 @write_decorator
 def add_user(jid):
-    pass
+    sql = 'INSERT INTO users (jid) VALUES(?)'
+    conn_user.execute(sql, (jid,))
+    conn_user.commit()
 
 
 @read_decorator
@@ -140,12 +142,14 @@ def verify_invite_code(invite_code):
 
 @write_decorator
 def add_invite_code(invite_code, create_time):
-    pass
+    sql = 'INSERT INTO invites (id, create_time) VALUES(?,?)'
+    conn_user.execute(sql, (invite_code, create_time))
 
 
 @write_decorator
 def delete_invite_code(invite_code):
-    pass
+    sql = 'DELETE FROM invites WHERE id=?'
+    conn_user.execute(sql, (invite_code,))
 
 
 @read_decorator
@@ -166,12 +170,16 @@ def get_long_id_from_short_id(uid, short_id):
 
 @write_decorator
 def update_long_id_from_short_id(uid, short_id, long_id, single_type):
-    pass
+    sql = 'DELETE FROM id_lists WHERE uid=? AND short_id=?'
+    conn_user.execute(sql, (uid, short_id))
+    sql = 'INSERT INTO id_lists (uid, short_id, long_id, type) VALUES(?, ?, ?, ?)'
+    conn_user.execute(sql, (uid, short_id, long_id, single_type))
+    conn_user.commit()
 
 
 def close():
+    conn_user.commit()
     conn_user.close()
 
 conn_user = init_conn_user()
 init_db_user(conn_user)
-write_thread = init_write_thread(conn_user=conn_user)
