@@ -234,24 +234,28 @@ class StreamThread(mythread.StoppableThread):
                 else:
                     data = None
             else:
-                if data['user']['id'] in self.blocked_ids or\
-                   ('retweeted_status' in data and data['retweeted_status']['user']['id'] in self.blocked_ids) or\
-                   data['user']['screen_name'] == self.user['screen_name']:
-                    data = None
-                else:
-                    data = twitter.Status(data)
-                    if (self.user['timeline'] & db.MODE_HOME and data['user']['id'] in self.friend_ids) or\
-                       (self.user['timeline'] & db.MODE_MENTION and self.user_at_screen_name in data['text']) or\
-                       (self.user['timeline'] & db.MODE_LIST and data['user']['id'] in self.list_ids) or\
-                       (self.user['timeline'] & db.MODE_TRACK and contain(self.track_words, data['text'].lower())):
-                        if self.user_at_screen_name in data['text']:
-                            retweeted_status = data.get('retweeted_status')
-                            if retweeted_status and retweeted_status.get('in_reply_to_status_id_str'):
-                                data['retweeted_status']['in_reply_to_status'] = None
-                            elif data.get('in_reply_to_status_id_str'):
-                                data['in_reply_to_status'] = None
-                    else:
+                if 'user' in data:
+                    if data['user']['id'] in self.blocked_ids or\
+                       ('retweeted_status' in data and data['retweeted_status']['user']['id'] in self.blocked_ids) or\
+                       data['user']['screen_name'] == self.user['screen_name']:
                         data = None
+                    else:
+                        data = twitter.Status(data)
+                        if (self.user['timeline'] & db.MODE_HOME and data['user']['id'] in self.friend_ids) or\
+                           (self.user['timeline'] & db.MODE_MENTION and self.user_at_screen_name in data['text']) or\
+                           (self.user['timeline'] & db.MODE_LIST and data['user']['id'] in self.list_ids) or\
+                           (self.user['timeline'] & db.MODE_TRACK and contain(self.track_words, data['text'].lower())):
+                            if self.user_at_screen_name in data['text']:
+                                retweeted_status = data.get('retweeted_status')
+                                if retweeted_status and retweeted_status.get('in_reply_to_status_id_str'):
+                                    data['retweeted_status']['in_reply_to_status'] = None
+                                elif data.get('in_reply_to_status_id_str'):
+                                    data['in_reply_to_status'] = None
+                        else:
+                            data = None
+                else:
+                    logger.warn('Unknown stream: %s' % str(data))
+                    data = None
             if data:
                 self.__queue.put(job.Job(self.user['jid'], data=data, allow_duplicate=False, always=False, title=title,
                     xmpp_command=False))
