@@ -156,6 +156,8 @@ class StreamThread(mythread.StoppableThread):
                     self.process(data)
         except twitter.UnauthorizedError:
             logger.error('User %s OAuth unauthorized, exiting.' % self.user['jid'])
+            db.update_user(self.user['id'], access_key=None, access_secret=None)
+            self.__queue.put(mythread.ThreadStop())
             raise mythread.ThreadStop
         except twitter.EnhanceYourCalmError:
             logger.warn('User %s Streaming connect too often!' % self.user['jid'])

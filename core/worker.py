@@ -42,6 +42,8 @@ class Worker(mythread.StoppableThread):
     def running(self, item):
         if not isinstance(item, job.Job):
             raise TypeError(str(item))
+        elif isinstance(item, mythread.ThreadStop):
+            raise item
         bare_jid = self.__xmpp.getjidbare(item.jid).lower()
         user = db.get_user_from_jid(bare_jid)
         if self.__xmpp.get_presence(bare_jid) or item.always or (user and user['always']):
