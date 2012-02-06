@@ -201,44 +201,29 @@ class CronMisc(mythread.StoppableThread):
 
     def running(self):
         for user in db.get_all_users():
-            if user['access_key'] and user['access_secret']:
-                self.__api = twitter.Api(consumer_key=config.OAUTH_CONSUMER_KEY,
-                    consumer_secret=config.OAUTH_CONSUMER_SECRET,
-                    access_token_key=user['access_key'],
-                    access_token_secret=user['access_secret'])
-                self.__now = int(time.time())
-                self.__thread = self.__xmpp.stream_threads.get(user['jid'])
-                self.check_stop()
-                if self.verify_credential(user):
-                    self.check_stop()
-                    self.refresh_blocked_ids(user)
-                    self.refresh_list_ids(user)
+            self.process_user(user)
         self.check_stop()
 
     @logdecorator.debug
-    def verify_credential(self, user):
-        if self.__now - user['last_verified'] > CRON_VERIFY_CREDENTIAL_INTERVAL:
-            logger.debug('%s: check credential.' % user['jid'])
+    def process_user(self, user):
+        if user['access_key'] and user['access_secret']:
+            self.__api = twitter.Api(consumer_key=config.OAUTH_CONSUMER_KEY,
+                consumer_secret=config.OAUTH_CONSUMER_SECRET,
+                access_token_key=user['access_key'],
+                access_token_secret=user['access_secret'])
+            self.__now = int(time.time())
+            self.__thread = self.__xmpp.stream_threads.get(user['jid'])
             try:
-                twitter_user = self.__api.verify_credentials()
+                self.check_stop()
+                self.refresh_blocked_ids(user)
+                self.check_stop()
+                self.refresh_list_ids(user)
             except twitter.UnauthorizedError:
                 logger.debug('%s: credential is invalid.' % user['jid'])
-                db.update_user(access_key=None, access_secret=None)
+                db.update_user(user['id'], access_key=None, access_secret=None)
                 if self.__thread:
                     self.__thread.stop()
-                    return False
-            else:
-                if user['screen_name'] != twitter_user['screen_name']:
-                    logger.debug('%s: screen_name has been changed from %s to %s.' %
-                                 (user['jid'], user['screen_name'], twitter_user['screen_name']))
-                    db.update_user(id=user['id'], screen_name=twitter_user['screen_name'])
-                return True
-            finally:
-                db.update_user(id=user['id'], last_verified=self.__now)
-        else:
-            return True
 
-    @logdecorator.debug
     def refresh_blocked_ids(self, user):
         if self.__now - user['blocked_ids_last_update'] > CRON_BLOCKED_IDS_INTERVAL:
             logger.debug('%s: refresh blocked ids.' % user['jid'])
@@ -250,10 +235,9 @@ class CronMisc(mythread.StoppableThread):
             else:
                 db.update_user(id=user['id'], blocked_ids_last_update=self.__now)
 
-    @logdecorator.debug
     def refresh_list_ids(self, user):
-        if user['list_user'] and user['list_name'] and self.__now - user[
-                                                                    'list_ids_last_update'] > CRON_LIST_IDS_INTERVAL:
+        if user['list_user'] and user['list_name'] and\
+        self.__now - user['list_ids_last_update'] > CRON_LIST_IDS_INTERVAL:
             logger.debug('%s: refresh list ids.' % user['jid'])
             cursor = -1
             list_ids = set()
@@ -264,7 +248,7 @@ class CronMisc(mythread.StoppableThread):
                     list_ids.add(x['id_str'])
                 cursor = result['next_cursor']
             user = db.get_user_from_jid(user['jid'])
-            if (list_ids and user['list_ids'] is None) or (list_ids ^ set(user['list_ids'].split(','))):
+            if (list_ids and user['list_ids'] is None) or (list_ids ^ set((user['list_ids'] or '').split(','))):
                 db.update_user(id=user['id'], list_ids=','.join(list_ids), list_ids_last_update=self.__now)
                 self.__thread.user_changed()
             else:

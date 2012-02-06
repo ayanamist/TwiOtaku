@@ -453,7 +453,7 @@ class Api(object):
         try:
             response = urlfetch.fetch_async(method=http_method, url=url, body=encoded_post_data, headers=headers,
                 timeout=timeout)
-        except (ssl.SSLError, httplib.HTTPException, urlfetch.Error), e:
+        except (ssl.SSLError, urlfetch.Error), e:
             raise NetworkError(str(e))
         return response
 

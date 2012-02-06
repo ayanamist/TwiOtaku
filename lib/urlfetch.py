@@ -53,8 +53,8 @@ def fetch_async(url, method='GET', body=None, headers=None, timeout=None):
     except urllib2.HTTPError, e:
         code = e.code
         r = e
-    except urllib2.URLError, e:
-        raise Error(e.reason)
+    except (urllib2.URLError, httplib.HTTPException), e:
+        raise Error(str(e))
     r.status = code
     r.header = r.info()
     r.data = None
