@@ -435,6 +435,9 @@ class Api(object):
             extra_params.update(parameters)
         if post_data:
             http_method = "POST"
+            # it seems that adding following header will increase call-limit from 350 to 1000.
+        if http_method == 'GET':
+            headers['X-PHX'] = 'true'
         if self._oauth_consumer is not None:
             if post_data:
                 parameters = post_data.copy()
