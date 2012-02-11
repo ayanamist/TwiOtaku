@@ -1,5 +1,5 @@
-SleekXMPP
-Jinja2
-pysqlite
-ujson
-MarkupSafe
+SleekXMPP==1.0
+Jinja2==2.6
+pysqlite==2.6.3
+ujson==1.18
+MarkupSafe==0.15
