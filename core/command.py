@@ -28,6 +28,7 @@ import db
 from lib import job
 from lib import logdecorator
 from lib import oauth
+from lib import ttp
 from lib import twitter
 from lib import util
 from misc import template_test
@@ -53,6 +54,9 @@ SHORT_COMMANDS = {
     }
 
 _screen_name_regex = r'[a-zA-Z0-9_]+'
+_ttp_parser = ttp.Parser()
+
+TCO_LENGTH = 20
 
 class XMPPMessageHandler(object):
     def __init__(self, xmpp):
@@ -369,6 +373,13 @@ class XMPPMessageHandler(object):
         self.__queue.put(job.Job(self.__jid, data=status, allow_duplicate=False))
 
     def func_rt(self, short_id, *content):
+        def actual_len(text):
+            length = len(text)
+            parse_result = _ttp_parser.parse(text, html=False)
+            for url in parse_result.urls:
+                length = length - len(url) + TCO_LENGTH
+            return length
+
         long_id, long_id_type = self.__util.restore_short_id(short_id)
         if long_id_type == db.TYPE_DM:
             raise TypeError('Can not retweet a direct message.')
@@ -383,18 +394,18 @@ class XMPPMessageHandler(object):
             if 'retweeted_status' in status:
                 status = status['retweeted_status']
             message = u'%sRT @%s' % (user_msg, status['user']['screen_name'])
-            if len(message) > twitter.CHARACTER_LIMIT:
-                raise ValueError('Content is too long to be RT.')
+            actual_length = actual_len(message)
+            if actual_length > twitter.CHARACTER_LIMIT:
+                raise ValueError('Content with length %d is too long to be RT.' % actual_length)
+            message_strip_index = twitter.CHARACTER_LIMIT + len(message) - actual_length
             message = '%s: %s' % (message, status['text'])
-            message_stripped = ''
             for m in re.finditer('@%s' % _screen_name_regex, status['text']):
                 m_start = m.start()
                 m_end = m.end()
-                if twitter.CHARACTER_LIMIT < m_end >= m_start:
-                    message_stripped = message[:m_start]
+                if m_start <= message_strip_index < m_end:
+                    message_strip_index = m_start
                     break
-            if not message_stripped:
-                message_stripped = message[:140]
+            message_stripped = message[:message_strip_index]
             status = self.__api.post_update(message_stripped.encode('UTF8'))
             self.__queue.put(job.Job(self.__jid, data=status, allow_duplicate=False))
 
