@@ -28,7 +28,6 @@ import db
 from lib import job
 from lib import logdecorator
 from lib import oauth
-from lib import ttp
 from lib import twitter
 from lib import util
 from misc import template_test
@@ -54,9 +53,6 @@ SHORT_COMMANDS = {
     }
 
 _screen_name_regex = r'[a-zA-Z0-9_]+'
-_ttp_parser = ttp.Parser()
-
-TCO_LENGTH = 20
 
 class XMPPMessageHandler(object):
     def __init__(self, xmpp):
@@ -79,7 +75,7 @@ class XMPPMessageHandler(object):
         try:
             result = self.parse_command(msg['body'])
         except Exception, e:
-            result = u'%s: %s' % (e.__class__.__name__, unicode(e))
+            result = '%s: %s' % (e.__class__.__name__, str(e))
         if result:
             self.__xmpp.send_message(msg['from'], result)
 
@@ -96,8 +92,16 @@ class XMPPMessageHandler(object):
         else:
             if not self.__user:
                 return
-            status = self.__api.post_update(cmd.encode('UTF8'))
-            self.__queue.put(job.Job(self.__jid, data=status, allow_duplicate=False))
+            try:
+                status = self.__api.post_update(cmd.encode('UTF8'))
+            except twitter.ForbiddenError, e:
+                message_length = twitter.actual_len(cmd)
+                if message_length > twitter.CHARACTER_LIMIT:
+                    raise twitter.ForbiddenError('%s\nMaybe too long: %d' % (str(e), message_length))
+                else:
+                    raise e
+            else:
+                self.__queue.put(job.Job(self.__jid, data=status, allow_duplicate=False))
 
     def func_oauth(self):
         consumer = oauth.Consumer(config.OAUTH_CONSUMER_KEY, config.OAUTH_CONSUMER_SECRET)
@@ -341,8 +345,16 @@ class XMPPMessageHandler(object):
                 screen_name = direct_message['sender_screen_name']
                 long_id = None
             message = u'@%s %s' % (screen_name, ' '.join(content))
-            status = self.__api.post_update(message.encode('UTF8'), long_id)
-            self.__queue.put(job.Job(self.__jid, data=status, allow_duplicate=False))
+            try:
+                status = self.__api.post_update(message.encode('UTF8'), long_id)
+            except twitter.ForbiddenError, e:
+                message_length = twitter.actual_len(message)
+                if message_length > twitter.CHARACTER_LIMIT:
+                    raise twitter.ForbiddenError('%s\nMaybe too long: %d' % (str(e), message_length))
+                else:
+                    raise e
+            else:
+                self.__queue.put(job.Job(self.__jid, data=status, allow_duplicate=False))
 
     def func_replyall(self, short_ids, *content):
         def add_mention_user(screen_name):
@@ -369,17 +381,18 @@ class XMPPMessageHandler(object):
         if not mention_users:
             raise twitter.NotFoundError('Not found.')
         message = u'%s %s' % (' '.join('@' + x for x in mention_users), ' '.join(content))
-        status = self.__api.post_update(message.encode('UTF8'), first_long_id)
-        self.__queue.put(job.Job(self.__jid, data=status, allow_duplicate=False))
+        try:
+            status = self.__api.post_update(message.encode('UTF8'), first_long_id)
+        except twitter.ForbiddenError, e:
+            message_length = twitter.actual_len(message)
+            if message_length > twitter.CHARACTER_LIMIT:
+                raise twitter.ForbiddenError('%s\nMaybe too long: %d' % (str(e), message_length))
+            else:
+                raise e
+        else:
+            self.__queue.put(job.Job(self.__jid, data=status, allow_duplicate=False))
 
     def func_rt(self, short_id, *content):
-        def actual_len(text):
-            length = len(text)
-            parse_result = _ttp_parser.parse(text, html=False)
-            for url in parse_result.urls:
-                length = length - len(url) + TCO_LENGTH
-            return length
-
         long_id, long_id_type = self.__util.restore_short_id(short_id)
         if long_id_type == db.TYPE_DM:
             raise TypeError('Can not retweet a direct message.')
@@ -394,7 +407,7 @@ class XMPPMessageHandler(object):
             if 'retweeted_status' in status:
                 status = status['retweeted_status']
             message = u'%sRT @%s' % (user_msg, status['user']['screen_name'])
-            actual_length = actual_len(message)
+            actual_length = twitter.actual_len(message)
             if actual_length > twitter.CHARACTER_LIMIT:
                 raise ValueError('Content with length %d is too long to be RT.' % actual_length)
             message_strip_index = twitter.CHARACTER_LIMIT + len(message) - actual_length
@@ -446,9 +459,17 @@ class XMPPMessageHandler(object):
             else:
                 screen_name = screen_name_or_short_id_or_page
             message = ' '.join(content)
-            dm = self.__api.post_direct_message(screen_name.encode('UTF8'), message.encode('UTF8'))
-            self.__queue.put(job.Job(self.__jid,
-                title='Direct Message sent to %s:' % screen_name, data=dm, allow_duplicate=False))
+            try:
+                dm = self.__api.post_direct_message(screen_name.encode('UTF8'), message.encode('UTF8'))
+            except twitter.ForbiddenError, e:
+                message_length = twitter.actual_len(message)
+                if message_length > twitter.CHARACTER_LIMIT:
+                    raise twitter.ForbiddenError('%s\nMaybe too long: %d' % (str(e), message_length))
+                else:
+                    raise e
+            else:
+                self.__queue.put(job.Job(self.__jid,
+                    title='Direct Message sent to %s:' % screen_name, data=dm, allow_duplicate=False))
 
 
     def func_msg(self, short_id_or_long_id):

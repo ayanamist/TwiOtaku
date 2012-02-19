@@ -23,8 +23,12 @@ import urlparse
 from . import oauth
 from . import urlfetch
 from . import myjson
+from . import ttp
+
 
 CHARACTER_LIMIT = 140
+
+TCO_LENGTH = 20
 
 REQUEST_TOKEN_URL = 'https://api.twitter.com/oauth/request_token'
 
@@ -35,6 +39,17 @@ AUTHORIZATION_URL = 'https://api.twitter.com/oauth/authorize'
 SIGNIN_URL = 'https://api.twitter.com/oauth/authenticate'
 
 BASE_URL = 'https://api.twitter.com/1'
+
+_ttp_parser = ttp.Parser()
+
+# twitter will convert all urls into t.co links.
+def actual_len(text):
+    length = len(text)
+    parse_result = _ttp_parser.parse(text, html=False)
+    for url in parse_result.urls:
+        length = length - len(url) + TCO_LENGTH
+    return length
+
 
 class Error(Exception):
     pass
