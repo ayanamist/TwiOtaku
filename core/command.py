@@ -469,7 +469,8 @@ class XMPPMessageHandler(object):
                     raise e
             else:
                 self.__queue.put(job.Job(self.__jid,
-                    title='Direct Message sent to %s:' % screen_name, data=dm, allow_duplicate=False))
+                    title='Direct Message sent to %s:' % dm['recipient_screen_name'],
+                    data=dm, allow_duplicate=False))
 
 
     def func_msg(self, short_id_or_long_id):
