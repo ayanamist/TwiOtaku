@@ -38,9 +38,15 @@ class XMPPBot(sleekxmpp.ClientXMPP):
         self.auto_authorize = True
         self.auto_subscribe = True
         self.first_run = True
+        self.allow_shutdown = False
+        self.add_event_handler('disconnected', self.on_disconnected)
         self.add_event_handler('session_start', self.on_start)
         self.add_event_handler('message', self.on_message)
         self.add_event_handler('changed_status', self.on_changed_status)
+
+    def on_disconnected(self, _):
+        if not self.allow_shutdown:
+            self.reconnect()
 
     def on_start(self, _):
         self.get_roster()
@@ -96,6 +102,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
             logger.error('Can not connect to server.')
 
     def sigterm_handler(self, *_):
+        self.allow_shutdown = True
         self.stop_streams()
         self.stop_cron()
         self.stop_workers()
