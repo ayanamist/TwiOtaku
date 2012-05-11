@@ -237,13 +237,16 @@ class CronMisc(mythread.StoppableThread):
 
     def refresh_list_ids(self, user):
         if user['list_user'] and user['list_name'] and\
-        self.__now - user['list_ids_last_update'] > CRON_LIST_IDS_INTERVAL:
+           self.__now - user['list_ids_last_update'] > CRON_LIST_IDS_INTERVAL:
             logger.debug('%s: refresh list ids.' % user['jid'])
             cursor = -1
             list_ids = set()
             while cursor:
                 self.check_stop()
-                result = self.__api.get_list_members(user['list_user'], user['list_name'], cursor=cursor)
+                try:
+                    result = self.__api.get_list_members(user['list_user'], user['list_name'], cursor=cursor)
+                except twitter.NotFoundError:
+                    break
                 for x in result['users']:
                     list_ids.add(x['id_str'])
                 cursor = result['next_cursor']
