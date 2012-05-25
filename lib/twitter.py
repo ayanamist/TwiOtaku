@@ -477,9 +477,13 @@ class Api(object):
 
     def _fetch_url(self, url, post_data=None, parameters=None, http_method='GET'):
         r = self._fetch_url_async(url, post_data=post_data, parameters=parameters, http_method=http_method)
-        r.data = r.read()
-        self._check_for_twitter_code_error(r, self._get_twitter_data_error(r))
-        return r.data
+        try:
+            r.data = r.read()
+        except IOError, e:
+            raise Error(str(e))
+        else:
+            self._check_for_twitter_code_error(r, self._get_twitter_data_error(r))
+            return r.data
 
     def user_stream(self, timeout, reply_all=False, track=None):
         url = 'https://userstream.twitter.com/2/user.json'
