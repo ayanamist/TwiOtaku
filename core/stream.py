@@ -17,6 +17,7 @@
 
 import logging
 import httplib
+import socket
 import ssl
 import threading
 
@@ -35,7 +36,7 @@ WAIT_TIMES = (0, 30, 60, 120, 240)
 logger = logging.getLogger('user streaming')
 contain = lambda strlist, s: any(x in s for x in strlist)
 
-class Timeout(Exception):
+class Error(Exception):
     pass
 
 
@@ -104,21 +105,21 @@ class StreamThread(mythread.StoppableThread):
     def read(self, fp, size):
         s = ''
         data_len = 0
-        timeout_sum = 0
+        failed_count = 0
         while data_len < size:
             self.check_stop()
             try:
                 c = fp.read(1)
-            except (ssl.SSLError, httplib.HTTPException), e:
-                timeout_sum += MAX_CONNECT_TIMEOUT
-                if timeout_sum > MAX_DATA_TIMEOUT:
-                    raise Timeout(e)
+            except (ssl.SSLError, httplib.HTTPException, socket.error), e:
+                failed_count += MAX_CONNECT_TIMEOUT
+                if failed_count > MAX_DATA_TIMEOUT:
+                    raise Error(str(e))
             else:
                 if c:
                     s += c
                     data_len += 1
                 else:
-                    raise Timeout
+                    raise Error
         return s
 
     def read_line(self, fp):
@@ -163,7 +164,7 @@ class StreamThread(mythread.StoppableThread):
             logger.warn('User %s Streaming connect too often!' % self.user['jid'])
             if not self.wait_time_now_index:
                 self.wait_time_now_index = 1
-        except (Timeout, twitter.Error), e:
+        except (Error, twitter.Error), e:
             logger.warn('connection failed: %s' % str(e))
 
     @logdecorator.debug
