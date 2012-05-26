@@ -1,3 +1,4 @@
+# -*- encoding: utf-8 -*-
 #  This file is part of twitter-text-python.
 #
 #  twitter-text-python is free software: you can redistribute it and/or
@@ -66,35 +67,35 @@ IANA_ONE_LETTER_DOMAINS = ('x.com', 'x.org', 'z.com', 'q.net', 'q.com', 'i.net')
 
 
 class ParseResult(object):
-    '''A class containing the results of a parsed Tweet.
-    
+    """A class containing the results of a parsed Tweet.
+
     Attributes:
     - urls:
         A list containing all the valid urls in the Tweet.
-    
+
     - users
         A list containing all the valid usernames in the Tweet.
-    
+
     - reply
         A string containing the username this tweet was a reply to.
         This only matches a username at the beginning of the Tweet,
         it may however be preceeded by whitespace.
         Note: It's generally better to rely on the Tweet JSON/XML in order to
         find out if it's a reply or not.
-        
+
     - lists
         A list containing all the valid lists in the Tweet.
         Each list item is a tuple in the format (username, listname).
-        
+
     - tags
         A list containing all the valid tags in theTweet.
-    
+
     - html
         A string containg formatted HTML.
         To change the formatting sublcass twp.Parser and override the format_*
         methods.
-    
-    '''
+
+    """
 
     def __init__(self, urls, users, reply, lists, tags, html):
         self.urls = urls
@@ -106,13 +107,13 @@ class ParseResult(object):
 
 
 class Parser(object):
-    '''A Tweet Parser'''
+    """A Tweet Parser"""
 
     def __init__(self, max_url_length=30):
         self._max_url_length = max_url_length
 
     def parse(self, text, html=True):
-        '''Parse the text and return a ParseResult instance.'''
+        """Parse the text and return a ParseResult instance."""
         self._urls = []
         self._users = []
         self._lists = []
@@ -126,7 +127,7 @@ class Parser(object):
             self._lists, self._tags, parsed_html)
 
     def _text(self, text):
-        '''Parse a Tweet without generating HTML.'''
+        """Parse a Tweet without generating HTML."""
         URL_REGEX.sub(self._parse_urls, text)
         USERNAME_REGEX.sub(self._parse_users, text)
         LIST_REGEX.sub(self._parse_lists, text)
@@ -134,7 +135,7 @@ class Parser(object):
         return None
 
     def _html(self, text):
-        '''Parse a Tweet and generate HTML.'''
+        """Parse a Tweet and generate HTML."""
         html = URL_REGEX.sub(self._parse_urls, text)
         html = USERNAME_REGEX.sub(self._parse_users, html)
         html = LIST_REGEX.sub(self._parse_lists, html)
@@ -143,7 +144,7 @@ class Parser(object):
 
     # Internal parser stuff ----------------------------------------------------
     def _parse_urls(self, match):
-        '''Parse URLs.'''
+        """Parse URLs."""
 
         mat = match.group(0)
 
@@ -178,7 +179,7 @@ class Parser(object):
                 self._shorten_url(escape(url))))
 
     def _parse_users(self, match):
-        '''Parse usernames.'''
+        """Parse usernames."""
 
         # Don't parse lists here
         if match.group(2) is not None:
@@ -191,7 +192,7 @@ class Parser(object):
             return self.format_username(mat[0:1], mat[1:])
 
     def _parse_lists(self, match):
-        '''Parse lists.'''
+        """Parse lists."""
 
         # Don't parse usernames here
         if match.group(4) is None:
@@ -205,7 +206,7 @@ class Parser(object):
             return '%s%s' % (pre, self.format_list(at_char, user, list_name))
 
     def _parse_tags(self, match):
-        '''Parse hashtags.'''
+        """Parse hashtags."""
 
         mat = match.group(0)
 
@@ -224,9 +225,9 @@ class Parser(object):
             return '%s%s' % (pre, self.format_tag(tag, text))
 
     def _shorten_url(self, text):
-        '''Shorten a URL and make sure to not cut of html entities.'''
+        """Shorten a URL and make sure to not cut of html entities."""
 
-        if len(text) > self._max_url_length and self._max_url_length != -1:
+        if len(text) > self._max_url_length != -1:
             text = text[0:self._max_url_length - 3]
             amp = text.rfind('&')
             close = text.rfind(';')
@@ -241,28 +242,28 @@ class Parser(object):
 
     # User defined formatters --------------------------------------------------
     def format_tag(self, tag, text):
-        '''Return formatted HTML for a hashtag.'''
+        """Return formatted HTML for a hashtag."""
         return '<a href="http://search.twitter.com/search?q=%s">%s%s</a>'\
         % (urllib.quote('#' + text.encode('utf-8')), tag, text)
 
     def format_username(self, at_char, user):
-        '''Return formatted HTML for a username.'''
+        """Return formatted HTML for a username."""
         return '<a href="http://twitter.com/%s">%s%s</a>'\
         % (user, at_char, user)
 
     def format_list(self, at_char, user, list_name):
-        '''Return formatted HTML for a list.'''
+        """Return formatted HTML for a list."""
         return '<a href="http://twitter.com/%s/%s">%s%s/%s</a>'\
         % (user, list_name, at_char, user, list_name)
 
     def format_url(self, url, text):
-        '''Return formatted HTML for a url.'''
+        """Return formatted HTML for a url."""
         return '<a href="%s">%s</a>' % (escape(url), text)
 
 
 # Simple URL escaper
 def escape(text):
-    '''Escape some HTML entities.'''
+    """Escape some HTML entities."""
     return ''.join({'&': '&amp;', '"': '&quot;',
                     '\'': '&apos;', '>': '&gt;',
                     '<': '&lt;'}.get(c, c) for c in text)
