@@ -41,7 +41,7 @@ if __name__ == '__main__':
     next_time = datetime.datetime(utc_now.year, utc_now.month, utc_now.day, restart_hour, tzinfo=None)
     if utc_now.hour >= restart_hour:
         next_time += datetime.timedelta(days=1)
-    time.sleep(int((next_time - utc_now).total_seconds(), 10))
+    time.sleep((next_time - utc_now).seconds)
     bot.sigterm_handler()
     exit(3) # supervisord will restart the daemon automatically if exit code is not 0 or 2.
 
