@@ -52,7 +52,11 @@ def actual_len(text):
 
 
 class Error(Exception):
-    pass
+    def __str__(self):
+        try:
+            return "%d: %s" % (self.code, self.message)
+        except AttributeError:
+            return self.message
 
 
 class BadRequestError(Exception):
