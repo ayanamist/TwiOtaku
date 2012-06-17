@@ -81,7 +81,7 @@ class XMPPMessageHandler(object):
 
     def parse_command(self, cmd):
         if cmd[0] == '-' or cmd[0] == ' ':
-            args = cmd[1:].lstrip().split(' ')
+            args = cmd[1:].split()
             if args[0] in SHORT_COMMANDS:
                 args[0] = SHORT_COMMANDS[args[0]]
             if not self.__user and args[0] != 'invite':
