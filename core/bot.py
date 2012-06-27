@@ -45,8 +45,15 @@ class XMPPBot(sleekxmpp.ClientXMPP):
         self.add_event_handler('changed_status', self.on_changed_status)
 
     def on_disconnected(self, _):
-        if not self.allow_shutdown:
+        if not config.AUTO_RESTART and not self.allow_shutdown:
             self.reconnect()
+        self.stop_streams()
+        self.stop_cron()
+        self.stop_workers()
+        db.close()
+        if config.AUTO_RESTART:
+            exit(1)
+
 
     def on_start(self, _):
         self.get_roster()
@@ -103,11 +110,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
     def sigterm_handler(self, *_):
         self.allow_shutdown = True
-        self.stop_streams()
-        self.stop_cron()
-        self.stop_workers()
         self.disconnect(wait=True)
-        db.close()
 
     def start_worker(self, bare_jid):
         w = self.worker_threads.get(bare_jid)
