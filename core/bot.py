@@ -180,9 +180,9 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
     def stop_streams(self):
         logger.info('shutdown stream.')
-        for t in self.stream_threads:
+        for t in self.stream_threads.values():
             t.stop()
-        for t in self.stream_threads:
+        for t in self.stream_threads.values():
             t.join()
 
 
