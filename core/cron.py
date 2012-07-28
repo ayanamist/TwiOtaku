@@ -17,6 +17,7 @@
 
 import functools
 import operator
+import signal
 import time
 
 import apscheduler.scheduler
@@ -35,6 +36,8 @@ CRON_LIST_IDS_INTERVAL = 3600
 
 def cron_start(xmpp):
     sched = apscheduler.scheduler.Scheduler()
+    if config.AUTO_RESTART:
+        sched.add_cron_job(cron_autorestart, hour=21)
     for user in db.get_all_users():
         if user['access_key'] and user['access_secret'] and (user['timeline'] & ~db.MODE_EVENT):
             queue = xmpp.worker_threads[user['jid']].job_queue
@@ -44,6 +47,12 @@ def cron_start(xmpp):
             sched.add_interval_job(functools.partial(cron_list, user=user, xmpp=xmpp), seconds=CRON_LIST_IDS_INTERVAL)
     sched.start()
     return sched
+
+
+def cron_autorestart():
+    func = signal.getsignal(signal.SIGTERM)
+    func()
+    exit(3)
 
 
 def cron_timeline(user, queue):
