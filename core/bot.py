@@ -15,6 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with TwiOtaku.  If not, see <http://www.gnu.org/licenses/>.
 
+import functools
 import logging
 
 import sleekxmpp
@@ -101,6 +102,15 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     def add_online_user(self, bare_jid):
         self.start_worker(bare_jid)
         self.start_stream(bare_jid)
+        queue = self.worker_threads[bare_jid].job_queue
+        user = db.get_user_from_jid(bare_jid)
+        self._sched.add_interval_job(functools.partial(cron.cron_timeline, user=user, queue=queue),
+            seconds=cron.CRON_INTERVAL)
+        self._sched.add_interval_job(functools.partial(cron.cron_block, user=user, xmpp=self),
+            seconds=cron.CRON_BLOCKED_IDS_INTERVAL)
+        self._sched.add_interval_job(functools.partial(cron.cron_list, user=user, xmpp=self),
+            seconds=cron.CRON_LIST_IDS_INTERVAL)
+
 
     def start(self, *args, **kwargs):
         if self.connect(('talk.google.com', 5222)):
