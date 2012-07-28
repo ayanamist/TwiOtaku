@@ -142,18 +142,10 @@ class XMPPBot(sleekxmpp.ClientXMPP):
         return False
 
     def start_cron(self):
-        logger.debug('start cron.')
-        self.cron_thread = cron.CronStart(self)
-        self.cron_thread.start()
-        self.cron_misc_thread = cron.CronMisc(self)
-        self.cron_misc_thread.start()
+        self._sched = cron.cron_start(self)
 
     def stop_cron(self):
-        logger.info('shutdown cron scheduler.')
-        self.cron_thread.stop()
-        self.cron_misc_thread.stop()
-        self.cron_thread.join()
-        self.cron_misc_thread.join()
+        self._sched.shutdown()
 
     def start_stream(self, bare_jid):
         t = self.stream_threads.get(bare_jid)
