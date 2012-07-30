@@ -18,6 +18,7 @@
 import logging
 import sys
 import signal
+import time
 
 logging.basicConfig(level=logging.ERROR, format='%(asctime)-15s %(name)-8s %(levelname)-8s %(message)s',
     datefmt='%m-%d %H:%M:%S', stream=sys.stderr)
@@ -42,6 +43,13 @@ if __name__ == '__main__':
 
     signal.signal(signal.SIGTERM, sigterm_handler)
     xmpp_bot.start(block=True)
-    while True:
-        xmpp_bot.reconnect()
+    last_connected_time = time.time()
+    flag = True
+    while flag:
+        now = time.time()
+        if now - last_connected_time > 60:
+            xmpp_bot.reconnect()
+            last_connected_time = now
+        else:
+            flag = False
     sys.exit(1)
