@@ -22,13 +22,26 @@ import signal
 logging.basicConfig(level=logging.ERROR, format='%(asctime)-15s %(name)-8s %(levelname)-8s %(message)s',
     datefmt='%m-%d %H:%M:%S', stream=sys.stderr)
 
+import db
 from core import bot
+
+xmpp_bot = bot.XMPPBot()
+
+def sigterm_handler(*_):
+    xmpp_bot.stop_streams()
+    xmpp_bot.stop_cron()
+    xmpp_bot.stop_workers()
+    db.close()
+    sys.exit(0)
+
 
 if __name__ == '__main__':
     if sys.version_info[0] != 2 or sys.version_info[1] < 6:
         print 'TwiOtaku needs Python 2.6 or later. Python 3.X is not supported yet.'
         exit(2)
 
-    bot = bot.XMPPBot()
-    signal.signal(signal.SIGTERM, bot.sigterm_handler)
-    bot.start(block=True)
+    signal.signal(signal.SIGTERM, sigterm_handler)
+    xmpp_bot.start(block=True)
+    while True:
+        xmpp_bot.reconnect()
+    sys.exit(1)

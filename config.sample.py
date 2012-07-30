@@ -5,7 +5,6 @@ OAUTH_CONSUMER_KEY = 'yourkey'
 OAUTH_CONSUMER_SECRET = 'yoursecret'
 MAX_ID_LIST_NUM = 702
 MAX_CONVERSATION_NUM = 4
-AUTO_RESTART = False # only enable this if you use supervisord
 DATABASE_TYPE = 'sqlite' # only sqlite now.
 DATABASE_DIR = '/home/dotcloud/data'
 ADMIN_USERS = (

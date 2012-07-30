@@ -184,7 +184,7 @@ class XMPPMessageHandler(object):
                 follow_str.append(u'You have sent follow request.')
             else:
                 follow_str.append(u'You are not following.')
-        texts.append(''.join(follow_str))
+        texts.append(u''.join(follow_str))
         avatar_url = twitter_user['profile_image_url_https']
         i = avatar_url.rfind('_normal.')
         if i != -1:
