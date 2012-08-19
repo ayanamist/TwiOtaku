@@ -91,13 +91,13 @@ class Util(object):
             single = retweeted_status
             single['retweet'] = retweet
             del single['retweet']['retweeted_status']
-        if 'in_reply_to_status' in single:
-            if not single['in_reply_to_status']:
-                try:
-                    single['in_reply_to_status'] = self.__api.get_status(single['in_reply_to_status_id_str'])
-                except twitter.Error:
-                    pass
-            single['in_reply_to_status'] = self.make_namespace(single['in_reply_to_status'])
+        if 'in_reply_to_status_id_str' in single:
+            try:
+                single['in_reply_to_status'] = self.__api.get_status(single['in_reply_to_status_id_str'])
+            except twitter.Error:
+                pass
+            else:
+                single['in_reply_to_status'] = self.make_namespace(single['in_reply_to_status'])
         self.allow_duplicate = old_allow_duplicate
         return single
 

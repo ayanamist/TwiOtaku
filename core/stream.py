@@ -248,12 +248,7 @@ class StreamThread(mythread.StoppableThread):
                            (self.user['timeline'] & db.MODE_MENTION and self.user_at_screen_name in data['text']) or\
                            (self.user['timeline'] & db.MODE_LIST and data['user']['id'] in self.list_ids) or\
                            (self.user['timeline'] & db.MODE_TRACK and contain(self.track_words, data['text'].lower())):
-                            if self.user_at_screen_name in data['text']:
-                                retweeted_status = data.get('retweeted_status')
-                                if retweeted_status and retweeted_status.get('in_reply_to_status_id_str'):
-                                    data['retweeted_status']['in_reply_to_status'] = None
-                                elif data.get('in_reply_to_status_id_str'):
-                                    data['in_reply_to_status'] = None
+                            pass
                         else:
                             data = None
                 else:

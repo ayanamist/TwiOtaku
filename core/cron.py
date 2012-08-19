@@ -133,14 +133,6 @@ def cron_timeline(user, queue):
     all_statuses_add(fetch_home())
     all_statuses_add(fetch_search())
 
-    for data in all_data:
-        if user_at_screen_name in data['text'] and data['user']['screen_name'] != user['screen_name']:
-            retweeted_status = data.get('retweeted_status')
-            if retweeted_status and retweeted_status.get('in_reply_to_status_id_str'):
-                data['retweeted_status']['in_reply_to_status'] = None
-            elif data.get('in_reply_to_status_id_str'):
-                data['in_reply_to_status'] = None
-
     if all_data:
         queue.put(job.Job(user_jid, data=all_data.sort(key=operator.itemgetter('id')), allow_duplicate=False,
             always=False, reverse=False, xmpp_command=False))
