@@ -489,7 +489,7 @@ class Api(object):
             self._check_for_twitter_code_error(r, self._get_twitter_data_error(r))
             return r.data
 
-    def user_stream(self, timeout, reply_all=False, track=None):
+    def user_stream(self, timeout, reply_all=True, track=None):
         url = 'https://userstream.twitter.com/2/user.json'
         parameters = dict(delimited='length')
         if reply_all:
