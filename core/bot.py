@@ -38,6 +38,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
         self.online_clients = dict() # this save available roster using ref count
         self.auto_authorize = True
         self.auto_subscribe = True
+        self.use_ipv6 = False
         self.first_run = True
         self.add_event_handler('session_start', self.on_start)
         self.add_event_handler('message', self.on_message)
