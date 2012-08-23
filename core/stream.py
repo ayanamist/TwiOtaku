@@ -24,7 +24,6 @@ import threading
 import config
 import db
 from lib import myjson
-from lib import job
 from lib import mythread
 from lib import twitter
 from lib import logdecorator
@@ -170,6 +169,7 @@ class StreamThread(mythread.StoppableThread):
     @logdecorator.debug
     def process(self, data):
         event = data.get('event')
+        job = {"jid": self.user['jid'], "not_always": True, "not_command": True}
         if event:
             title = None
             if self.user['timeline'] & db.MODE_EVENT:
@@ -219,10 +219,9 @@ class StreamThread(mythread.StoppableThread):
                 else:
                     logger.error('Unmatched event %s.' % event)
             if title:
-                _job = job.Job(self.user['jid'], title=title, always=False, xmpp_command=False)
+                job["title"] = title
                 if isinstance(data, twitter.Status):
-                    _job.data = data
-                self.__queue.put(_job)
+                    job["data"] = data
         elif 'delete' in data:
             pass
         else:
@@ -255,5 +254,6 @@ class StreamThread(mythread.StoppableThread):
                     logger.warn('Unknown stream: %s' % str(data))
                     data = None
             if data:
-                self.__queue.put(job.Job(self.user['jid'], data=data, allow_duplicate=False, always=False, title=title,
-                    xmpp_command=False))
+                job["title"] = title
+                job["data"] = data
+        self.__queue.put(job)

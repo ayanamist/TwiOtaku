@@ -33,12 +33,11 @@ class DuplicateError(Exception):
 
 
 class Util(object):
-    allow_duplicate = True
-
     def __init__(self, user):
-        self.__user = user
+        self._user = user
         self.__api = twitter.Api(consumer_key=config.OAUTH_CONSUMER_KEY, consumer_secret=config.OAUTH_CONSUMER_SECRET,
-            access_token_key=self.__user['access_key'], access_token_secret=self.__user['access_secret'])
+            access_token_key=self._user['access_key'], access_token_secret=self._user['access_secret'])
+        self.no_duplicate = False
 
     def parse_text(self, data):
         def parse_entities(data):
@@ -61,11 +60,11 @@ class Util(object):
         return parse_entities(data).replace('\r\n', '\n').replace('\r', '\n').replace("&lt;", "<")\
         .replace("&gt;", ">").replace("&amp;", "&")
 
-    def make_namespace(self, single, allow_duplicate=True):
+    def make_namespace(self, single, no_duplicate=False):
         if single is None:
-            return None
-        old_allow_duplicate = self.allow_duplicate
-        self.allow_duplicate = allow_duplicate
+            return
+        old_no_duplicate = self.no_duplicate
+        self.no_duplicate = no_duplicate
         if isinstance(single, twitter.DirectMessage):
             single_type = db.TYPE_DM
         else:
@@ -73,7 +72,7 @@ class Util(object):
         short_id, short_id_alpha = self.generate_short_id(single['id_str'], single_type)
         t = time.mktime(email.utils.parsedate(single['created_at']))
         t += 28800 # GMT+8
-        date_fmt = self.__user['date_fmt'] if self.__user['date_fmt'] else config.DEFAULT_DATE_FORMAT
+        date_fmt = self._user['date_fmt'] if self._user['date_fmt'] else config.DEFAULT_DATE_FORMAT
         single['created_at_fmt'] = time.strftime(date_fmt.encode('UTF8'), time.localtime(t)).decode('UTF8')
         single_source = single.get('source')
         if single_source:
@@ -91,20 +90,20 @@ class Util(object):
             single = retweeted_status
             single['retweet'] = retweet
             del single['retweet']['retweeted_status']
-        if 'in_reply_to_status_id_str' in single:
+        if not single["in_reply_to_status"] and single.get("not_command") and 'in_reply_to_status_id_str' in single:
             try:
                 single['in_reply_to_status'] = self.__api.get_status(single['in_reply_to_status_id_str'])
             except twitter.Error:
                 pass
-            else:
-                single['in_reply_to_status'] = self.make_namespace(single['in_reply_to_status'])
-        self.allow_duplicate = old_allow_duplicate
+        if single['in_reply_to_status']:
+            single['in_reply_to_status'] = self.make_namespace(single['in_reply_to_status'])
+        self.no_duplicate = old_no_duplicate
         return single
 
     def parse_status(self, single):
-        single = self.make_namespace(single, self.allow_duplicate)
+        single = self.make_namespace(single, self.no_duplicate)
         if single:
-            t = template.Template(self.__user['msg_tpl'] if self.__user['msg_tpl'] else config.DEFAULT_MESSAGE_TEMPLATE)
+            t = template.Template(self._user['msg_tpl'] if self._user['msg_tpl'] else config.DEFAULT_MESSAGE_TEMPLATE)
             try:
                 result = t.render(**single)
             except Exception, e:
@@ -138,17 +137,17 @@ class Util(object):
 
 
     def generate_short_id(self, long_id, single_type):
-        short_id = db.get_short_id_from_long_id(self.__user['id'], long_id, single_type)
+        short_id = db.get_short_id_from_long_id(self._user['id'], long_id, single_type)
         if short_id is not None:
-            if not self.allow_duplicate:
+            if self.no_duplicate:
                 raise DuplicateError
         else:
-            self.__user['id_list_ptr'] += 1
-            short_id = self.__user['id_list_ptr']
+            self._user['id_list_ptr'] += 1
+            short_id = self._user['id_list_ptr']
             if short_id >= config.MAX_ID_LIST_NUM:
-                short_id = self.__user['id_list_ptr'] = 0
-            db.update_user(id=self.__user['id'], id_list_ptr=short_id)
-            db.update_long_id_from_short_id(self.__user['id'], short_id, long_id, single_type)
+                short_id = self._user['id_list_ptr'] = 0
+            db.update_user(id=self._user['id'], id_list_ptr=short_id)
+            db.update_long_id_from_short_id(self._user['id'], short_id, long_id, single_type)
         return short_id, number.digit_to_alpha(short_id)
 
     def restore_short_id(self, short_id):
@@ -166,7 +165,7 @@ class Util(object):
         if short_id < 0:
             raise ValueError('Unexpected value: %s' % str(short_id))
         if short_id < config.MAX_ID_LIST_NUM:
-            return db.get_long_id_from_short_id(self.__user['id'], short_id)
+            return db.get_long_id_from_short_id(self._user['id'], short_id)
         else:
             return short_id, db.TYPE_STATUS
 

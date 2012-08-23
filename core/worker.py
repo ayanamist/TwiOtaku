@@ -18,7 +18,6 @@
 import Queue
 
 import db
-from lib import job
 from lib import logdecorator
 from lib import mythread
 from lib import util
@@ -26,7 +25,7 @@ from lib import util
 class Worker(mythread.StoppableThread):
     def __init__(self, xmpp):
         super(Worker, self).__init__()
-        self.__xmpp = xmpp
+        self._xmpp = xmpp
         self.job_queue = Queue.Queue()
 
     @mythread.monitorstop
@@ -40,24 +39,25 @@ class Worker(mythread.StoppableThread):
 
     @logdecorator.debug
     def running(self, item):
-        if not isinstance(item, job.Job):
-            raise TypeError(str(item))
-        elif isinstance(item, mythread.ThreadStop):
+        if isinstance(item, mythread.ThreadStop):
             raise item
-        bare_jid = self.__xmpp.getjidbare(item.jid).lower()
+        bare_jid = self._xmpp.getjidbare(item["jid"]).lower()
         user = db.get_user_from_jid(bare_jid)
-        if self.__xmpp.get_presence(bare_jid) or item.always or (user and user['always']):
-            if item.data is None:
-                self.__xmpp.send_message(item.jid, item.title)
+        if self._xmpp.get_presence(bare_jid) or not item.get("not_always") or (user and user['always']):
+            data = item.get("data")
+            title = item.get("title")
+            if data is None:
+                if title is not None:
+                    self._xmpp.send_message(item["jid"], item["title"])
             else:
-                self.__util = util.Util(user)
-                self.__util.allow_duplicate = item.allow_duplicate
-                result = self.__util.parse_data(item.data, reverse=item.reverse)
-                if result or (not result and item.title and item.xmpp_command):
-                    if item.title:
-                        msg = u'%s\n%s' % (item.title, '\n'.join(result) if type(result) is list else result)
-                        self.__xmpp.send_message(item.jid, msg)
+                _util = util.Util(user)
+                _util.no_duplicate = not item.get("no_duplicate")
+                result = _util.parse_data(data)
+                if result or (not result and title and not item.get("not_command")):
+                    if title:
+                        msg = u'%s\n%s' % (item["title"], '\n'.join(result) if isinstance(result, list) else result)
+                        self._xmpp.send_message(item["jid"], msg)
                     else:
                         for m in result:
-                            self.__xmpp.send_message(item.jid, m)
+                            self._xmpp.send_message(item["jid"], m)
           

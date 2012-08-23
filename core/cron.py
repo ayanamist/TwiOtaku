@@ -17,14 +17,12 @@
 
 import functools
 import operator
-import signal
 import time
 
 import apscheduler.scheduler
 
 import config
 import db
-from lib import job
 from lib import logdecorator
 from lib import twitter
 
@@ -85,9 +83,8 @@ def cron_timeline(user, queue):
             except twitter.NotFoundError:
                 user['timeline'] &= ~db.MODE_LIST
                 db.update_user(id=user['id'], timeline=user['timeline'])
-                queue.put(job.Job(user['jid'],
-                    title='List %s/%s not exists, disable List update.' % (
-                        user['list_user'], user['list_name'])))
+                queue.put({"jid": user['jid'], "title": 'List %s/%s not exists, disable List update.' % (
+                    user['list_user'], user['list_name'])})
             else:
                 if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
                     db.update_user(jid=user_jid, last_list_id=data[0]['id_str'])
@@ -123,8 +120,8 @@ def cron_timeline(user, queue):
 
     data = fetch_dm()
     if data:
-        queue.put(job.Job(user_jid, data=data, title='Direct Message:', allow_duplicate=False, always=False,
-            xmpp_command=False))
+        queue.put({"jid": user_jid, "data": data, "title": 'Direct Message:', "no_duplicate": True,
+                   "not_always": False, "not_command": False})
 
     all_data = list()
     all_data_ids = list()
@@ -134,8 +131,8 @@ def cron_timeline(user, queue):
     all_statuses_add(fetch_search())
 
     if all_data:
-        queue.put(job.Job(user_jid, data=all_data.sort(key=operator.itemgetter('id')), allow_duplicate=False,
-            always=False, reverse=False, xmpp_command=False))
+        queue.put({"jid": user_jid, "data": all_data.sort(key=operator.itemgetter('id')), "no_duplicate": True,
+                   "not_always": False, "not_command": True})
 
 
 def cron_block(user, xmpp):
