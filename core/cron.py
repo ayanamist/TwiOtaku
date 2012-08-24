@@ -121,7 +121,7 @@ def cron_timeline(user, queue):
     data = fetch_dm()
     if data:
         queue.put({"jid": user_jid, "data": data, "title": 'Direct Message:', "no_duplicate": True,
-                   "not_always": False, "not_command": False})
+                   "not_always": True, "not_command": True})
 
     all_data = list()
     all_data_ids = list()
@@ -130,9 +130,13 @@ def cron_timeline(user, queue):
     all_statuses_add(fetch_home())
     all_statuses_add(fetch_search())
 
+    for status in all_data:
+        if "in_reply_to_status_id_str" in status:
+            status["in_reply_to_status"] = None
+
     if all_data:
         queue.put({"jid": user_jid, "data": all_data.sort(key=operator.itemgetter('id')), "no_duplicate": True,
-                   "not_always": False, "not_command": True})
+                   "not_always": True, "not_command": True})
 
 
 def cron_block(user, xmpp):

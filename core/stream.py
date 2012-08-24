@@ -42,26 +42,26 @@ class Error(Exception):
 class StreamThread(mythread.StoppableThread):
     def __init__(self, queue, bare_jid):
         super(StreamThread, self).__init__()
-        self.__user_changed = threading.Event()
-        self.__bare_jid = bare_jid
-        self.__queue = queue
+        self._user_changed = threading.Event()
+        self._bare_jid = bare_jid
+        self._queue = queue
         self.refresh_user()
 
     def user_changed(self):
         self.refresh_user()
-        self.__user_changed.set()
+        self._user_changed.set()
 
     def is_user_changed(self):
-        return self.__user_changed.is_set()
+        return self._user_changed.is_set()
 
     def check_user_changed(self):
         if self.is_user_changed():
-            self.__user_changed = threading.Event()
-            self.user = db.get_user_from_jid(self.__bare_jid)
+            self._user_changed = threading.Event()
+            self.user = db.get_user_from_jid(self._bare_jid)
 
     def refresh_user(self):
-        logger.debug('%s: refresh user.' % self.__bare_jid)
-        self.user = db.get_user_from_jid(self.__bare_jid)
+        logger.debug('%s: refresh user.' % self._bare_jid)
+        self.user = db.get_user_from_jid(self._bare_jid)
 
         self.blocked_ids = list()
         if self.user['blocked_ids']:
@@ -109,7 +109,7 @@ class StreamThread(mythread.StoppableThread):
             self.check_stop()
             try:
                 c = fp.read(1)
-            except (ssl.SSLError, httplib.HTTPException, socket.error), e:
+            except (httplib.HTTPException, socket.error), e:
                 failed_count += MAX_CONNECT_TIMEOUT
                 if failed_count > MAX_DATA_TIMEOUT:
                     raise Error(str(e))
@@ -157,7 +157,7 @@ class StreamThread(mythread.StoppableThread):
         except twitter.UnauthorizedError:
             logger.error('User %s OAuth unauthorized, exiting.' % self.user['jid'])
             db.update_user(self.user['id'], access_key=None, access_secret=None)
-            self.__queue.put(mythread.ThreadStop())
+            self._queue.put(mythread.ThreadStop())
             raise mythread.ThreadStop
         except twitter.EnhanceYourCalmError:
             logger.warn('User %s Streaming connect too often!' % self.user['jid'])
@@ -247,7 +247,8 @@ class StreamThread(mythread.StoppableThread):
                            (self.user['timeline'] & db.MODE_MENTION and self.user_at_screen_name in data['text']) or\
                            (self.user['timeline'] & db.MODE_LIST and data['user']['id'] in self.list_ids) or\
                            (self.user['timeline'] & db.MODE_TRACK and contain(self.track_words, data['text'].lower())):
-                            pass
+                            if "in_reply_to_status_id_str" in data:
+                                data["in_reply_to_status"] = None
                         else:
                             data = None
                 else:
@@ -256,4 +257,4 @@ class StreamThread(mythread.StoppableThread):
             if data:
                 job["title"] = title
                 job["data"] = data
-        self.__queue.put(job)
+        self._queue.put(job)

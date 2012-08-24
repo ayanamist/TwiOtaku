@@ -35,7 +35,7 @@ class DuplicateError(Exception):
 class Util(object):
     def __init__(self, user):
         self._user = user
-        self.__api = twitter.Api(consumer_key=config.OAUTH_CONSUMER_KEY, consumer_secret=config.OAUTH_CONSUMER_SECRET,
+        self._api = twitter.Api(consumer_key=config.OAUTH_CONSUMER_KEY, consumer_secret=config.OAUTH_CONSUMER_SECRET,
             access_token_key=self._user['access_key'], access_token_secret=self._user['access_secret'])
         self.no_duplicate = False
 
@@ -90,12 +90,12 @@ class Util(object):
             single = retweeted_status
             single['retweet'] = retweet
             del single['retweet']['retweeted_status']
-        if single.get("not_command") and 'in_reply_to_status_id_str' in single and not single.get("in_reply_to_status"):
+        if single.get("in_reply_to_status", "") is None:
             try:
-                single['in_reply_to_status'] = self.__api.get_status(single['in_reply_to_status_id_str'])
+                single['in_reply_to_status'] = self._api.get_status(single['in_reply_to_status_id_str'])
             except twitter.Error:
                 pass
-        if single.get('in_reply_to_status'):
+        if single.get('in_reply_to_status') is not None:
             single['in_reply_to_status'] = self.make_namespace(single['in_reply_to_status'])
         self.no_duplicate = old_no_duplicate
         return single

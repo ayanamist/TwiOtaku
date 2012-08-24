@@ -96,15 +96,15 @@ class ReadWriteLock(object):
 
         # Condition variable, used to signal waiters of a change in object
         # state.
-        self.__condition = threading.Condition(threading.Lock())
+        self._condition = threading.Condition(threading.Lock())
 
         # Initialize with no writers.
-        self.__writer = None
-        self.__upgradewritercount = 0
-        self.__pendingwriters = []
+        self._writer = None
+        self._upgradewritercount = 0
+        self._pendingwriters = []
 
         # Initialize with no readers.
-        self.__readers = {}
+        self._readers = {}
 
     def acquireRead(self, blocking=True, timeout=None):
         """Acquire a read lock for the current thread, waiting at most
@@ -123,39 +123,39 @@ class ReadWriteLock(object):
         else:
             endtime = None
         me = threading.currentThread()
-        self.__condition.acquire()
+        self._condition.acquire()
         try:
-            if self.__writer is me:
+            if self._writer is me:
                 # If we are the writer, grant a new read lock, always.
-                self.__writercount += 1
+                self._writercount += 1
                 return
             while True:
-                if self.__writer is None:
+                if self._writer is None:
                     # Only test anything if there is no current writer.
-                    if self.__upgradewritercount or self.__pendingwriters:
-                        if me in self.__readers:
+                    if self._upgradewritercount or self._pendingwriters:
+                        if me in self._readers:
                             # Only grant a read lock if we already have one
                             # in case writers are waiting for their turn.
                             # This means that writers can't easily get starved
                             # (but see below, readers can).
-                            self.__readers[me] += 1
+                            self._readers[me] += 1
                             return
                             # No, we aren't a reader (yet), wait for our turn.
                     else:
                         # Grant a new read lock, always, in case there are
                         # no pending writers (and no writer).
-                        self.__readers[me] = self.__readers.get(me, 0) + 1
+                        self._readers[me] = self._readers.get(me, 0) + 1
                         return
                 if endtime is not None:
                     remaining = endtime - time.time()
                     if remaining <= 0:
                         # Timeout has expired, signal caller of this.
                         raise RuntimeError("Acquiring read lock timed out")
-                    self.__condition.wait(remaining)
+                    self._condition.wait(remaining)
                 else:
-                    self.__condition.wait()
+                    self._condition.wait()
         finally:
-            self.__condition.release()
+            self._condition.release()
 
     def acquireWrite(self, blocking=True, timeout=None):
         """Acquire a write lock for the current thread, waiting at most
@@ -177,16 +177,16 @@ class ReadWriteLock(object):
         else:
             endtime = None
         me, upgradewriter = threading.currentThread(), False
-        self.__condition.acquire()
+        self._condition.acquire()
         try:
-            if self.__writer is me:
+            if self._writer is me:
                 # If we are the writer, grant a new write lock, always.
-                self.__writercount += 1
+                self._writercount += 1
                 return
-            elif me in self.__readers:
+            elif me in self._readers:
                 # If we are a reader, no need to add us to pendingwriters,
                 # we get the upgradewriter slot.
-                if self.__upgradewritercount:
+                if self._upgradewritercount:
                     # If we are a reader and want to upgrade, and someone
                     # else also wants to upgrade, there is no way we can do
                     # this except if one of us releases all his read locks.
@@ -195,34 +195,34 @@ class ReadWriteLock(object):
                         "Inevitable dead lock, denying write lock"
                     )
                 upgradewriter = True
-                self.__upgradewritercount = self.__readers.pop(me)
+                self._upgradewritercount = self._readers.pop(me)
             else:
                 # We aren't a reader, so add us to the pending writers queue
                 # for synchronization with the readers.
-                self.__pendingwriters.append(me)
+                self._pendingwriters.append(me)
             while True:
-                if not self.__readers and self.__writer is None:
+                if not self._readers and self._writer is None:
                     # Only test anything if there are no readers and writers.
-                    if self.__upgradewritercount:
+                    if self._upgradewritercount:
                         if upgradewriter:
                             # There is a writer to upgrade, and it's us. Take
                             # the write lock.
-                            self.__writer = me
-                            self.__writercount = self.__upgradewritercount + 1
-                            self.__upgradewritercount = 0
+                            self._writer = me
+                            self._writercount = self._upgradewritercount + 1
+                            self._upgradewritercount = 0
                             return
                             # There is a writer to upgrade, but it's not us.
                             # Always leave the upgrade writer the advance slot,
                             # because he presumes he'll get a write lock directly
                             # from a previously held read lock.
-                    elif self.__pendingwriters[0] is me:
+                    elif self._pendingwriters[0] is me:
                         # If there are no readers and writers, it's always
                         # fine for us to take the writer slot, removing us
                         # from the pending writers queue.
                         # This might mean starvation for readers, though.
-                        self.__writer = me
-                        self.__writercount = 1
-                        self.__pendingwriters = self.__pendingwriters[1:]
+                        self._writer = me
+                        self._writercount = 1
+                        self._pendingwriters = self._pendingwriters[1:]
                         return
                 if endtime is not None:
                     remaining = endtime - time.time()
@@ -235,18 +235,18 @@ class ReadWriteLock(object):
                             # here (because of remaining readers), as the test
                             # for proper conditions is at the start of the
                             # loop, not at the end.
-                            self.__readers[me] = self.__upgradewritercount
-                            self.__upgradewritercount = 0
+                            self._readers[me] = self._upgradewritercount
+                            self._upgradewritercount = 0
                         else:
                             # We were a simple pending writer, just remove us
                             # from the FIFO list.
-                            self.__pendingwriters.remove(me)
+                            self._pendingwriters.remove(me)
                         raise RuntimeError("Acquiring write lock timed out")
-                    self.__condition.wait(remaining)
+                    self._condition.wait(remaining)
                 else:
-                    self.__condition.wait()
+                    self._condition.wait()
         finally:
-            self.__condition.release()
+            self._condition.release()
 
     def release(self):
         """Release the currently held lock.
@@ -254,30 +254,30 @@ class ReadWriteLock(object):
         In case the current thread holds no lock, a ValueError is thrown."""
 
         me = threading.currentThread()
-        self.__condition.acquire()
+        self._condition.acquire()
         try:
-            if self.__writer is me:
+            if self._writer is me:
                 # We are the writer, take one nesting depth away.
-                self.__writercount -= 1
-                if not self.__writercount:
+                self._writercount -= 1
+                if not self._writercount:
                     # No more write locks; take our writer position away and
                     # notify waiters of the new circumstances.
-                    self.__writer = None
-                    self.__condition.notifyAll()
-            elif me in self.__readers:
+                    self._writer = None
+                    self._condition.notifyAll()
+            elif me in self._readers:
                 # We are a reader currently, take one nesting depth away.
-                self.__readers[me] -= 1
-                if not self.__readers[me]:
+                self._readers[me] -= 1
+                if not self._readers[me]:
                     # No more read locks, take our reader position away.
-                    del self.__readers[me]
-                    if not self.__readers:
+                    del self._readers[me]
+                    if not self._readers:
                         # No more readers, notify waiters of the new
                         # circumstances.
-                        self.__condition.notifyAll()
+                        self._condition.notifyAll()
             else:
                 raise ValueError("Trying to release unheld lock")
         finally:
-            self.__condition.release()
+            self._condition.release()
 
     @property
     @contextlib.contextmanager
