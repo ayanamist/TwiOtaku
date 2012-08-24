@@ -189,7 +189,7 @@ def get_long_id_count(long_id):
 @write_decorator
 def set_cache(long_id, value):
     sql = "REPLACE INTO statuses (id, value) VALUES(?, ?)"
-    _conn_user.execute(sql, (long_id, bz2.compress(myjson.dumps(value))))
+    _conn_user.execute(sql, (long_id, buffer(bz2.compress(myjson.dumps(value)))))
     _conn_user.commit()
 
 
@@ -199,7 +199,7 @@ def get_cache(long_id):
     cursor = _conn_user.execute(sql, (long_id,))
     result = cursor.fetchone()
     if result:
-        return myjson.loads(bz2.decompress(result[0]))
+        return myjson.loads(bz2.decompress(str(result[0])))
 
 
 @write_decorator
