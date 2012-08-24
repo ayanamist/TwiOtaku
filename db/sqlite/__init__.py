@@ -27,20 +27,21 @@ except ImportError:
 
 import config
 from lib import mythread
+from lib import myjson
 
 
-logger = logging.getLogger('sqlite')
-sql_dir = os.path.join(os.path.dirname(__file__), 'sql')
-database_dir = os.path.abspath(config.DATABASE_DIR)
-if not os.path.exists(database_dir):
-    os.makedirs(database_dir)
-user_path = os.path.join(database_dir, 'twiotaku.db')
-rwlock = mythread.ReadWriteLock()
+_logger = logging.getLogger('sqlite')
+_rwlock = mythread.ReadWriteLock()
+_sql_dir = os.path.join(os.path.dirname(__file__), 'sql')
+_database_dir = os.path.abspath(config.DATABASE_DIR)
+if not os.path.exists(_database_dir):
+    os.makedirs(_database_dir)
+_user_path = os.path.join(_database_dir, 'twiotaku.db')
 
 def write_decorator(f):
     @functools.wraps(f)
     def wrap(*args, **kwargs):
-        with rwlock.writelock:
+        with _rwlock.writelock:
             result = f(*args, **kwargs)
         return result
 
@@ -50,20 +51,20 @@ def write_decorator(f):
 def read_decorator(f):
     @functools.wraps(f)
     def wrap(*args, **kwargs):
-        with rwlock.readlock:
+        with _rwlock.readlock:
             result = f(*args, **kwargs)
         return result
 
     return wrap
 
 
-def init_db_user(conn):
-    tables = ['id_lists', 'invites', 'users']
+def _init_db_user(conn):
+    tables = [x[:-4] for x in os.listdir(_sql_dir) if x[-4:].lower() == ".sql"]
     for t in conn.execute("SELECT name FROM sqlite_master WHERE type='table'"):
         if t[0] in tables:
             tables.remove(t[0])
     for v in tables:
-        path = sql_dir + os.sep + v + '.sql'
+        path = os.path.join(_sql_dir, v + '.sql')
         if os.path.exists(path):
             with open(path, 'r') as f:
                 sql = f.read()
@@ -71,8 +72,8 @@ def init_db_user(conn):
     conn.commit()
 
 
-def init_conn_user():
-    conn = sqlite3.connect(user_path, check_same_thread=False)
+def _init_conn_user():
+    conn = sqlite3.connect(_user_path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -80,7 +81,7 @@ def init_conn_user():
 @read_decorator
 def get_user_from_jid(jid):
     sql = 'SELECT * FROM users WHERE jid=?'
-    cursor = conn_user.execute(sql, (jid, ))
+    cursor = _conn_user.execute(sql, (jid, ))
     result = cursor.fetchone()
     return dict(result) if result else None
 
@@ -102,22 +103,22 @@ def update_user(id=None, jid=None, **kwargs):
             cond = 'jid=?'
             values.append(jid)
         sql = 'UPDATE users SET %s WHERE %s' % (','.join(cols), cond)
-        conn_user.execute(sql, values)
-        conn_user.commit()
+        _conn_user.execute(sql, values)
+        _conn_user.commit()
 
 
 @read_decorator
 def get_users_count():
     sql = 'SELECT COUNT(id) FROM users'
-    cursor = conn_user.execute(sql)
+    cursor = _conn_user.execute(sql)
     return cursor.fetchone()[0]
 
 
 @write_decorator
 def add_user(jid):
     sql = 'INSERT INTO users (jid) VALUES(?)'
-    conn_user.execute(sql, (jid,))
-    conn_user.commit()
+    _conn_user.execute(sql, (jid,))
+    _conn_user.commit()
 
 
 @read_decorator
@@ -128,7 +129,7 @@ def get_all_users():
 @read_decorator
 def iter_all_users():
     sql = 'SELECT * FROM users'
-    cursor = conn_user.execute(sql)
+    cursor = _conn_user.execute(sql)
     for x in cursor:
         yield dict(x)
 
@@ -136,7 +137,7 @@ def iter_all_users():
 @read_decorator
 def verify_invite_code(invite_code):
     sql = 'SELECT create_time FROM invites WHERE id=?'
-    cursor = conn_user.execute(sql, (invite_code, ))
+    cursor = _conn_user.execute(sql, (invite_code, ))
     result = cursor.fetchone()
     return result[0] if result else None
 
@@ -144,19 +145,19 @@ def verify_invite_code(invite_code):
 @write_decorator
 def add_invite_code(invite_code, create_time):
     sql = 'INSERT INTO invites (id, create_time) VALUES(?,?)'
-    conn_user.execute(sql, (invite_code, create_time))
+    _conn_user.execute(sql, (invite_code, create_time))
 
 
 @write_decorator
 def delete_invite_code(invite_code):
     sql = 'DELETE FROM invites WHERE id=?'
-    conn_user.execute(sql, (invite_code,))
+    _conn_user.execute(sql, (invite_code,))
 
 
 @read_decorator
 def get_short_id_from_long_id(uid, long_id, single_type):
     sql = 'SELECT short_id FROM id_lists WHERE uid=? AND long_id=? AND type=?'
-    cursor = conn_user.execute(sql, (uid, long_id, single_type))
+    cursor = _conn_user.execute(sql, (uid, long_id, single_type))
     result = cursor.fetchone()
     return result[0] if result else None
 
@@ -164,7 +165,7 @@ def get_short_id_from_long_id(uid, long_id, single_type):
 @read_decorator
 def get_long_id_from_short_id(uid, short_id):
     sql = 'SELECT long_id, type FROM id_lists WHERE uid=? AND short_id=?'
-    cursor = conn_user.execute(sql, (uid, short_id))
+    cursor = _conn_user.execute(sql, (uid, short_id))
     result = cursor.fetchone()
     return tuple(result) if result else (None, None)
 
@@ -172,40 +173,44 @@ def get_long_id_from_short_id(uid, short_id):
 @write_decorator
 def update_long_id_from_short_id(uid, short_id, long_id, single_type):
     sql = 'DELETE FROM id_lists WHERE uid=? AND short_id=?'
-    conn_user.execute(sql, (uid, short_id))
+    _conn_user.execute(sql, (uid, short_id))
     sql = 'INSERT INTO id_lists (uid, short_id, long_id, type) VALUES(?, ?, ?, ?)'
-    conn_user.execute(sql, (uid, short_id, long_id, single_type))
-    conn_user.commit()
+    _conn_user.execute(sql, (uid, short_id, long_id, single_type))
+    _conn_user.commit()
 
 
 @read_decorator
 def get_long_id_count(long_id):
     sql = 'SELECT COUNT(long_id) FROM id_lists WHERE long_id=?'
-    cursor = conn_user.execute(sql, (long_id,))
+    cursor = _conn_user.execute(sql, (long_id,))
     return cursor.fetchone()[0]
 
 
 @write_decorator
 def set_cache(long_id, value):
-    sql = "DELETE FROM statuses WHERE id=?"
-    conn_user.execute(sql, (long_id,))
-    sql = "INSERT INTO statuses (id, value) VALUES(?, ?)"
-    conn_user.execute(sql, (long_id, bz2.compress(value)))
-    conn_user.commit()
+    sql = "REPLACE INTO statuses (id, value) VALUES(?, ?)"
+    _conn_user.execute(sql, (long_id, bz2.compress(myjson.dumps(value))))
+    _conn_user.commit()
 
 
 @read_decorator
 def get_cache(long_id):
     sql = "SELECT value FROM statuses WHERE id=?"
-    cursor = conn_user.execute(sql, (long_id,))
+    cursor = _conn_user.execute(sql, (long_id,))
     result = cursor.fetchone()
     if result:
-        return bz2.decompress(result[0])
+        return myjson.loads(bz2.decompress(result[0]))
+
+
+@write_decorator
+def delete_cache(long_id):
+    sql = "DELETE FROM statuses WHERE id=?"
+    _conn_user.execute(sql, (long_id,))
 
 
 def close():
-    conn_user.commit()
-    conn_user.close()
+    _conn_user.commit()
+    _conn_user.close()
 
-conn_user = init_conn_user()
-init_db_user(conn_user)
+_conn_user = _init_conn_user()
+_init_db_user(_conn_user)

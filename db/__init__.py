@@ -30,28 +30,6 @@ TYPE_DM = 1
 
 dbapi = __import__(config.DATABASE_TYPE.lower(), globals=globals(), locals=locals())
 
-add_invite_code = dbapi.add_invite_code
-
-add_user = dbapi.add_user
-
-close = dbapi.close
-
-delete_invite_code = dbapi.delete_invite_code
-
-verify_invite_code = dbapi.verify_invite_code
-
-get_long_id_from_short_id = dbapi.get_long_id_from_short_id
-
-get_short_id_from_long_id = dbapi.get_short_id_from_long_id
-
-get_user_from_jid = dbapi.get_user_from_jid
-
-get_users_count = dbapi.get_users_count
-
-get_all_users = dbapi.get_all_users
-
-iter_all_users = dbapi.iter_all_users
-
-update_long_id_from_short_id = dbapi.update_long_id_from_short_id
-
-update_user = dbapi.update_user
+g = globals()
+for x in dir(dbapi):
+    g[x] = getattr(dbapi, x)

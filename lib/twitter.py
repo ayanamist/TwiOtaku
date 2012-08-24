@@ -20,6 +20,7 @@ import ssl
 import urllib
 import urlparse
 
+import db
 from . import oauth
 from . import urlfetch
 from . import myjson
@@ -162,9 +163,13 @@ class Api(object):
         return Result(self._fetch_url(url, parameters=parameters))
 
     def get_status(self, id, include_entities=True):
-        url = '%s/statuses/show/%s.json' % (self.base_url, str(id))
-        parameters = {'include_entities': int(bool(include_entities))}
-        return self._fetch_url(url, parameters=parameters)
+        cache = db.get_cache(id)
+        if not cache:
+            url = '%s/statuses/show/%s.json' % (self.base_url, str(id))
+            parameters = {'include_entities': int(bool(include_entities))}
+            return self._fetch_url(url, parameters=parameters)
+        else:
+            return cache
 
     def destroy_status(self, id, include_entities=True):
         parameters = {'include_entities': int(bool(include_entities))}

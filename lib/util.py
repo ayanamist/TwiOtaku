@@ -70,6 +70,7 @@ class Util(object):
         else:
             single_type = db.TYPE_STATUS
         short_id, short_id_alpha = self.generate_short_id(single['id_str'], single_type)
+        db.set_cache(single['id_str'], single)
         t = time.mktime(email.utils.parsedate(single['created_at']))
         t += 28800 # GMT+8
         date_fmt = self._user['date_fmt'] if self._user['date_fmt'] else config.DEFAULT_DATE_FORMAT
@@ -146,6 +147,9 @@ class Util(object):
             short_id = self._user['id_list_ptr']
             if short_id >= config.MAX_ID_LIST_NUM:
                 short_id = self._user['id_list_ptr'] = 0
+            old_long_id, _ = db.get_long_id_from_short_id(self._user['id'], short_id)
+            if db.get_long_id_count(old_long_id) <= 1:
+                db.delete_cache(old_long_id)
             db.update_user(id=self._user['id'], id_list_ptr=short_id)
             db.update_long_id_from_short_id(self._user['id'], short_id, long_id, single_type)
         return short_id, number.digit_to_alpha(short_id)
