@@ -15,6 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with TwiOtaku.  If not, see <http://www.gnu.org/licenses/>.
 
+import bz2
 import functools
 import logging
 import os
@@ -175,6 +176,31 @@ def update_long_id_from_short_id(uid, short_id, long_id, single_type):
     sql = 'INSERT INTO id_lists (uid, short_id, long_id, type) VALUES(?, ?, ?, ?)'
     conn_user.execute(sql, (uid, short_id, long_id, single_type))
     conn_user.commit()
+
+
+@read_decorator
+def get_long_id_count(long_id):
+    sql = 'SELECT COUNT(long_id) FROM id_lists WHERE long_id=?'
+    cursor = conn_user.execute(sql, (long_id,))
+    return cursor.fetchone()[0]
+
+
+@write_decorator
+def set_cache(long_id, value):
+    sql = "DELETE FROM statuses WHERE id=?"
+    conn_user.execute(sql, (long_id,))
+    sql = "INSERT INTO statuses (id, value) VALUES(?, ?)"
+    conn_user.execute(sql, (long_id, bz2.compress(value)))
+    conn_user.commit()
+
+
+@read_decorator
+def get_cache(long_id):
+    sql = "SELECT value FROM statuses WHERE id=?"
+    cursor = conn_user.execute(sql, (long_id,))
+    result = cursor.fetchone()
+    if result:
+        return bz2.decompress(result[0])
 
 
 def close():
