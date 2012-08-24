@@ -68,6 +68,7 @@ class XMPPMessageHandler(object):
         self._bare_jid = self._xmpp.getjidbare(self._jid).lower()
         self._user = db.get_user_from_jid(self._bare_jid)
         self._job = {"jid": self._jid}
+        self._queue = None
         if self._user:
             self._util = util.Util(self._user)
             t = self._xmpp.worker_threads.get(self._bare_jid)
@@ -81,7 +82,10 @@ class XMPPMessageHandler(object):
             self.parse_command(msg['body'])
         except Exception, e:
             self._job["title"] = str(e)
-        self._queue.put(self._job)
+        if self._queue:
+            self._queue.put(self._job)
+        else:
+            msg.reply(self._job["title"]).send()
 
     def parse_command(self, cmd):
         if cmd[0] == '-' or cmd[0] == ' ':
