@@ -484,17 +484,32 @@ class XMPPMessageHandler(object):
                 related_result = related_result[0]['results']
                 for result in related_result:
                     if result['kind'] == 'Tweet':
-                        if result['annotations']['ConversationRole'] != last_conversation_role:
+                        conversation_role = result['annotations']['ConversationRole']
+                        if conversation_role != last_conversation_role:
                             data.insert(0, origin_status)
                             origin_status = None
-                            last_conversation_role = result['annotations']['ConversationRole']
-                        data.insert(0, result['value'])
+                            last_conversation_role = conversation_role
+                        data.insert(0, result["value"])
             if origin_status:
                 data.insert(0, origin_status)
-            first_short = data[-1]['id_str'] == long_id
+            previous_ids = set(x["id"] for x in data)
+            for i, status in enumerate(data):
+                if "retweeted_status" not in status:
+                    current_id = status["in_reply_to_status_id"]
+                else:
+                    current_id = status["retweeted_status"]["in_reply_to_status_id"]
+                if current_id and current_id not in previous_ids:
+                    try:
+                        status = self._api.get_status(current_id)
+                    except twitter.Error:
+                        pass
+                    else:
+                        data.insert(i + 1, status)
+                        previous_ids.add(status["id"])
+            first_short = data[0]['id_str'] == long_id
             while len(data) <= config.MAX_CONVERSATION_NUM or first_short:
                 first_short = False
-                status = data[-1]
+                status = data[0]
                 if status['in_reply_to_status_id_str']:
                     long_id = status['in_reply_to_status_id_str']
                     try:
@@ -503,10 +518,12 @@ class XMPPMessageHandler(object):
                         break
                 else:
                     break
-                if 'retweeted_status' in status:
+                if 'retweeted_status' in status and status["retweeted_status"]["id"] not in previous_ids:
                     data.append(status['retweeted_status'])
-                else:
+                    previous_ids.add(status['retweeted_status']["id"])
+                elif status["id"] not in previous_ids:
                     data.append(status)
+                    previous_ids.add(status["id"])
         else:
             long_id_str = ''
             all_dms = self._api.get_direct_messages(max_id=long_id, count=50)

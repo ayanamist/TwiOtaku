@@ -51,7 +51,7 @@ class Worker(mythread.StoppableThread):
                     self._xmpp.send_message(item["jid"], item["title"])
             else:
                 _util = util.Util(user)
-                _util.no_duplicate = not item.get("no_duplicate")
+                _util.no_duplicate = item.get("no_duplicate")
                 result = _util.parse_data(data)
                 if result or (not result and title and not item.get("not_command")):
                     if title:

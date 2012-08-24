@@ -59,7 +59,7 @@ class Error(Exception):
             return self.message
 
 
-class BadRequestError(Exception):
+class BadRequestError(Error):
     code = 400
 
 
