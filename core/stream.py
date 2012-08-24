@@ -170,6 +170,7 @@ class StreamThread(mythread.StoppableThread):
     def process(self, data):
         event = data.get('event')
         job = {"jid": self.user['jid'], "not_always": True, "not_command": True}
+        status = None
         if event:
             title = None
             if self.user['timeline'] & db.MODE_EVENT:
@@ -201,7 +202,7 @@ class StreamThread(mythread.StoppableThread):
                         title = '%s %sd %s\'s tweet:' % (
                             data['source']['screen_name'], data['event'], data['target']['screen_name'])
                         data['target_object']['user'] = data['target']
-                        data = twitter.Status(data['target_object'])
+                        status = data['target_object']
                 elif event == 'list_created':
                     pass
                 elif event == 'list_updated':
@@ -220,8 +221,8 @@ class StreamThread(mythread.StoppableThread):
                     logger.error('Unmatched event %s.' % event)
             if title:
                 job["title"] = title
-                if isinstance(data, twitter.Status):
-                    job["data"] = data
+                if status:
+                    job["data"] = status
         elif 'delete' in data:
             pass
         else:
@@ -242,7 +243,6 @@ class StreamThread(mythread.StoppableThread):
                        data['user']['screen_name'] == self.user['screen_name']:
                         data = None
                     else:
-                        data = twitter.Status(data)
                         if (self.user['timeline'] & db.MODE_HOME and data['user']['id'] in self.friend_ids) or\
                            (self.user['timeline'] & db.MODE_MENTION and self.user_at_screen_name in data['text']) or\
                            (self.user['timeline'] & db.MODE_LIST and data['user']['id'] in self.list_ids) or\

@@ -49,7 +49,7 @@ def cron_timeline(user, queue):
     @logdecorator.silent
     def fetch_home():
         data = api.get_home_timeline(since_id=user['last_home_id'])
-        if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
+        if data:
             db.update_user(jid=user_jid, last_home_id=data[0]['id_str'])
             if not user_timeline & db.MODE_HOME:
                 if user_timeline & db.MODE_MENTION:
@@ -62,7 +62,7 @@ def cron_timeline(user, queue):
         # TODO: use activity api instead of this one. add event support
         if user_timeline & db.MODE_MENTION:
             data = api.get_mentions(since_id=user['last_mention_id'])
-            if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
+            if data:
                 db.update_user(jid=user_jid, last_mention_id=data[0]['id_str'])
                 return data
 
@@ -86,7 +86,7 @@ def cron_timeline(user, queue):
                 queue.put({"jid": user['jid'], "title": 'List %s/%s not exists, disable List update.' % (
                     user['list_user'], user['list_name'])})
             else:
-                if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
+                if data:
                     db.update_user(jid=user_jid, last_list_id=data[0]['id_str'])
                     return data
 
@@ -95,7 +95,7 @@ def cron_timeline(user, queue):
         if user_timeline & db.MODE_TRACK and user['track_words']:
             q = user['track_words'].replace(',', ' ')
             data = api.get_search(q, since_id=user['last_search_id'])
-            if data and isinstance(data, list) and isinstance(data[0], twitter.Status):
+            if data:
                 db.update_user(jid=user_jid, last_search_id=data[0]['id_str'])
                 return data
 
