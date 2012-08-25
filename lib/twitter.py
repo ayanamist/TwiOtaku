@@ -160,7 +160,7 @@ class Api(object):
     def get_related_results(self, id, include_entities=True):
         url = '%s/related_results/show/%s.json' % (self.base_url, str(id))
         parameters = {'include_entities': int(bool(include_entities))}
-        return Result(self._fetch_url(url, parameters=parameters))
+        return self._fetch_url(url, parameters=parameters)
 
     def get_status(self, id, include_entities=True):
         cache = db.get_cache(id)
