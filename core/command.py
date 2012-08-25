@@ -1,3 +1,4 @@
+# -*- encoding: utf8 -*-
 # Copyright 2011 ayanamist
 # the program is distributed under the terms of the GNU General Public License
 # This file is part of TwiOtaku.
@@ -88,7 +89,7 @@ class XMPPMessageHandler(object):
             msg.reply(self._job["title"]).send()
 
     def parse_command(self, cmd):
-        if cmd[0] == '-' or cmd[0] == ' ':
+        if cmd[0] in (u"－", '-', ' '):
             args = cmd[1:].split()
             if args[0] in SHORT_COMMANDS:
                 args[0] = SHORT_COMMANDS[args[0]]
