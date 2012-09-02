@@ -511,10 +511,8 @@ class XMPPMessageHandler(object):
                     else:
                         data.insert(i + 1, status)
                         previous_ids.add(status["id"])
-            first_short = data[0]['id_str'] == long_id
-            while len(data) <= config.MAX_CONVERSATION_NUM or first_short:
-                first_short = False
-                status = data[0]
+            while len(data) <= config.MAX_CONVERSATION_NUM:
+                status = data[-1]
                 if status['in_reply_to_status_id_str']:
                     long_id = status['in_reply_to_status_id_str']
                     try:
