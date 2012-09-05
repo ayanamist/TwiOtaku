@@ -43,6 +43,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
         self.add_event_handler('session_start', self.on_start)
         self.add_event_handler('message', self.on_message)
         self.add_event_handler('changed_status', self.on_changed_status)
+        self._sched = None
 
     def on_start(self, _):
         self.get_roster()
@@ -139,7 +140,8 @@ class XMPPBot(sleekxmpp.ClientXMPP):
         self._sched = cron.cron_start(self)
 
     def stop_cron(self):
-        self._sched.shutdown()
+        if self._sched:
+            self._sched.shutdown()
 
     def start_stream(self, bare_jid):
         t = self.stream_threads.get(bare_jid)
