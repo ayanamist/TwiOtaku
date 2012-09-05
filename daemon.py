@@ -37,8 +37,8 @@ def sigterm_handler(errno, *_):
 
 
 if __name__ == '__main__':
-    if sys.version_info[0] != 2 or sys.version_info[1] < 6:
-        print 'TwiOtaku needs Python 2.6 or later. Python 3.X is not supported yet.'
+    if sys.version_info[0] != 2 or sys.version_info[1] < 7:
+        print 'TwiOtaku needs Python 2.7 or later. Python 3.X is not supported yet.'
         sys.exit(2)
 
     signal.signal(signal.SIGTERM, functools.partial(sigterm_handler, 0))
