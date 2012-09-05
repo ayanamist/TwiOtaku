@@ -15,10 +15,10 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with TwiOtaku.  If not, see <http://www.gnu.org/licenses/>.
+import functools
 import logging
 import sys
 import signal
-import time
 
 logging.basicConfig(level=logging.ERROR, format='%(asctime)-15s %(name)-8s %(levelname)-8s %(message)s',
     datefmt='%m-%d %H:%M:%S', stream=sys.stderr)
@@ -28,28 +28,19 @@ from core import bot
 
 xmpp_bot = bot.XMPPBot()
 
-def sigterm_handler(*_):
+def sigterm_handler(errno, *_):
     xmpp_bot.stop_streams()
     xmpp_bot.stop_cron()
     xmpp_bot.stop_workers()
     db.close()
-    sys.exit(0)
+    sys.exit(errno)
 
 
 if __name__ == '__main__':
     if sys.version_info[0] != 2 or sys.version_info[1] < 6:
         print 'TwiOtaku needs Python 2.6 or later. Python 3.X is not supported yet.'
-        exit(2)
+        sys.exit(2)
 
-    signal.signal(signal.SIGTERM, sigterm_handler)
+    signal.signal(signal.SIGTERM, functools.partial(sigterm_handler, 0))
     xmpp_bot.start(block=True)
-    last_connected_time = time.time()
-    flag = True
-    while flag:
-        now = time.time()
-        if now - last_connected_time > 60:
-            xmpp_bot.reconnect()
-            last_connected_time = now
-        else:
-            flag = False
-    sys.exit(1)
+    sigterm_handler(1)
