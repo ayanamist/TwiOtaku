@@ -39,7 +39,7 @@ AUTHORIZATION_URL = 'https://api.twitter.com/oauth/authorize'
 
 SIGNIN_URL = 'https://api.twitter.com/oauth/authenticate'
 
-BASE_URL = 'https://api.twitter.com/1'
+BASE_URL = 'https://api.twitter.com/1.1'
 
 _ttp_parser = ttp.Parser()
 
@@ -158,7 +158,8 @@ class Api(object):
         return self._fetch_url(url, parameters=parameters)
 
     def get_related_results(self, id, include_entities=True):
-        url = '%s/related_results/show/%s.json' % (self.base_url, str(id))
+        #related_result api is only available in api version 1
+        url = '%s/related_results/show/%s.json' % ('https://api.twitter.com/1', str(id))
         parameters = {'include_entities': int(bool(include_entities))}
         return self._fetch_url(url, parameters=parameters)
 
@@ -239,20 +240,20 @@ class Api(object):
         url = '%s/friendships/destroy.json' % self.base_url
         return self._fetch_url(url, parameters={'screen_name': user}, http_method='POST')
 
-    def exists_friendship(self, user_a, user_b):
-        url = '%s/friendships/exists.json' % self.base_url
-        return self._fetch_url(url, parameters={'user_a': user_a, 'user_b': user_b})
+    def show_friendship(self, source_screen_name, target_screen_name):
+        url = '%s/friendships/show.json' % self.base_url
+        return self._fetch_url(url, parameters={'source_screen_name': source_screen_name, 'target_screen_name': target_screen_name})
 
     def create_favorite(self, id):
-        url = '%s/favorites/create/%s.json' % (self.base_url, str(id))
+        url = '%s/favorites/create.json' % self.base_url
         return self._fetch_url(url, post_data={'id': id})
 
     def destroy_favorite(self, id):
-        url = '%s/favorites/destroy/%s.json' % (self.base_url, str(id))
+        url = '%s/favorites/destroy.json' % self.base_url
         return self._fetch_url(url, post_data={'id': id})
 
     def get_favorites(self, screen_name=None, page=None, include_entities=True):
-        url = '%s/favorites.json' % self.base_url
+        url = '%s/favorites/list.json' % self.base_url
         parameters = {'include_entities': int(bool(include_entities))}
         if page:
             parameters['page'] = int(page)
@@ -261,7 +262,7 @@ class Api(object):
         return self._fetch_url(url, parameters=parameters)
 
     def get_mentions(self, since_id=None, max_id=None, page=None, include_entities=True):
-        url = '%s/statuses/mentions.json' % self.base_url
+        url = '%s/statuses/mentions_timeline.json' % self.base_url
         parameters = {'include_entities': int(bool(include_entities))}
         if since_id:
             parameters['since_id'] = since_id
@@ -271,10 +272,9 @@ class Api(object):
             parameters['page'] = int(page)
         return self._fetch_url(url, parameters=parameters)
 
-    def create_retweet(self, id, include_entities=True):
+    def create_retweet(self, id):
         url = '%s/statuses/retweet/%s.json' % (self.base_url, id)
-        parameters = {'include_entities': int(bool(include_entities))}
-        return self._fetch_url(url, post_data={'id': id}, parameters=parameters)
+        return self._fetch_url(url, http_method='POST')
 
     def create_list(self, name, public=True):
         url = '%s/lists/create.json' % self.base_url
@@ -299,7 +299,7 @@ class Api(object):
         return self._fetch_url(url, parameters=parameters, http_method='POST')
 
     def get_all_lists(self, screen_name=None):
-        url = '%s/lists/all.json' % self.base_url
+        url = '%s/lists/list.json' % self.base_url
         parameters = dict()
         if screen_name:
             parameters['screen_name'] = screen_name
@@ -346,7 +346,7 @@ class Api(object):
 
     def get_blocking_ids(self, stringify_ids=False):
         parameters = {'stringify_ids': int(bool(stringify_ids))}
-        url = '%s/blocks/blocking/ids.json' % self.base_url
+        url = '%s/blocks/ids.json' % self.base_url
         return self._fetch_url(url, parameters=parameters)
 
     def verify_credentials(self):

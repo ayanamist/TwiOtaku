@@ -606,14 +606,14 @@ class XMPPMessageHandler(object):
         self._api.destroy_friendship(screen_name)
         return u'Unfollowed %s.' % screen_name
 
-    def func_if(self, user_a, user_b=None):
-        if user_b is None:
-            user_b = self._user['screen_name']
-        result = self._api.exists_friendship(user_a=user_a, user_b=user_b)
+    def func_if(self, source_screen_name, target_screen_name=None):
+        if target_screen_name is None:
+            target_screen_name = self._user['screen_name']
+        result = self._api.show_friendship(source_screen_name=source_screen_name, target_screen_name=target_screen_name)
         if result:
-            return u'%s is already following %s.' % (user_a, user_b)
+            return u'%s is already following %s.' % (source_screen_name, target_screen_name)
         else:
-            return u'%s is not following %s yet.' % (user_a, user_b)
+            return u'%s is not following %s yet.' % (source_screen_name, target_screen_name)
 
     def func_on(self, *args):
         if args:
