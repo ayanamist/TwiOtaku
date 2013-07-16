@@ -92,6 +92,9 @@ HELP_MESSAGES = {
     "invite": u"USAGE:-invite [INVITE_CODE]\nCheck your invite with invite code, generate new invite code if no INVITE_CODE given(You must be admin)."
     }
 
+
+DEFAULT_MESSAGE = u"ALL COMMANDS AVAILABLE:\n-on\n-off\n{-@|-r|-reply}\n{-d|-dm}\n{-ra|-replyall}\n{-ho|-home}\n-del\n-rt\n{-tl|-timeline}\n{-lt|-list}\n{-fo|-follow}\n{-unfo|-unfollow}\n{-b|-block}\n{-ub|-unblock}\n{-m|-msg}\n{-f|-fav}\n{-uf|-unfav}\n{-u|-user}\n-if\n-always\n-track\n-oauth\n-bind\n-invite\nType '-h command' or '-help command' for details."
+
 _screen_name_regex = r'[a-zA-Z0-9_]+'
 
 class XMPPMessageHandler(object):
@@ -795,5 +798,10 @@ class XMPPMessageHandler(object):
 
     def func_help(self,cmd=None):
         if cmd:
+            msg = HELP_MESSAGES.get(cmd)
+            if msg:
+                return msg
+            else:
+                return DEFAULT_MESSAGE
         else:
-            return u"ALL COMMANDS AVAILABLE:\n-on\n-off\n{-@|-r|-reply}\n{-d|-dm}\n{-ra|-replyall}\n{-ho|-home}\n-del\n-rt\n{-tl|-timeline}\n{-lt|-list}\n{-fo|-follow}\n{-unfo|-unfollow}\n{-b|-block}\n{-ub|-unblock}\n{-m|-msg}\n{-f|-fav}\n{-uf|-unfav}\n{-u|-user}\n-if\n-always\n-track\n-oauth\n-bind\n-invite\nType '-h command' or '-help command' for details."
+            return DEFAULT_MESSAGE
