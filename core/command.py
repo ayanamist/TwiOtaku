@@ -57,6 +57,41 @@ SHORT_COMMANDS = {
     'h': 'help',
     }
 
+HELP_MESSAGES = {
+    "on": u"USAGE:-on [home|dm|mention|list|event|track]\nEnable automatic update for [home|dm|mention|list|event|track].",
+    "off": u"USAGE:-off [home|dm|mention|list|event|track]\nDisable automatic update for [home|dm|mention|list|event|track].",
+    "ho": u"USAGE:-ho [PAGE_NUMBER]\nShow home timeline, page one for default. \nSame as -home command.",
+    "home": u"USAGE:-home [PAGE_NUMBER]\nShow home timeline, page one for default. \nSame as -ho command.",
+    "@": u"USAGE:-@ [TWEET_NUMBER] [REPLY_CONTENT]\nReply to a tweet, show mentions if no TWEET_NUMBER or [REPLY_CONTENT] given. \nSame as -r and -reply command.",
+    "r": u"USAGE:-r [TWEET_NUMBER] [REPLY_CONTENT]\nReply to a tweet, show mentions if no TWEET_NUMBER or [REPLY_CONTENT] given. \nSame as -@ and -reply command.",
+    "reply": u"USAGE:-reply [TWEET_NUMBER] [REPLY_CONTENT]\nReply to a tweet, show mentions if no TWEET_NUMBER or [REPLY_CONTENT] given. \nSame as -@ and -r command.",
+    "ra": u"USAGE:-ra TWEET_NUMBER REPLY_CONTENT\nReply to all users in a tweet. \nSame as -replyall command.",
+    "replyall": u"USAGE:-replyall TWEET_NUMBER REPLY_CONTENT\nReply to all users in a tweet. \nSame as -ra command.",
+    "del": u"USAGE:-del [TWEET_NUMBER]\nDelete a tweet, delete your last tweet if no TWEET_NUMBER given.",
+    "rt": u"USAGE:-rt TWEET_NUMBER [COMMENT]\nRetweet a tweet, Official retweet if no COMMENT given.",
+    "d": u"USAGE:-d [DM_NUMBER|USER_ID] [DM_CONTENT]\nSend a direct message, show all direct messages if no DM_NUMBER of USER_ID given. \nSame as -dm command.",
+    "dm": u"USAGE:-dm [DM_NUMBER|USER_ID] [DM_CONTENT]\nSend a direct message, show all direct messages if no DM_NUMBER of USER_ID given. \nSame as -d command.",
+    "lt": u"USAGE:-lt [LIST_NAME]\nShow a list, show lists following you if no LIST_NAME given. \nSame as -list command.",
+    "list": u"USAGE:-list [LIST_NAME]\nShow a list, show lists following you if no LIST_NAME given. \nSame as -lt command.",
+    "fo": u"USAGE:-fo USER_ID\nFollow a user. \nSame as -follow command.",
+    "unfo": u"USAGE:-unfo USER_ID\nUnfollow a user. \nSame as -unfollow command.",
+    "follow": u"USAGE:-fo USER_ID\nFollow a user. \nSame as -fo command.",
+    "unfollow": u"USAGE:-unfo USER_ID\nUnfollow a user. \nSame as -unfo command.",
+    "b": u"USAGE:-b USER_ID\nBlock a user. \nSame as -block command.",
+    "block": u"USAGE:-block USER_ID\nBlock a user. \nSame as -b command.",
+    "ub": u"USAGE:-ub USER_ID\nUnblock a user. \nSame as -unblock command.",
+    "unblock": u"USAGE:-unblock USER_ID\nUnblock a user. \nSame as -ub command.",
+    "u": u"USAGE:-u USER_ID\nShow a user's profile. \nSame as -user command.",
+    "tl": u"USAGE:-tl USER_ID\nShow a user's timeline. \nSame as -tl command.",
+    "timeline": u"USAGE:-timeline USER_ID\nShow a user's timeline. \nSame as -timeline command.",
+    "if": u"USAGE:-if USER_ID_A [USER_ID_B]\nShow whether user A and user B are friends, show whether user A is your friend if no USER_ID_B given.",
+    "always": u"USAGE:-always [true|on|1][false|off|0]\nEnable/Disable automatic update when you are offline.",
+    "track": u"USAGE:-track *KEYWORDS\nEnable track for your keywords(1 or more).",
+    "oauth": u"USAGE:-oauth\nGet twitter oauth url for your account.",
+    "bind": u"USAGE:-bind PIN\nBind your twitter account with bot.",
+    "invite": u"USAGE:-invite [INVITE_CODE]\nCheck your invite with invite code, generate new invite code if no INVITE_CODE given(You must be admin)."
+    }
+
 _screen_name_regex = r'[a-zA-Z0-9_]+'
 
 class XMPPMessageHandler(object):
@@ -758,5 +793,7 @@ class XMPPMessageHandler(object):
             self._xmpp.start_stream(self._bare_jid)
         return u'You are tracking words: %s. (comma seprated)' % self._user['track_words']
 
-    def func_help(self):
-        return u'Please refer to following url to get more help.\nhttp://code.google.com/p/twiotaku/wiki/CommandsReferrence'
+    def func_help(self,cmd=None):
+        if cmd:
+        else:
+            return u"ALL COMMANDS AVAILABLE:\n-on\n-off\n{-@|-r|-reply}\n{-d|-dm}\n{-ra|-replyall}\n{-ho|-home}\n-del\n-rt\n{-tl|-timeline}\n{-lt|-list}\n{-fo|-follow}\n{-unfo|-unfollow}\n{-b|-block}\n{-ub|-unblock}\n{-m|-msg}\n{-f|-fav}\n{-uf|-unfav}\n{-u|-user}\n-if\n-always\n-track\n-oauth\n-bind\n-invite\nType '-h command' or '-help command' for details."
