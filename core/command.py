@@ -520,51 +520,12 @@ class XMPPMessageHandler(object):
         long_id_str = str(long_id)
         data = list()
         if long_id_type == db.TYPE_STATUS:
-            origin_status = self._api.get_status(long_id)
-            related_result = self._api.get_related_results(long_id)
-            if related_result:
-                last_conversation_role = 'Ancestor' # possible value: Ancestor, Descendant, Fork
-                related_result = related_result[0]['results']
-                for result in related_result:
-                    if result['kind'] == 'Tweet':
-                        conversation_role = result['annotations']['ConversationRole']
-                        if conversation_role != last_conversation_role:
-                            data.insert(0, origin_status)
-                            origin_status = None
-                            last_conversation_role = conversation_role
-                        data.insert(0, result["value"])
-            if origin_status:
-                data.insert(0, origin_status)
-            previous_ids = set(x["id"] for x in data)
-            for i, status in enumerate(data):
-                if "retweeted_status" not in status:
-                    current_id = status["in_reply_to_status_id"]
-                else:
-                    current_id = status["retweeted_status"]["in_reply_to_status_id"]
-                if current_id and current_id not in previous_ids:
-                    try:
-                        status = self._api.get_status(current_id)
-                    except twitter.Error:
-                        pass
-                    else:
-                        data.insert(i + 1, status)
-                        previous_ids.add(status["id"])
-            while len(data) <= config.MAX_CONVERSATION_NUM:
-                status = data[-1]
-                if status['in_reply_to_status_id_str']:
-                    long_id = status['in_reply_to_status_id_str']
-                    try:
-                        status = self._api.get_status(long_id)
-                    except twitter.Error:
-                        break
-                else:
-                    break
-                if 'retweeted_status' in status and status["retweeted_status"]["id"] not in previous_ids:
-                    data.append(status['retweeted_status'])
-                    previous_ids.add(status['retweeted_status']["id"])
-                elif status["id"] not in previous_ids:
-                    data.append(status)
-                    previous_ids.add(status["id"])
+            status = self._api.get_status(long_id)
+            data.append(status)
+            while status['in_reply_to_status_id'] and len(data) <= config.MAX_CONVERSATION_NUM:
+                long_id = status['in_reply_to_status_id']
+                status = self._api.get_status(long_id)
+                data.append(status)
         else:
             long_id_str = ''
             all_dms = self._api.get_direct_messages(max_id=long_id, count=50)
