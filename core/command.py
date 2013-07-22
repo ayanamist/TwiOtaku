@@ -521,10 +521,14 @@ class XMPPMessageHandler(object):
         data = list()
         if long_id_type == db.TYPE_STATUS:
             status = self._api.get_status(long_id)
+            if 'in_reply_to_status' in status:
+                del status['in_reply_to_status']
             data.append(status)
             while status['in_reply_to_status_id'] and len(data) <= config.MAX_CONVERSATION_NUM:
                 long_id = status['in_reply_to_status_id']
                 status = self._api.get_status(long_id)
+                if 'in_reply_to_status' in status:
+                    del status['in_reply_to_status']
                 data.append(status)
         else:
             long_id_str = ''
