@@ -121,6 +121,8 @@ class XMPPMessageHandler(object):
             self.parse_command(msg['body'])
         except Exception, e:
             self._job["title"] = str(e)
+        if "title" not in self._job:
+            return
         if self._queue:
             self._queue.put(self._job)
         else:
