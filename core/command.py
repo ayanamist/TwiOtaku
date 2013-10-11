@@ -57,6 +57,44 @@ SHORT_COMMANDS = {
     'h': 'help',
     }
 
+HELP_MESSAGES = {
+    "on": u"USAGE:-on [home|dm|mention|list|event|track]\nEnable automatic update for [home|dm|mention|list|event|track].",
+    "off": u"USAGE:-off [home|dm|mention|list|event|track]\nDisable automatic update for [home|dm|mention|list|event|track].",
+    "ho": u"USAGE:-ho [PAGE_NUMBER]\nShow home timeline, page one for default. \nSame as -home command.",
+    "home": u"USAGE:-home [PAGE_NUMBER]\nShow home timeline, page one for default. \nSame as -ho command.",
+    "@": u"USAGE:-@ [TWEET_NUMBER] [REPLY_CONTENT]\nReply to a tweet, show mentions if no TWEET_NUMBER or [REPLY_CONTENT] given. \nSame as -r and -reply command.",
+    "r": u"USAGE:-r [TWEET_NUMBER] [REPLY_CONTENT]\nReply to a tweet, show mentions if no TWEET_NUMBER or [REPLY_CONTENT] given. \nSame as -@ and -reply command.",
+    "reply": u"USAGE:-reply [TWEET_NUMBER] [REPLY_CONTENT]\nReply to a tweet, show mentions if no TWEET_NUMBER or [REPLY_CONTENT] given. \nSame as -@ and -r command.",
+    "ra": u"USAGE:-ra TWEET_NUMBER REPLY_CONTENT\nReply to all users in a tweet. \nSame as -replyall command.",
+    "replyall": u"USAGE:-replyall TWEET_NUMBER REPLY_CONTENT\nReply to all users in a tweet. \nSame as -ra command.",
+    "del": u"USAGE:-del [TWEET_NUMBER]\nDelete a tweet, delete your last tweet if no TWEET_NUMBER given.",
+    "rt": u"USAGE:-rt TWEET_NUMBER [COMMENT]\nRetweet a tweet, Official retweet if no COMMENT given.",
+    "d": u"USAGE:-d [DM_NUMBER|USER_ID] [DM_CONTENT]\nSend a direct message, show all direct messages if no DM_NUMBER of USER_ID given. \nSame as -dm command.",
+    "dm": u"USAGE:-dm [DM_NUMBER|USER_ID] [DM_CONTENT]\nSend a direct message, show all direct messages if no DM_NUMBER of USER_ID given. \nSame as -d command.",
+    "lt": u"USAGE:-lt [LIST_NAME]\nShow a list, show lists following you if no LIST_NAME given. \nSame as -list command.",
+    "list": u"USAGE:-list [LIST_NAME]\nShow a list, show lists following you if no LIST_NAME given. \nSame as -lt command.",
+    "fo": u"USAGE:-fo USER_ID\nFollow a user. \nSame as -follow command.",
+    "unfo": u"USAGE:-unfo USER_ID\nUnfollow a user. \nSame as -unfollow command.",
+    "follow": u"USAGE:-fo USER_ID\nFollow a user. \nSame as -fo command.",
+    "unfollow": u"USAGE:-unfo USER_ID\nUnfollow a user. \nSame as -unfo command.",
+    "b": u"USAGE:-b USER_ID\nBlock a user. \nSame as -block command.",
+    "block": u"USAGE:-block USER_ID\nBlock a user. \nSame as -b command.",
+    "ub": u"USAGE:-ub USER_ID\nUnblock a user. \nSame as -unblock command.",
+    "unblock": u"USAGE:-unblock USER_ID\nUnblock a user. \nSame as -ub command.",
+    "u": u"USAGE:-u USER_ID\nShow a user's profile. \nSame as -user command.",
+    "tl": u"USAGE:-tl USER_ID\nShow a user's timeline. \nSame as -tl command.",
+    "timeline": u"USAGE:-timeline USER_ID\nShow a user's timeline. \nSame as -timeline command.",
+    "if": u"USAGE:-if USER_ID_A [USER_ID_B]\nShow whether user A and user B are friends, show whether user A is your friend if no USER_ID_B given.",
+    "always": u"USAGE:-always [true|on|1][false|off|0]\nEnable/Disable automatic update when you are offline.",
+    "track": u"USAGE:-track *KEYWORDS\nEnable track for your keywords(1 or more).",
+    "oauth": u"USAGE:-oauth\nGet twitter oauth url for your account.",
+    "bind": u"USAGE:-bind PIN\nBind your twitter account with bot.",
+    "invite": u"USAGE:-invite [INVITE_CODE]\nCheck your invite with invite code, generate new invite code if no INVITE_CODE given(You must be admin)."
+    }
+
+
+DEFAULT_MESSAGE = u"ALL COMMANDS AVAILABLE:\n-on\n-off\n{-@|-r|-reply}\n{-d|-dm}\n{-ra|-replyall}\n{-ho|-home}\n-del\n-rt\n{-tl|-timeline}\n{-lt|-list}\n{-fo|-follow}\n{-unfo|-unfollow}\n{-b|-block}\n{-ub|-unblock}\n{-m|-msg}\n{-f|-fav}\n{-uf|-unfav}\n{-u|-user}\n-if\n-always\n-track\n-oauth\n-bind\n-invite\nType '-h command' or '-help command' for details."
+
 _screen_name_regex = r'[a-zA-Z0-9_]+'
 
 class XMPPMessageHandler(object):
@@ -482,51 +520,16 @@ class XMPPMessageHandler(object):
         long_id_str = str(long_id)
         data = list()
         if long_id_type == db.TYPE_STATUS:
-            origin_status = self._api.get_status(long_id)
-            related_result = self._api.get_related_results(long_id)
-            if related_result:
-                last_conversation_role = 'Ancestor' # possible value: Ancestor, Descendant, Fork
-                related_result = related_result[0]['results']
-                for result in related_result:
-                    if result['kind'] == 'Tweet':
-                        conversation_role = result['annotations']['ConversationRole']
-                        if conversation_role != last_conversation_role:
-                            data.insert(0, origin_status)
-                            origin_status = None
-                            last_conversation_role = conversation_role
-                        data.insert(0, result["value"])
-            if origin_status:
-                data.insert(0, origin_status)
-            previous_ids = set(x["id"] for x in data)
-            for i, status in enumerate(data):
-                if "retweeted_status" not in status:
-                    current_id = status["in_reply_to_status_id"]
-                else:
-                    current_id = status["retweeted_status"]["in_reply_to_status_id"]
-                if current_id and current_id not in previous_ids:
-                    try:
-                        status = self._api.get_status(current_id)
-                    except twitter.Error:
-                        pass
-                    else:
-                        data.insert(i + 1, status)
-                        previous_ids.add(status["id"])
-            while len(data) <= config.MAX_CONVERSATION_NUM:
-                status = data[-1]
-                if status['in_reply_to_status_id_str']:
-                    long_id = status['in_reply_to_status_id_str']
-                    try:
-                        status = self._api.get_status(long_id)
-                    except twitter.Error:
-                        break
-                else:
-                    break
-                if 'retweeted_status' in status and status["retweeted_status"]["id"] not in previous_ids:
-                    data.append(status['retweeted_status'])
-                    previous_ids.add(status['retweeted_status']["id"])
-                elif status["id"] not in previous_ids:
-                    data.append(status)
-                    previous_ids.add(status["id"])
+            status = self._api.get_status(long_id)
+            if 'in_reply_to_status' in status:
+                del status['in_reply_to_status']
+            data.append(status)
+            while status['in_reply_to_status_id'] and len(data) <= config.MAX_CONVERSATION_NUM:
+                long_id = status['in_reply_to_status_id']
+                status = self._api.get_status(long_id)
+                if 'in_reply_to_status' in status:
+                    del status['in_reply_to_status']
+                data.append(status)
         else:
             long_id_str = ''
             all_dms = self._api.get_direct_messages(max_id=long_id, count=50)
@@ -758,5 +761,12 @@ class XMPPMessageHandler(object):
             self._xmpp.start_stream(self._bare_jid)
         return u'You are tracking words: %s. (comma seprated)' % self._user['track_words']
 
-    def func_help(self):
-        return u'Please refer to following url to get more help.\nhttp://code.google.com/p/twiotaku/wiki/CommandsReferrence'
+    def func_help(self,cmd=None):
+        if cmd:
+            msg = HELP_MESSAGES.get(cmd)
+            if msg:
+                return msg
+            else:
+                return DEFAULT_MESSAGE
+        else:
+            return DEFAULT_MESSAGE
